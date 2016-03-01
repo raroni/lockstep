@@ -1,6 +1,6 @@
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
+#include <signal.h>
 #include <errno.h>
 #include <unistd.h>
 #include <sys/socket.h>
@@ -28,7 +28,11 @@ typedef si32 smsec32;
 typedef ui64 smsec64;
 typedef ui64 uusec64;
 
-static bool Running;
+static volatile bool Running;
+
+enum errno_code {
+  errno_code_interrupted_system_call = 4
+};
 
 #define CLIENT_MAX 4
 
@@ -76,18 +80,18 @@ int main() {
   struct sockaddr_in Address;
   memset(&Address, 0, sizeof(Address));
   Address.sin_len = sizeof(Address);
-  Address.sin_family = AF_INET; // or AF_INET6 (address family)
+  Address.sin_family = AF_INET;
   Address.sin_port = htons(4321);
   Address.sin_addr.s_addr = INADDR_ANY;
 
   if(bind(HostFD, (struct sockaddr *)&Address, sizeof(Address)) < 0) {
     printf("Bind failed.\n");
-    exit(1);
+    return 1;
   }
 
   if(listen(HostFD, 5) < 0) {
     printf("Listen failed.\n");
-    exit(1);
+    return 1;
   }
 
   printf("Listening...\n");
@@ -108,8 +112,13 @@ int main() {
     SelectResult = select(ClientSet.MaxFDPlusOne, &ClientFDSet, NULL, NULL, &Timeout);
 
     if(SelectResult == -1) {
-      printf("Select failed (%s).\n", strerror(errno));
-      exit(1);
+      if(errno == errno_code_interrupted_system_call) {
+        break;
+      }
+      else {
+        printf("Select failed (%s).\n", strerror(errno));
+        return 1;
+      }
     }
     else if(SelectResult != 0) {
       for(ui32 I=0; I<ClientSet.Count; ++I) {
@@ -138,6 +147,6 @@ int main() {
   }
 
   close(HostFD);
-  printf("Gracefully terminated.\n");
+  printf("\nGracefully terminated.");
   return 0;
 }
