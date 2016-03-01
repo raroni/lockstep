@@ -1,0 +1,27 @@
+{
+  "folders":
+  [
+    {
+      "path": "."
+    }
+  ],
+  "build_systems": [
+    {
+      "name": "Lockstep-Build",
+      "selector": "source.c++",
+      "working_dir": "${project_path}",
+      "cmd": ["make"],
+      "file_regex": "([a-zA-Z\\-_/]+\\.(?:cpp|mm)):([0-9]+):([0-9]+)",
+      "variants": [
+        {
+          "name": "Clean",
+          "cmd": ["make", "clean"]
+        },
+        {
+          "name": "Test",
+          "cmd": ["make", "test"]
+        },
+      ]
+    }
+  ]
+}
