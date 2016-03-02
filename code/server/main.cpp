@@ -89,10 +89,7 @@ int main() {
     Timeout.tv_sec = 0;
     Timeout.tv_usec = 5000;
 
-    // TODO: This select causes "Interrupted system call" when hitting
-    // Ctrl + C. Somehow enable graceful shutdown.
     SelectResult = select(ClientSet.MaxFDPlusOne, &ClientFDSet, NULL, NULL, &Timeout);
-
     if(SelectResult == -1) {
       if(errno == errno_code_interrupted_system_call) {
         break;
