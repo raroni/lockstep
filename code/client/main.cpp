@@ -108,6 +108,6 @@ int main() {
   }
 
   close(FD);
-  printf("\nGracefully terminated.");
+  printf("\nGracefully terminated.\n");
   return 0;
 }
