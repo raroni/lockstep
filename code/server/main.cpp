@@ -8,31 +8,9 @@
 #include <netinet/in.h>
 #include <sys/time.h>
 #include <stdint.h>
-
-typedef float real32;
-typedef double real64;
-
-typedef uint8_t ui8;
-typedef uint16_t ui16;
-typedef uint32_t ui32;
-typedef uint64_t ui64;
-typedef int8_t si8;
-typedef int16_t si16;
-typedef int32_t si32;
-typedef int64_t si64;
-
-typedef ui16 umsec16;
-typedef si16 smsec16;
-typedef ui32 umsec32;
-typedef si32 smsec32;
-typedef ui64 smsec64;
-typedef ui64 uusec64;
+#include "../shared.h"
 
 static volatile bool Running;
-
-enum errno_code {
-  errno_code_interrupted_system_call = 4
-};
 
 #define CLIENT_MAX 4
 
@@ -75,6 +53,10 @@ int main() {
   signal(SIGINT, HandleSigint);
 
   int HostFD = socket(PF_INET, SOCK_STREAM, 0);
+  if(HostFD < 0) {
+    printf("Could not get socket.\n");
+    return 1;
+  }
   fcntl(HostFD, F_SETFL, O_NONBLOCK);
 
   struct sockaddr_in Address;
@@ -124,7 +106,7 @@ int main() {
       for(ui32 I=0; I<ClientSet.Count; ++I) {
         client *Client = ClientSet.Clients + I;
         if(FD_ISSET(Client->FD, &ClientFDSet)) {
-          ssize_t Result = recv(Client->FD, TestBuffer, TEST_BUFFER_SIZE, 0);
+          ssize_t Result = recv(Client->FD, TestBuffer, TEST_BUFFER_SIZE, 0); // TODO: Loop until you have all
           if(Result == 0) {
             ClientSet.Count--;
             UpdateClientSet(&ClientSet);
