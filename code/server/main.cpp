@@ -42,6 +42,12 @@ void UpdateClientSet(client_set *Set) {
   }
 }
 
+void RemoveClient(client_set *Set, ui32 Index) {
+  Set->Clients[Index] = Set->Clients[Set->Count-1];
+  Set->Count--;
+  UpdateClientSet(Set);
+}
+
 int main() {
   fd_set ClientFDSet;
 
@@ -105,8 +111,8 @@ int main() {
         if(FD_ISSET(Client->FD, &ClientFDSet)) {
           ssize_t Result = recv(Client->FD, TestBuffer, TEST_BUFFER_SIZE, 0); // TODO: Loop until you have all
           if(Result == 0) {
-            ClientSet.Count--;
-            UpdateClientSet(&ClientSet);
+            RemoveClient(&ClientSet, I);
+            I--;
             printf("Disconnected.\n");
           }
           else {
