@@ -10,9 +10,6 @@ static void HandleSigint(int signum) {
   Running = false;
 }
 
-#define TEST_BUFFER_SIZE 4096
-ui8 TestBuffer[TEST_BUFFER_SIZE];
-
 int main() {
   signal(SIGINT, HandleSigint);
 
