@@ -1,7 +1,5 @@
 include MakefileSettings
 
-# TODO: Setup deps!
-
 all: server client
 
 CC = clang++
@@ -13,11 +11,16 @@ SERVER_PRODUCT_DIR = $(PRODUCT_DIR)/LockstepServer.app
 SERVER_BINARY = $(SERVER_PRODUCT_DIR)/Contents/MacOS/LockstepServer
 SERVER_SOURCES = code/server/main.cpp
 SERVER_OBJS = $(patsubst %.cpp, $(OBJECTS_DIR)/%.o, $(SERVER_SOURCES))
+SERVER_DEPS = $(sort $(patsubst %, %.deps, $(SERVER_OBJS)))
 
 CLIENT_PRODUCT_DIR = $(PRODUCT_DIR)/LockstepClient.app
 CLIENT_BINARY = $(SERVER_PRODUCT_DIR)/Contents/MacOS/LockstepClient
 CLIENT_SOURCES = code/client/main.cpp
 CLIENT_OBJS = $(patsubst %.cpp, $(OBJECTS_DIR)/%.o, $(CLIENT_SOURCES))
+CLIENT_DEPS = $(sort $(patsubst %, %.deps, $(CLIENT_OBJS)))
+
+-include $(CLIENT_DEPS)
+-include $(SERVER_DEPS)
 
 $(OBJECTS_DIR)/%.o: ./%.cpp
 	mkdir -p $(dir $@)
