@@ -1,3 +1,5 @@
+#include <stdint.h>
+
 typedef float real32;
 typedef double real64;
 
