@@ -10,7 +10,7 @@
 #include "../assert.h"
 
 static int HostFD;
-static client_set ClientSet;
+network Network;
 
 #define TEST_BUFFER_SIZE 4096
 ui8 TestBuffer[TEST_BUFFER_SIZE];
@@ -29,8 +29,8 @@ void RemoveClient(client_set *Set, ui32 Index) {
 }
 
 void InitNetwork() {
-  ClientSet.Count = 0;
-  ClientSet.MaxFDPlusOne = 0;
+  Network.ClientSet.Count = 0;
+  Network.ClientSet.MaxFDPlusOne = 0;
 
   HostFD = socket(PF_INET, SOCK_STREAM, 0);
   Assert(HostFD != -1);
@@ -53,15 +53,15 @@ void InitNetwork() {
 void UpdateNetwork() {
   fd_set ClientFDSet;
   FD_ZERO(&ClientFDSet);
-  for(ui32 I=0; I<ClientSet.Count; ++I) {
-    FD_SET(ClientSet.Clients[I].FD, &ClientFDSet);
+  for(ui32 I=0; I<Network.ClientSet.Count; ++I) {
+    FD_SET(Network.ClientSet.Clients[I].FD, &ClientFDSet);
   }
 
   struct timeval Timeout;
   Timeout.tv_sec = 0;
   Timeout.tv_usec = 5000;
 
-  int SelectResult = select(ClientSet.MaxFDPlusOne, &ClientFDSet, NULL, NULL, &Timeout);
+  int SelectResult = select(Network.ClientSet.MaxFDPlusOne, &ClientFDSet, NULL, NULL, &Timeout);
   if(SelectResult == -1) {
     if(errno == errno_code_interrupted_system_call) {
       return;
@@ -69,12 +69,12 @@ void UpdateNetwork() {
     InvalidCodePath;
   }
   else if(SelectResult != 0) {
-    for(ui32 I=0; I<ClientSet.Count; ++I) {
-      client *Client = ClientSet.Clients + I;
+    for(ui32 I=0; I<Network.ClientSet.Count; ++I) {
+      client *Client = Network.ClientSet.Clients + I;
       if(FD_ISSET(Client->FD, &ClientFDSet)) {
         ssize_t Result = recv(Client->FD, TestBuffer, TEST_BUFFER_SIZE, 0); // TODO: Loop until you have all
         if(Result == 0) {
-          RemoveClient(&ClientSet, I);
+          RemoveClient(&Network.ClientSet, I);
           I--;
           printf("Disconnected.\n");
         }
@@ -87,9 +87,9 @@ void UpdateNetwork() {
 
   int ClientFD = accept(HostFD, NULL, NULL);
   if(ClientFD != -1) {
-    ClientSet.Clients[0].FD = ClientFD;
-    ClientSet.Count++;
-    ClientSet.MaxFDPlusOne = MaxInt(ClientFD + 1, ClientSet.MaxFDPlusOne);
+    Network.ClientSet.Clients[0].FD = ClientFD;
+    Network.ClientSet.Count++;
+    Network.ClientSet.MaxFDPlusOne = MaxInt(ClientFD + 1, Network.ClientSet.MaxFDPlusOne);
     printf("Someone connected!\n");
   }
 }

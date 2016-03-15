@@ -12,6 +12,12 @@ struct client_set {
   ui32 Count;
 };
 
+struct network {
+  client_set ClientSet;
+};
+
+extern network Network;
+
 void InitNetwork();
 void UpdateNetwork();
 void TerminateNetwork();

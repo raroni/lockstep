@@ -26,6 +26,6 @@ int main() {
   }
 
   TerminateNetwork();
-  printf("\nGracefully terminated.\n");
+  printf("Gracefully terminated.\n");
   return 0;
 }
