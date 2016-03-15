@@ -31,7 +31,7 @@ void InitNetwork() {
   Network.State = network_state_connecting;
 }
 
-bool UpdateNetwork() {
+void UpdateNetwork() {
   Assert(Network.State != network_state_inactive);
 
   struct timeval Timeout;
@@ -45,10 +45,10 @@ bool UpdateNetwork() {
   if(Network.State == network_state_connected) {
     int SelectResult = select(FD+1, &FDSet, NULL, NULL, &Timeout);
     if(SelectResult == -1) {
-      if(errno == errno_code_interrupted_system_call) {
-        return false;
+      if(errno != errno_code_interrupted_system_call) {
+        InvalidCodePath;
       }
-      InvalidCodePath;
+      return;
     }
     if(SelectResult != 0 && FD_ISSET(FD, &FDSet)) {
       ssize_t Result = recv(FD, TestBuffer, TEST_BUFFER_SIZE, 0); // TODO: Loop until you have all
@@ -63,10 +63,10 @@ bool UpdateNetwork() {
   else {
     int SelectResult = select(FD+1, NULL, &FDSet, NULL, &Timeout);
     if(SelectResult == -1) {
-      if(errno == errno_code_interrupted_system_call) {
-        return false;
+      if(errno != errno_code_interrupted_system_call) {
+        InvalidCodePath;
       }
-      InvalidCodePath;
+      return;
     }
     if(SelectResult != 0) {
       int OptionValue;
@@ -81,8 +81,6 @@ bool UpdateNetwork() {
       }
     }
   }
-
-  return true;
 }
 
 void TerminateNetwork() {

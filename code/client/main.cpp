@@ -21,9 +21,7 @@ int main() {
   Running = true;
   while(Running) {
     if(Network.State != network_state_inactive) {
-      if(!UpdateNetwork()) {
-        break;
-      }
+      UpdateNetwork();
     }
     else {
       break;

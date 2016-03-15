@@ -11,5 +11,5 @@ struct network {
 extern network Network;
 
 void InitNetwork();
-bool UpdateNetwork();
+void UpdateNetwork();
 void TerminateNetwork();
