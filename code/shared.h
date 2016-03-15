@@ -1,3 +1,6 @@
+#ifndef SHARED_H
+#define SHARED_H
+
 #include <stdint.h>
 
 typedef float real32;
@@ -23,3 +26,9 @@ enum errno_code {
   errno_code_interrupted_system_call = 4,
   errno_code_in_progress = 36
 };
+
+static inline int MaxInt(int A, int B) {
+  return A > B ? A : B;
+}
+
+#endif

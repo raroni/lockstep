@@ -9,7 +9,7 @@ OBJECTS_DIR = $(BUILD_DIR)/objects
 
 SERVER_PRODUCT_DIR = $(PRODUCT_DIR)/LockstepServer.app
 SERVER_BINARY = $(SERVER_PRODUCT_DIR)/Contents/MacOS/LockstepServer
-SERVER_SOURCES = code/server/main.cpp
+SERVER_SOURCES = code/server/main.cpp code/server/server_network.cpp
 SERVER_OBJS = $(patsubst %.cpp, $(OBJECTS_DIR)/%.o, $(SERVER_SOURCES))
 SERVER_DEPS = $(sort $(patsubst %, %.deps, $(SERVER_OBJS)))
 
