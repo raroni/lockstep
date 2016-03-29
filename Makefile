@@ -7,15 +7,17 @@ CPP_FLAGS = -Wall -g -std=gnu++11 -stdlib=libc++ -ferror-limit=1 -fno-exceptions
 PRODUCT_DIR = $(BUILD_DIR)/products
 OBJECTS_DIR = $(BUILD_DIR)/objects
 
+COMMON_SOURCES = code/shared.cpp code/packet.cpp code/assert.cpp
+
 SERVER_PRODUCT_DIR = $(PRODUCT_DIR)/LockstepServer.app
 SERVER_BINARY = $(SERVER_PRODUCT_DIR)/Contents/MacOS/LockstepServer
-SERVER_SOURCES = code/server/main.cpp code/server/server_network.cpp
+SERVER_SOURCES = $(COMMON_SOURCES) code/server/main.cpp code/server/server_network.cpp
 SERVER_OBJS = $(patsubst %.cpp, $(OBJECTS_DIR)/%.o, $(SERVER_SOURCES))
 SERVER_DEPS = $(sort $(patsubst %, %.deps, $(SERVER_OBJS)))
 
 CLIENT_PRODUCT_DIR = $(PRODUCT_DIR)/LockstepClient.app
 CLIENT_BINARY = $(SERVER_PRODUCT_DIR)/Contents/MacOS/LockstepClient
-CLIENT_SOURCES = code/client/main.cpp code/client/network_client.cpp
+CLIENT_SOURCES = $(COMMON_SOURCES) code/client/main.cpp code/client/network_client.cpp
 CLIENT_OBJS = $(patsubst %.cpp, $(OBJECTS_DIR)/%.o, $(CLIENT_SOURCES))
 CLIENT_DEPS = $(sort $(patsubst %, %.deps, $(CLIENT_OBJS)))
 

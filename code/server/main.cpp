@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include "../shared.h"
 #include "server_network.h"
+#include "../packet.h"
 
 enum game_state {
   game_state_waiting_for_clients,
@@ -16,8 +17,19 @@ static void HandleSignal(int signum) {
   Running = false;
 }
 
+enum packet_type {
+  packet_type_start
+};
+
+static packet Packet;
+#define PACKET_BUFFER_SIZE 1024*10
+static ui8 PacketBuffer[PACKET_BUFFER_SIZE];
+
 int main() {
   int TargetClientCount = 1;
+  ResetPacket(&Packet);
+  Packet.Data = &PacketBuffer;
+  Packet.Capacity = PACKET_BUFFER_SIZE;
 
   InitNetwork();
   printf("Listening...\n");
@@ -31,7 +43,9 @@ int main() {
     UpdateNetwork();
 
     if(GameState == game_state_waiting_for_clients && Network.ClientSet.Count == TargetClientCount) {
-      // NetworkBroadcast(Start);
+      ui8 TypeInt = SafeCastIntToUI8(packet_type_start);
+      PacketWriteUI8(&Packet, TypeInt);
+      NetworkBroadcast(Packet.Data, Packet.Length);
       printf("Starting game...\n");
       GameState = game_state_active;
     }

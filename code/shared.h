@@ -2,6 +2,8 @@
 #define SHARED_H
 
 #include <stdint.h>
+#include <limits.h>
+#include "assert.h"
 
 typedef float real32;
 typedef double real64;
@@ -30,5 +32,7 @@ enum errno_code {
 static inline int MaxInt(int A, int B) {
   return A > B ? A : B;
 }
+
+ui8 SafeCastIntToUI8(int Value);
 
 #endif

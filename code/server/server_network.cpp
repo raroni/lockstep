@@ -94,6 +94,14 @@ void UpdateNetwork() {
   }
 }
 
+void NetworkBroadcast(void *Data, size_t Length) {
+  for(ui32 I=0; I<Network.ClientSet.Count; ++I) {
+    client *Client = Network.ClientSet.Clients + I;
+    int Result = send(Client->FD, Data, Length, 0);
+    Assert(Result != -1);
+  }
+}
+
 void TerminateNetwork() {
   close(HostFD);
 }
