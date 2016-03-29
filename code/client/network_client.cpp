@@ -5,15 +5,24 @@
 #include <errno.h>
 #include "../shared.h"
 #include "../assert.h"
+#include "../network.h"
 #include "network_client.h"
 
 network Network;
 
 static int FD;
-#define TEST_BUFFER_SIZE 4096
-static ui8 TestBuffer[TEST_BUFFER_SIZE];
+
+network_buffer ReceiveBuffer;
+
+void InitReceiveBuffer() {
+  size_t Capacity = 1024*100;
+  void *Data = malloc(Capacity);
+  InitNetworkBuffer(&ReceiveBuffer, Data, Capacity);
+}
 
 void InitNetwork() {
+  InitReceiveBuffer();
+
   FD = socket(PF_INET, SOCK_STREAM, 0);
   Assert(FD != -1);
   fcntl(FD, F_SETFL, O_NONBLOCK);
@@ -51,12 +60,12 @@ void UpdateNetwork() {
       return;
     }
     if(SelectResult != 0 && FD_ISSET(FD, &FDSet)) {
-      ssize_t Result = recv(FD, TestBuffer, TEST_BUFFER_SIZE, 0); // TODO: Loop until you have all
+      ssize_t Result = NetworkReceive(FD, &ReceiveBuffer);
       if(Result == 0) {
         Network.State = network_state_inactive;
       }
       else {
-        printf("Got something %d, %s\n", (int)Result, (char*)TestBuffer);
+        printf("Got something %d\n", (int)Result);
       }
     }
   }
@@ -85,5 +94,7 @@ void UpdateNetwork() {
 
 void TerminateNetwork() {
   close(FD);
+  free(ReceiveBuffer.Data);
+  TerminateNetworkBuffer(&ReceiveBuffer);
   Network.State = network_state_inactive;
 }
