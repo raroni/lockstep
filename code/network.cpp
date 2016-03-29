@@ -1,5 +1,6 @@
 #include <netinet/in.h>
 #include "assert.h"
+#include "shared.h"
 #include "network.h"
 
 void InitNetworkBuffer(network_buffer *Buffer, void *Data, size_t Capacity) {
@@ -16,7 +17,8 @@ void TerminateNetworkBuffer(network_buffer *Buffer) {
 
 size_t NetworkReceive(int FD, network_buffer *Buffer) {
   Assert(Buffer->Capacity != 0);
-  // TODO: Loop until you have all
-  ssize_t Result = recv(FD, Buffer->Data, Buffer->Capacity, 0);
+  void *Destination = ((ui8*)Buffer->Data) + Buffer->Length;
+  ssize_t Capacity = Buffer->Capacity - Buffer->Length;
+  ssize_t Result = recv(FD, Destination, Capacity, 0);
   return Result;
 }
