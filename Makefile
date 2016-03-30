@@ -7,7 +7,7 @@ CPP_FLAGS = -Wall -g -std=gnu++11 -stdlib=libc++ -ferror-limit=1 -fno-exceptions
 PRODUCT_DIR = $(BUILD_DIR)/products
 OBJECTS_DIR = $(BUILD_DIR)/objects
 
-COMMON_SOURCES = code/shared.cpp code/network.cpp code/packet.cpp code/assert.cpp
+COMMON_SOURCES = code/shared.cpp code/memory.cpp code/network.cpp code/packet.cpp code/assert.cpp
 
 SERVER_PRODUCT_DIR = $(PRODUCT_DIR)/LockstepServer.app
 SERVER_BINARY = $(SERVER_PRODUCT_DIR)/Contents/MacOS/LockstepServer

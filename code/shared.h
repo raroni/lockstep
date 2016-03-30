@@ -24,6 +24,8 @@ typedef si32 smsec32;
 typedef ui64 smsec64;
 typedef ui64 uusec64;
 
+typedef size_t memsize;
+
 enum errno_code {
   errno_code_interrupted_system_call = 4,
   errno_code_in_progress = 36
