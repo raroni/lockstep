@@ -31,8 +31,18 @@ enum errno_code {
   errno_code_in_progress = 36
 };
 
+#define MemoryBarrier asm volatile("mfence" ::: "memory")
+
 static inline int MaxInt(int A, int B) {
   return A > B ? A : B;
+}
+
+static inline memsize MaxMemsize(memsize A, memsize B) {
+  return A > B ? A : B;
+}
+
+static inline memsize MinMemsize(memsize A, memsize B) {
+  return A < B ? A : B;
 }
 
 ui8 SafeCastIntToUI8(int Value);
