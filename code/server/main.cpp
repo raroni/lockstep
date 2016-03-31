@@ -7,14 +7,16 @@
 
 enum game_state {
   game_state_waiting_for_clients,
-  game_state_active
+  game_state_active,
+  game_state_disconnecting
 };
 
 static game_state GameState;
 static bool Running;
+static bool DisconnectRequested;
 
 static void HandleSignal(int signum) {
-  Running = false;
+  DisconnectRequested = true;
 }
 
 enum packet_type {
@@ -26,6 +28,7 @@ static packet Packet;
 static ui8 PacketBuffer[PACKET_BUFFER_SIZE];
 
 int main() {
+  DisconnectRequested = false;
   int TargetClientCount = 1;
   ResetPacket(&Packet);
   Packet.Data = &PacketBuffer;
@@ -42,18 +45,27 @@ int main() {
   while(Running) {
     UpdateNetwork();
 
-    if(GameState == game_state_waiting_for_clients && Network.ClientSet.Count == TargetClientCount) {
-      ui8 TypeInt = SafeCastIntToUI8(packet_type_start);
-      PacketWriteUI8(&Packet, TypeInt);
-      NetworkBroadcast(Packet.Data, Packet.Length);
-      printf("Starting game...\n");
-      GameState = game_state_active;
+    if(GameState != game_state_disconnecting && DisconnectRequested) {
+      GameState = game_state_disconnecting;
+      DisconnectNetwork();
     }
-    else if(GameState == game_state_active) {
-      if(Network.ClientSet.Count == 0) {
-        printf("All players left. Stopping game.\n");
-        Running = false;
-        break;
+    else if(GameState != game_state_waiting_for_clients && Network.ClientSet.Count == 0) {
+      printf("All players has left. Stopping game.\n");
+      Running = false;
+    }
+    else {
+      if(GameState == game_state_waiting_for_clients && Network.ClientSet.Count == TargetClientCount) {
+        ui8 TypeInt = SafeCastIntToUI8(packet_type_start);
+        PacketWriteUI8(&Packet, TypeInt);
+        NetworkBroadcast(Packet.Data, Packet.Length);
+        printf("Starting game...\n");
+        GameState = game_state_active;
+      }
+      else if(GameState == game_state_active) {
+      }
+      else if(GameState == game_state_disconnecting) {
+        // TODO: If players doesn't perform clean disconnect
+        // we should just continue after a timeout.
       }
     }
   }

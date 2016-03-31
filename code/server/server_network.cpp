@@ -50,6 +50,12 @@ void InitNetwork() {
   Assert(ListenResult == 0);
 }
 
+void DisconnectNetwork() {
+  for(ui32 I=0; I<Network.ClientSet.Count; ++I) {
+    shutdown(Network.ClientSet.Clients[I].FD, SHUT_RDWR);
+  }
+}
+
 void UpdateNetwork() {
   fd_set ClientFDSet;
   FD_ZERO(&ClientFDSet);

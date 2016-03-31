@@ -21,4 +21,5 @@ extern network Network;
 void InitNetwork();
 void UpdateNetwork();
 void NetworkBroadcast(void *Data, size_t Length);
+void DisconnectNetwork();
 void TerminateNetwork();

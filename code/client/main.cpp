@@ -39,6 +39,7 @@ int main() {
   InitNetwork();
   pthread_create(&MainState.NetworkThread, 0, RunNetwork, 0);
 
+  // TODO: Implement "nice" TCP shutdown instead of just using close()
   while(ClientRunning) {
     if(Network.State != network_state_inactive) {
       UpdateNetwork();
