@@ -19,7 +19,7 @@ SERVER_DEPS = $(sort $(patsubst %, %.deps, $(SERVER_OBJS)))
 
 CLIENT_PRODUCT_DIR = $(PRODUCT_DIR)/LockstepClient.app
 CLIENT_BINARY = $(SERVER_PRODUCT_DIR)/Contents/MacOS/LockstepClient
-CLIENT_SOURCES = $(COMMON_SOURCES) code/client/main.cpp code/client/network_client.cpp
+CLIENT_SOURCES = $(COMMON_SOURCES) code/client/main.cpp code/client/network_client.cpp code/client/network.cpp code/client/shared.cpp
 CLIENT_OBJS = $(patsubst %.cpp, $(OBJECTS_DIR)/%.o, $(CLIENT_SOURCES))
 CLIENT_DEPS = $(sort $(patsubst %, %.deps, $(CLIENT_OBJS)))
 
