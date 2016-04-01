@@ -80,6 +80,8 @@ void UpdateNetwork() {
       if(FD_ISSET(Client->FD, &ClientFDSet)) {
         ssize_t Result = recv(Client->FD, TestBuffer, TEST_BUFFER_SIZE, 0); // TODO: Loop until you have all
         if(Result == 0) {
+          int Result = close(Network.ClientSet.Clients[I].FD);
+          Assert(Result == 0);
           RemoveClient(&Network.ClientSet, I);
           I--;
           printf("Disconnected.\n");
