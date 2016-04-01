@@ -22,6 +22,11 @@ void UpdateClientSet(client_set *Set) {
   }
 }
 
+void AddClient(client_set *Set, int FD) {
+  Set->Clients[Set->Count++].FD = FD;
+  Set->MaxFDPlusOne = MaxInt(FD + 1, Set->MaxFDPlusOne);
+}
+
 void RemoveClient(client_set *Set, ui32 Index) {
   Set->Clients[Index] = Set->Clients[Set->Count-1];
   Set->Count--;
@@ -95,9 +100,7 @@ void UpdateNetwork() {
 
   int ClientFD = accept(HostFD, NULL, NULL);
   if(ClientFD != -1) {
-    Network.ClientSet.Clients[0].FD = ClientFD;
-    Network.ClientSet.Count++;
-    Network.ClientSet.MaxFDPlusOne = MaxInt(ClientFD + 1, Network.ClientSet.MaxFDPlusOne);
+    AddClient(&Network.ClientSet, ClientFD);
     printf("Someone connected!\n");
   }
 }
