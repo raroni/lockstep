@@ -57,7 +57,8 @@ void InitNetwork() {
 
 void DisconnectNetwork() {
   for(ui32 I=0; I<Network.ClientSet.Count; ++I) {
-    shutdown(Network.ClientSet.Clients[I].FD, SHUT_RDWR);
+    int Result = shutdown(Network.ClientSet.Clients[I].FD, SHUT_RDWR);
+    Assert(Result == 0);
   }
 }
 
@@ -89,7 +90,7 @@ void UpdateNetwork() {
           Assert(Result == 0);
           RemoveClient(&Network.ClientSet, I);
           I--;
-          printf("Disconnected.\n");
+          printf("Client disconnected.\n");
         }
         else {
           printf("Got something\n");
@@ -114,5 +115,6 @@ void NetworkBroadcast(void *Data, size_t Length) {
 }
 
 void TerminateNetwork() {
-  close(HostFD);
+  int Result = close(HostFD);
+  Assert(Result == 0);
 }
