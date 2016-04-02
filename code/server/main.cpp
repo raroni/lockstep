@@ -11,9 +11,12 @@ enum game_state {
   game_state_disconnecting
 };
 
-static game_state GameState;
 static bool Running;
 static bool DisconnectRequested;
+
+struct main_state {
+  game_state GameState;
+};
 
 static void HandleSignal(int signum) {
   DisconnectRequested = true;
@@ -28,6 +31,9 @@ static packet Packet;
 static ui8 PacketBuffer[PACKET_BUFFER_SIZE];
 
 int main() {
+  main_state MainState;
+  MainState.GameState = game_state_waiting_for_clients;
+
   DisconnectRequested = false;
   int TargetClientCount = 1;
   ResetPacket(&Packet);
@@ -39,31 +45,29 @@ int main() {
 
   signal(SIGINT, HandleSignal);
 
-  GameState = game_state_waiting_for_clients;
-
   Running = true;
   while(Running) {
     UpdateNetwork();
 
-    if(GameState != game_state_disconnecting && DisconnectRequested) {
-      GameState = game_state_disconnecting;
+    if(MainState.GameState != game_state_disconnecting && DisconnectRequested) {
+      MainState.GameState = game_state_disconnecting;
       DisconnectNetwork();
     }
-    else if(GameState != game_state_waiting_for_clients && Network.ClientSet.Count == 0) {
+    else if(MainState.GameState != game_state_waiting_for_clients && Network.ClientSet.Count == 0) {
       printf("All players has left. Stopping game.\n");
       Running = false;
     }
     else {
-      if(GameState == game_state_waiting_for_clients && Network.ClientSet.Count == TargetClientCount) {
+      if(MainState.GameState == game_state_waiting_for_clients && Network.ClientSet.Count == TargetClientCount) {
         ui8 TypeInt = SafeCastIntToUI8(packet_type_start);
         PacketWriteUI8(&Packet, TypeInt);
         NetworkBroadcast(Packet.Data, Packet.Length);
         printf("Starting game...\n");
-        GameState = game_state_active;
+        MainState.GameState = game_state_active;
       }
-      else if(GameState == game_state_active) {
+      else if(MainState.GameState == game_state_active) {
       }
-      else if(GameState == game_state_disconnecting) {
+      else if(MainState.GameState == game_state_disconnecting) {
         // TODO: If players doesn't perform clean disconnect
         // we should just continue after a timeout.
       }
