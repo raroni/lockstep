@@ -1,6 +1,9 @@
 #include <stdio.h>
 #include <signal.h>
 #include <stdint.h>
+#include <pthread.h>
+#include "shared.h"
+#include "network.h"
 #include "../shared.h"
 #include "server_network.h"
 #include "../packet.h"
@@ -11,11 +14,11 @@ enum game_state {
   game_state_disconnecting
 };
 
-static bool Running;
 static bool DisconnectRequested;
 
 struct main_state {
   game_state GameState;
+  pthread_t NetworkThread;
 };
 
 static void HandleSignal(int signum) {
@@ -31,8 +34,11 @@ static packet Packet;
 static ui8 PacketBuffer[PACKET_BUFFER_SIZE];
 
 int main() {
+  ServerRunning = true;
+
   main_state MainState;
   MainState.GameState = game_state_waiting_for_clients;
+  pthread_create(&MainState.NetworkThread, 0, RunNetwork, 0);
 
   DisconnectRequested = false;
   int TargetClientCount = 1;
@@ -45,8 +51,7 @@ int main() {
 
   signal(SIGINT, HandleSignal);
 
-  Running = true;
-  while(Running) {
+  while(ServerRunning) {
     UpdateNetwork();
 
     if(MainState.GameState != game_state_disconnecting && DisconnectRequested) {
@@ -55,7 +60,7 @@ int main() {
     }
     else if(MainState.GameState != game_state_waiting_for_clients && Network.ClientSet.Count == 0) {
       printf("All players has left. Stopping game.\n");
-      Running = false;
+      ServerRunning = false;
     }
     else {
       if(MainState.GameState == game_state_waiting_for_clients && Network.ClientSet.Count == TargetClientCount) {
@@ -73,6 +78,8 @@ int main() {
       }
     }
   }
+
+  pthread_join(MainState.NetworkThread, 0);
 
   TerminateNetwork();
   printf("Gracefully terminated.\n");
