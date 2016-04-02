@@ -38,6 +38,8 @@ int main() {
 
   main_state MainState;
   MainState.GameState = game_state_waiting_for_clients;
+
+  InitNetwork2();
   pthread_create(&MainState.NetworkThread, 0, RunNetwork, 0);
 
   DisconnectRequested = false;
@@ -60,6 +62,7 @@ int main() {
     }
     else if(MainState.GameState != game_state_waiting_for_clients && Network.ClientSet.Count == 0) {
       printf("All players has left. Stopping game.\n");
+      TestNetworkCommand();
       ServerRunning = false;
     }
     else {
