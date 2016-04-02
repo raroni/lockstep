@@ -25,7 +25,7 @@ CLIENT_DEPS = $(sort $(patsubst %, %.deps, $(CLIENT_OBJS)))
 
 TEST_PRODUCT_DIR = $(PRODUCT_DIR)/test
 TEST_BINARY = $(TEST_PRODUCT_DIR)/test
-TEST_SOURCES = test/main.cpp test/orwell.cpp test/ring_buffer_test.cpp code/assert.cpp code/lib/ring_buffer.cpp
+TEST_SOURCES = test/main.cpp test/orwell.cpp test/byte_ring_buffer_test.cpp code/assert.cpp code/lib/byte_ring_buffer.cpp
 TEST_OBJS = $(patsubst %.cpp, $(OBJECTS_DIR)/%.o, $(TEST_SOURCES))
 TEST_DEPS = $(sort $(patsubst %, %.deps, $(TEST_OBJS)))
 

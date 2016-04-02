@@ -1,8 +1,10 @@
 #include <string.h>
 #include "assert.h"
-#include "ring_buffer.h"
+#include "byte_ring_buffer.h"
 
-memsize RingBufferCalcUsage(ring_buffer *Buffer) {
+typedef byte_ring_buffer brb;
+
+memsize ByteRingBufferCalcUsage(brb *Buffer) {
   memsize Result;
   if(Buffer->ReadPos <= Buffer->WritePos) {
     Result = Buffer->WritePos - Buffer->ReadPos;
@@ -13,20 +15,20 @@ memsize RingBufferCalcUsage(ring_buffer *Buffer) {
   return Result;
 }
 
-memsize RingBufferCalcFree(ring_buffer *Buffer) {
-  memsize Usage = RingBufferCalcUsage(Buffer);
+memsize ByteRingBufferCalcFree(brb *Buffer) {
+  memsize Usage = ByteRingBufferCalcUsage(Buffer);
   return Buffer->Capacity - 1 - Usage;
 }
 
-void InitRingBuffer(ring_buffer *Buffer, void *Data, memsize Capacity) {
+void InitByteRingBuffer(brb *Buffer, void *Data, memsize Capacity) {
   Buffer->Data = Data;
   Buffer->WritePos = 0;
   Buffer->ReadPos = 0;
   Buffer->Capacity = Capacity;
 }
 
-void RingBufferWrite(ring_buffer *Buffer, const void *Source, memsize Length) {
-  Assert(RingBufferCalcFree(Buffer) > Length);
+void ByteRingBufferWrite(brb *Buffer, const void *Source, memsize Length) {
+  Assert(ByteRingBufferCalcFree(Buffer) > Length);
 
   if(Buffer->Capacity - Buffer->WritePos >= Length) {
     void *Destination = ((ui8*)Buffer->Data) + Buffer->WritePos;
@@ -50,21 +52,21 @@ void RingBufferWrite(ring_buffer *Buffer, const void *Source, memsize Length) {
   Buffer->WritePos = (Buffer->WritePos + Length) % Buffer->Capacity;
 }
 
-memsize RingBufferRead(ring_buffer *RingBuffer, void *ReadBuffer, memsize MaxLength) {
-  memsize Usage = RingBufferCalcUsage(RingBuffer);
+memsize ByteRingBufferRead(brb *ByteRingBuffer, void *ReadBuffer, memsize MaxLength) {
+  memsize Usage = ByteRingBufferCalcUsage(ByteRingBuffer);
   memsize ReadLength = MinMemsize(MaxLength, Usage);
 
-  if(RingBuffer->Capacity - RingBuffer->ReadPos >= ReadLength) {
-    void *Source = ((ui8*)RingBuffer->Data) + RingBuffer->ReadPos;
+  if(ByteRingBuffer->Capacity - ByteRingBuffer->ReadPos >= ReadLength) {
+    void *Source = ((ui8*)ByteRingBuffer->Data) + ByteRingBuffer->ReadPos;
     memcpy(ReadBuffer, Source, ReadLength);
   }
   else {
     void *Destination1 = ReadBuffer;
-    const void *Source1 = ((ui8*)RingBuffer->Data + RingBuffer->ReadPos);
-    memsize ReadLength1 = RingBuffer->Capacity - RingBuffer->ReadPos;
+    const void *Source1 = ((ui8*)ByteRingBuffer->Data + ByteRingBuffer->ReadPos);
+    memsize ReadLength1 = ByteRingBuffer->Capacity - ByteRingBuffer->ReadPos;
 
     void *Destination2 = ((ui8*)ReadBuffer) + ReadLength1;
-    const void *Source2 = RingBuffer->Data;
+    const void *Source2 = ByteRingBuffer->Data;
     memsize ReadLength2 = ReadLength - ReadLength1;
 
     memcpy(Destination1, Source1, ReadLength1);
@@ -73,11 +75,11 @@ memsize RingBufferRead(ring_buffer *RingBuffer, void *ReadBuffer, memsize MaxLen
 
   MemoryBarrier;
 
-  RingBuffer->ReadPos = (RingBuffer->ReadPos + ReadLength) % RingBuffer->Capacity;
+  ByteRingBuffer->ReadPos = (ByteRingBuffer->ReadPos + ReadLength) % ByteRingBuffer->Capacity;
   return ReadLength;
 }
 
-void TerminateRingBuffer(ring_buffer *Buffer) {
+void TerminateByteRingBuffer(brb *Buffer) {
   Buffer->Data = NULL;
   Buffer->WritePos = 0;
   Buffer->ReadPos = 0;
