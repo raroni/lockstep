@@ -2,7 +2,6 @@
 #include <signal.h>
 #include <stdint.h>
 #include <pthread.h>
-#include "shared.h"
 #include "network.h"
 #include "../shared.h"
 #include "../packet.h"
@@ -18,6 +17,7 @@ static bool DisconnectRequested;
 struct main_state {
   game_state GameState;
   pthread_t NetworkThread;
+  bool ServerRunning;
 };
 
 static void HandleSignal(int signum) {
@@ -33,9 +33,8 @@ static packet Packet;
 static ui8 PacketBuffer[PACKET_BUFFER_SIZE];
 
 int main() {
-  ServerRunning = true;
-
   main_state MainState;
+  MainState.ServerRunning = true;
   MainState.GameState = game_state_waiting_for_clients;
 
   InitNetwork();
@@ -53,7 +52,7 @@ int main() {
 
   int PlayerCountDummy = 0;
 
-  while(ServerRunning) {
+  while(MainState.ServerRunning) {
     if(MainState.GameState != game_state_disconnecting && DisconnectRequested) {
       MainState.GameState = game_state_disconnecting;
       DisconnectNetwork();
@@ -61,7 +60,7 @@ int main() {
     else if(MainState.GameState != game_state_waiting_for_clients && PlayerCountDummy == 0) {
       printf("All players has left. Stopping game.\n");
       // TestNetworkCommand();
-      ServerRunning = false;
+      MainState.ServerRunning = false;
     }
     else {
       if(MainState.GameState == game_state_waiting_for_clients && PlayerCountDummy == TargetClientCount) {
