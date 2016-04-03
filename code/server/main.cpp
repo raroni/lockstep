@@ -54,22 +54,22 @@ int main() {
   signal(SIGINT, HandleSignal);
 
   while(ServerRunning) {
-    UpdateNetwork();
+    // UpdateNetwork();
 
     if(MainState.GameState != game_state_disconnecting && DisconnectRequested) {
       MainState.GameState = game_state_disconnecting;
-      DisconnectNetwork();
+      DisconnectNetwork2();
     }
     else if(MainState.GameState != game_state_waiting_for_clients && Network.ClientSet.Count == 0) {
       printf("All players has left. Stopping game.\n");
-      TestNetworkCommand();
+      // TestNetworkCommand();
       ServerRunning = false;
     }
     else {
       if(MainState.GameState == game_state_waiting_for_clients && Network.ClientSet.Count == TargetClientCount) {
         ui8 TypeInt = SafeCastIntToUI8(packet_type_start);
         PacketWriteUI8(&Packet, TypeInt);
-        NetworkBroadcast(Packet.Data, Packet.Length);
+        // NetworkBroadcast(Packet.Data, Packet.Length);
         printf("Starting game...\n");
         MainState.GameState = game_state_active;
       }
@@ -84,7 +84,7 @@ int main() {
 
   pthread_join(MainState.NetworkThread, 0);
 
-  TerminateNetwork();
+  TerminateNetwork2();
   printf("Gracefully terminated.\n");
   return 0;
 }
