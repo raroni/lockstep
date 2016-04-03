@@ -1,3 +1,4 @@
+#include "lib/assert.h"
 #include "shared.h"
 
 ui8 SafeCastIntToUI8(int Value) {

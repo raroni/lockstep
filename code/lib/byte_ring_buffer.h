@@ -1,7 +1,7 @@
 #ifndef RING_BUFFER_H
 #define RING_BUFFER_H
 
-#include "shared.h"
+#include "def.h"
 
 struct byte_ring_buffer {
   memsize ReadPos;

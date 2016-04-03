@@ -1,4 +1,5 @@
 #include <netinet/in.h>
+#include "lib/assert.h"
 #include "assert.h"
 #include "shared.h"
 #include "network.h"

@@ -1,4 +1,4 @@
-#include "assert.h"
+#include "lib/assert.h"
 #include "packet.h"
 
 void PacketWriteUI8(packet *Packet, ui8 Int) {

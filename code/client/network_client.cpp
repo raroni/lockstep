@@ -4,7 +4,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include "../shared.h"
-#include "../assert.h"
+#include "../lib/assert.h"
 #include "../network.h"
 #include "network_client.h"
 

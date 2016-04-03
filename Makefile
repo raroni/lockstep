@@ -7,7 +7,7 @@ CPP_FLAGS = -Wall -g -std=gnu++11 -stdlib=libc++ -ferror-limit=1 -fno-exceptions
 PRODUCT_DIR = $(BUILD_DIR)/products
 OBJECTS_DIR = $(BUILD_DIR)/objects
 
-COMMON_SOURCES = code/shared.cpp code/memory.cpp code/network.cpp code/packet.cpp code/assert.cpp
+COMMON_SOURCES = code/shared.cpp code/memory.cpp code/network.cpp code/packet.cpp code/lib/assert.cpp
 COMMON_HEADER_INCLUDES =
 test: COMMON_HEADER_INCLUDES += -Icode
 
@@ -30,7 +30,7 @@ TEST_SOURCES =\
 	test/orwell.cpp\
 	test/byte_ring_buffer_test.cpp\
 	test/chunk_ring_buffer_test.cpp\
-	code/assert.cpp\
+	code/lib/assert.cpp\
 	code/lib/byte_ring_buffer.cpp\
 	code/lib/chunk_ring_buffer.cpp
 TEST_OBJS = $(patsubst %.cpp, $(OBJECTS_DIR)/%.o, $(TEST_SOURCES))

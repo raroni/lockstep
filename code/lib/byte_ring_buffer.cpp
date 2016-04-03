@@ -1,5 +1,7 @@
 #include <string.h>
+#include "min_max.h"
 #include "assert.h"
+#include "memory_barrier.h"
 #include "byte_ring_buffer.h"
 
 typedef byte_ring_buffer brb;
