@@ -48,7 +48,7 @@ int main() {
   Packet.Data = &PacketBuffer;
   Packet.Capacity = PACKET_BUFFER_SIZE;
 
-  InitNetwork();
+  // InitNetwork();
   printf("Listening...\n");
 
   signal(SIGINT, HandleSignal);
