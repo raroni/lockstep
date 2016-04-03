@@ -43,8 +43,27 @@ static void TestLoopingWriteRead(ow_test_context Context) {
   TerminateChunkRingBuffer(&Buffer);
 }
 
+static void TestEmpty(ow_test_context Context) {
+  ui8 RingBufferData[128];
+  chunk_ring_buffer Buffer;
+  InitChunkRingBuffer(&Buffer, 4, RingBufferData, sizeof(RingBufferData));
+  ui8 Input[4];
+  ChunkRingBufferWrite(&Buffer, Input, sizeof(Input));
+
+  void *Result;
+  memsize ReadLength = ChunkRingBufferRead(&Buffer, &Result);
+  OW_AssertEqualInt(4, ReadLength);
+  ReadLength = ChunkRingBufferRead(&Buffer, &Result);
+  OW_AssertEqualInt(0, ReadLength);
+  ReadLength = ChunkRingBufferRead(&Buffer, &Result);
+  OW_AssertEqualInt(0, ReadLength);
+
+  TerminateChunkRingBuffer(&Buffer);
+}
+
 void SetupChunkRingBufferGroup(ow_suite *S) {
   ow_group_index G = OW_CreateGroup(S);
   OW_AddTest(S, G, TestBasicWriteRead);
   OW_AddTest(S, G, TestLoopingWriteRead);
+  OW_AddTest(S, G, TestEmpty);
 }

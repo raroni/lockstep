@@ -9,6 +9,8 @@ void InitChunkRingBuffer(
   void *Data,
   memsize DataLength
 ) {
+  Assert(DataLength > sizeof(memsize)*ChunkCount*2);
+
   Buffer->Offsets = (memsize*)Data;
 
   void *Sizes = ((ui8*)Data) + sizeof(memsize)*ChunkCount;
@@ -18,7 +20,6 @@ void InitChunkRingBuffer(
 
   Buffer->Data = ((ui8*)Data) + sizeof(memsize)*ChunkCount*2;
   Buffer->DataCapacity = DataLength - sizeof(memsize)*ChunkCount*2;
-  Assert(Buffer->DataCapacity != 0);
 
   Buffer->ChunkCount = ChunkCount;
   Buffer->ReadIndex = 0;

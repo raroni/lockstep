@@ -68,10 +68,31 @@ static void TestWrappingCalcFree(ow_test_context Context) {
   TerminateByteRingBuffer(&Buffer);
 }
 
+static void TestEmpty(ow_test_context Context) {
+  ui8 RingBufferData[8];
+  byte_ring_buffer Buffer;
+  InitByteRingBuffer(&Buffer, RingBufferData, sizeof(RingBufferData));
+  ui8 Input[4];
+  ByteRingBufferWrite(&Buffer, Input, 4);
+
+  ui8 Output[2];
+  memsize OutputLength = ByteRingBufferRead(&Buffer, Output, sizeof(Output));
+  OW_AssertEqualInt(2, OutputLength);
+  OutputLength = ByteRingBufferRead(&Buffer, Output, sizeof(Output));
+  OW_AssertEqualInt(2, OutputLength);
+  OutputLength = ByteRingBufferRead(&Buffer, Output, sizeof(Output));
+  OW_AssertEqualInt(0, OutputLength);
+  OutputLength = ByteRingBufferRead(&Buffer, Output, sizeof(Output));
+  OW_AssertEqualInt(0, OutputLength);
+
+  TerminateByteRingBuffer(&Buffer);
+}
+
 void SetupByteRingBufferGroup(ow_suite *S) {
   ow_group_index G = OW_CreateGroup(S);
   OW_AddTest(S, G, TestBasicWriteRead);
   OW_AddTest(S, G, TestWrappingWriteRead);
   OW_AddTest(S, G, TestBasicCalcFree);
   OW_AddTest(S, G, TestWrappingCalcFree);
+  OW_AddTest(S, G, TestEmpty);
 }
