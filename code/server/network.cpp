@@ -8,6 +8,7 @@
 #include "../lib/min_max.h"
 #include "../lib/chunk_ring_buffer.h"
 #include "../shared.h"
+#include "client_set.h"
 
 enum main_state {
   main_state_running,
@@ -21,16 +22,6 @@ enum command_type {
 
 struct base_command {
   command_type Type;
-};
-
-struct client {
-  int FD;
-};
-
-#define CLIENT_MAX 64
-struct client_set {
-  client Clients[CLIENT_MAX];
-  ui32 Count;
 };
 
 #define TEST_BUFFER_SIZE 4096
@@ -62,17 +53,6 @@ static void RecalcReadFDMax() {
   CheckNewReadFD(HostFD);
 }
 
-static void AddClient(client_set *Set, int FD) {
-  Set->Clients[Set->Count++].FD = FD;
-  CheckNewReadFD(FD);
-}
-
-static void RemoveClient(client_set *Set, ui32 Index) {
-  Set->Clients[Index] = Set->Clients[Set->Count-1];
-  Set->Count--;
-  RecalcReadFDMax();
-}
-
 void InitNetwork() {
   ReadFDMax = 0;
 
@@ -86,7 +66,7 @@ void InitNetwork() {
   CommandData = malloc(CommandDataLength);
   InitChunkRingBuffer(&CommandList, 50, CommandData, CommandDataLength);
 
-  ClientSet.Count = 0;
+  InitClientSet(&ClientSet);
 
   HostFD = socket(PF_INET, SOCK_STREAM, 0);
   Assert(HostFD != -1);
@@ -133,6 +113,7 @@ static void ProcessCommands(main_state *MainState) {
     switch(Command->Type) {
       case command_type_disconnect: {
         for(ui32 I=0; I<ClientSet.Count; ++I) {
+          printf("Shutdown...\n");
           int Result = shutdown(ClientSet.Clients[I].FD, SHUT_RDWR);
           Assert(Result == 0);
         }
@@ -151,8 +132,9 @@ void* RunNetwork(void *Data) {
   while(MainState != main_state_stopped) {
     fd_set FDSet;
     FD_ZERO(&FDSet);
-    for(ui32 I=0; I<ClientSet.Count; ++I) {
-      FD_SET(ClientSet.Clients[I].FD, &FDSet);
+    client_set_iterator Iterator = CreateClientSetIterator(&ClientSet);
+    while(AdvanceClientSetIterator(&Iterator)) {
+      FD_SET(Iterator.Client->FD, &FDSet);
     }
     FD_SET(HostFD, &FDSet);
     FD_SET(WakeReadFD, &FDSet);
@@ -160,21 +142,30 @@ void* RunNetwork(void *Data) {
     int SelectResult = select(ReadFDMax+1, &FDSet, NULL, NULL, NULL);
     Assert(SelectResult != -1);
 
-    for(ui32 I=0; I<ClientSet.Count; ++I) {
-      client *Client = ClientSet.Clients + I;
-      if(FD_ISSET(Client->FD, &FDSet)) {
-        ssize_t Result = recv(Client->FD, TestBuffer, TEST_BUFFER_SIZE, 0); // TODO: Loop until you have all
-        if(Result == 0) {
-          int Result = close(ClientSet.Clients[I].FD);
-          Assert(Result == 0);
-          RemoveClient(&ClientSet, I);
-          printf("A client disconnected.\n");
-          I--;
-        }
-        else {
-          printf("Got something\n");
+    {
+      static client_id RemoveIDs[CLIENT_SET_MAX];
+      memsize RemoveCount = 0;
+      for(ui32 I=0; I<ClientSet.Count; ++I) {
+        client *Client = ClientSet.Clients + I;
+        if(FD_ISSET(Client->FD, &FDSet)) {
+          ssize_t Result = recv(Client->FD, TestBuffer, TEST_BUFFER_SIZE, 0); // TODO: Loop until you have all
+          if(Result == 0) {
+            client *Client = ClientSet.Clients + I;
+            int Result = close(Client->FD);
+            Assert(Result != -1);
+            RemoveIDs[RemoveCount++] = Client->ID;
+            printf("A client disconnected.\n");
+          }
+          else {
+            printf("Got something\n");
+          }
         }
       }
+
+      for(memsize I=0; I<RemoveCount; ++I) {
+        DestroyClient(&ClientSet, RemoveIDs[I]);
+      }
+      RecalcReadFDMax();
     }
 
     if(FD_ISSET(WakeReadFD, &FDSet)) {
@@ -184,10 +175,11 @@ void* RunNetwork(void *Data) {
       ProcessCommands(&MainState);
     }
 
-    if(FD_ISSET(HostFD, &FDSet) && ClientSet.Count != CLIENT_MAX) {
+    if(FD_ISSET(HostFD, &FDSet) && ClientSet.Count != CLIENT_SET_MAX) {
       int ClientFD = accept(HostFD, NULL, NULL);
       Assert(ClientFD != -1);
-      AddClient(&ClientSet, ClientFD);
+      CreateClient(&ClientSet, ClientFD);
+      CheckNewReadFD(ClientFD);
       printf("Someone connected!\n");
     }
 
