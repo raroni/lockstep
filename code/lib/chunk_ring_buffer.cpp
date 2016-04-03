@@ -26,6 +26,9 @@ void InitChunkRingBuffer(
 }
 
 void ChunkRingBufferWrite(crb *Buffer, const void *Data, memsize Length) {
+  memsize NewWriteIndex = (Buffer->WriteIndex + 1) % Buffer->ChunkCount;
+  Assert(NewWriteIndex != Buffer->ReadIndex);
+
   memsize ReadOffset = Buffer->Offsets[Buffer->ReadIndex];
   memsize WriteOffset = Buffer->Offsets[Buffer->WriteIndex];
   if(ReadOffset <= WriteOffset) {
@@ -43,12 +46,11 @@ void ChunkRingBufferWrite(crb *Buffer, const void *Data, memsize Length) {
   Buffer->Sizes[Buffer->WriteIndex] = Length;
   void *Destination = ((ui8*)Buffer->Data) + WriteOffset;
   memcpy(Destination, Data, Length);
-  Buffer->Offsets[Buffer->WriteIndex] = WriteOffset + Length;
+  Buffer->Offsets[NewWriteIndex] = WriteOffset + Length;
 
   MemoryBarrier;
 
-  Buffer->WriteIndex = (Buffer->WriteIndex + 1) % Buffer->ChunkCount;
-  Assert(Buffer->WriteIndex != Buffer->ReadIndex);
+  Buffer->WriteIndex = NewWriteIndex;
 }
 
 memsize ChunkRingBufferRead(crb *Buffer, void **Chunk) {
