@@ -71,7 +71,7 @@ static void RemoveClient(client_set *Set, ui32 Index) {
   RecalcReadFDMax();
 }
 
-void InitNetwork2() {
+void InitNetwork() {
   ReadFDMax = 0;
 
   int FDs[2];
@@ -105,7 +105,7 @@ void InitNetwork2() {
   Assert(ListenResult == 0);
 }
 
-void TerminateNetwork2() {
+void TerminateNetwork() {
   close(WakeReadFD);
   close(WakeWriteFD);
 
@@ -117,7 +117,7 @@ void TerminateNetwork2() {
   CommandData = NULL;
 }
 
-void DisconnectNetwork2() {
+void DisconnectNetwork() {
   base_command Command;
   Command.Type = command_type_disconnect;
   ChunkRingBufferWrite(&CommandList, &Command, sizeof(Command));

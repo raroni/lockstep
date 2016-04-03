@@ -1,9 +1,9 @@
 #ifndef SERVER_NETWORK_H
 #define SERVER_NETWORK_H
 
-void InitNetwork2();
+void InitNetwork();
 void* RunNetwork(void *Data);
-void DisconnectNetwork2();
-void TerminateNetwork2();
+void DisconnectNetwork();
+void TerminateNetwork();
 
 #endif
