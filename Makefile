@@ -13,7 +13,7 @@ test: COMMON_HEADER_INCLUDES += -Icode
 
 SERVER_PRODUCT_DIR = $(PRODUCT_DIR)/LockstepServer.app
 SERVER_BINARY = $(SERVER_PRODUCT_DIR)/Contents/MacOS/LockstepServer
-SERVER_SOURCES = $(COMMON_SOURCES) code/server/main.cpp code/server/server_network.cpp code/server/network.cpp code/server/shared.cpp
+SERVER_SOURCES = $(COMMON_SOURCES) code/server/main.cpp code/server/network.cpp code/server/shared.cpp code/lib/chunk_ring_buffer.cpp
 SERVER_OBJS = $(patsubst %.cpp, $(OBJECTS_DIR)/%.o, $(SERVER_SOURCES))
 SERVER_DEPS = $(sort $(patsubst %, %.deps, $(SERVER_OBJS)))
 

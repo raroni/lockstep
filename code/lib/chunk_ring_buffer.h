@@ -1,7 +1,7 @@
 #ifndef CHUNK_RING_BUFFER_H
 #define CHUNK_RING_BUFFER_H
 
-#include "shared.h"
+#include "../shared.h"
 
 struct chunk_ring_buffer {
   memsize WriteIndex;
