@@ -1,7 +1,7 @@
 #ifndef SERVER_CLIENT_SET_H
 #define SERVER_CLIENT_SET_H
 
-#include "../lib/def.h"
+#include "lib/def.h"
 
 #define CLIENT_SET_MAX 64
 

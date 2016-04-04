@@ -3,10 +3,10 @@
 #include <string.h>
 #include <unistd.h>
 #include <errno.h>
-#include "../shared.h"
-#include "../lib/assert.h"
+#include "lib/assert.h"
 #include "../network.h"
-#include "network_client.h"
+#include "../shared.h"
+#include "client/network_client.h"
 
 network Network;
 
