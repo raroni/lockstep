@@ -46,8 +46,9 @@ static void CheckNewReadFD(int NewFD) {
 
 static void RecalcReadFDMax() {
   ReadFDMax = 0;
-  for(ui32 I=0; I<ClientSet.Count; ++I) {
-    CheckNewReadFD(ClientSet.Clients[I].FD);
+  client_set_iterator Iterator = CreateClientSetIterator(&ClientSet);
+  while(AdvanceClientSetIterator(&Iterator)) {
+    CheckNewReadFD(Iterator.Client->FD);
   }
   CheckNewReadFD(WakeReadFD);
   CheckNewReadFD(HostFD);
@@ -112,9 +113,10 @@ static void ProcessCommands(main_state *MainState) {
   while((Length = ChunkRingBufferRead(&CommandList, (void**)&Command))) {
     switch(Command->Type) {
       case command_type_disconnect: {
-        for(ui32 I=0; I<ClientSet.Count; ++I) {
+        client_set_iterator Iterator = CreateClientSetIterator(&ClientSet);
+        while(AdvanceClientSetIterator(&Iterator)) {
           printf("Shutdown...\n");
-          int Result = shutdown(ClientSet.Clients[I].FD, SHUT_RDWR);
+          int Result = shutdown(Iterator.Client->FD, SHUT_RDWR);
           Assert(Result == 0);
         }
         *MainState = main_state_disconnecting;
@@ -132,9 +134,11 @@ void* RunNetwork(void *Data) {
   while(MainState != main_state_stopped) {
     fd_set FDSet;
     FD_ZERO(&FDSet);
-    client_set_iterator Iterator = CreateClientSetIterator(&ClientSet);
-    while(AdvanceClientSetIterator(&Iterator)) {
-      FD_SET(Iterator.Client->FD, &FDSet);
+    {
+      client_set_iterator Iterator = CreateClientSetIterator(&ClientSet);
+      while(AdvanceClientSetIterator(&Iterator)) {
+        FD_SET(Iterator.Client->FD, &FDSet);
+      }
     }
     FD_SET(HostFD, &FDSet);
     FD_SET(WakeReadFD, &FDSet);
@@ -143,29 +147,23 @@ void* RunNetwork(void *Data) {
     Assert(SelectResult != -1);
 
     {
-      static client_id RemoveIDs[CLIENT_SET_MAX];
-      memsize RemoveCount = 0;
-      for(ui32 I=0; I<ClientSet.Count; ++I) {
-        client *Client = ClientSet.Clients + I;
+      client_set_iterator Iterator = CreateClientSetIterator(&ClientSet);
+      while(AdvanceClientSetIterator(&Iterator)) {
+        client *Client = Iterator.Client;
         if(FD_ISSET(Client->FD, &FDSet)) {
           ssize_t Result = recv(Client->FD, TestBuffer, TEST_BUFFER_SIZE, 0); // TODO: Loop until you have all
           if(Result == 0) {
-            client *Client = ClientSet.Clients + I;
             int Result = close(Client->FD);
             Assert(Result != -1);
-            RemoveIDs[RemoveCount++] = Client->ID;
+            DestroyClient(&Iterator);
             printf("A client disconnected.\n");
           }
           else {
             printf("Got something\n");
           }
         }
+        RecalcReadFDMax();
       }
-
-      for(memsize I=0; I<RemoveCount; ++I) {
-        DestroyClient(&ClientSet, RemoveIDs[I]);
-      }
-      RecalcReadFDMax();
     }
 
     if(FD_ISSET(WakeReadFD, &FDSet)) {

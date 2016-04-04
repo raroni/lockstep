@@ -18,7 +18,25 @@ static void TestBasic(ow_test_context Context) {
   OW_AssertFalse(AdvanceClientSetIterator(&Iterator));
 }
 
+static void TestDestruction(ow_test_context Context) {
+  set Set;
+  InitClientSet(&Set);
+  CreateClient(&Set, 1);
+  CreateClient(&Set, 2);
+  CreateClient(&Set, 3);
+
+  iterator Iterator = CreateClientSetIterator(&Set);
+  AdvanceClientSetIterator(&Iterator);
+  AdvanceClientSetIterator(&Iterator);
+  DestroyClient(&Iterator);
+  AdvanceClientSetIterator(&Iterator);
+  OW_AssertEqualInt(3, Iterator.Client->FD);
+  AdvanceClientSetIterator(&Iterator);
+  OW_AssertFalse(AdvanceClientSetIterator(&Iterator));
+}
+
 void SetupClientSetIteratorGroup(ow_suite *S) {
   ow_group_index G = OW_CreateGroup(S);
   OW_AddTest(S, G, TestBasic);
+  OW_AddTest(S, G, TestDestruction);
 }

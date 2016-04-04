@@ -1,4 +1,3 @@
-#include "../lib/assert.h"
 #include "client_set.h"
 
 typedef client_set set;
@@ -7,17 +6,6 @@ typedef client_set_iterator iterator;
 static client_id CreateClientID() {
   static client_id DummyHandleCount = 0;
   return DummyHandleCount++;
-}
-
-void DestroyClient(set *Set, client_id ID) {
-  for(memsize Index=0; Index<Set->Count; ++Index) {
-    if(Set->Clients[Index].ID == ID) {
-      Set->Clients[Index] = Set->Clients[Set->Count-1];
-      Set->Count--;
-      return;
-    }
-  }
-  InvalidCodePath;
 }
 
 void InitClientSet(set *Set) {
@@ -35,6 +23,14 @@ client_set_iterator CreateClientSetIterator(set *Set) {
   Iterator.Set = Set;
   Iterator.Client = Set->Clients - 1;
   return Iterator;
+}
+
+void DestroyClient(client_set_iterator *Iterator) {
+  set *Set = Iterator->Set;
+  memsize Index = Iterator->Client - Set->Clients;
+  Set->Clients[Index] = Set->Clients[Set->Count-1];
+  Set->Count--;
+  Iterator->Client--;
 }
 
 bool AdvanceClientSetIterator(iterator *Iterator) {

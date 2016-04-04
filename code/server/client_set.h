@@ -25,7 +25,7 @@ struct client_set_iterator {
 
 void InitClientSet(client_set *Set);
 void CreateClient(client_set *Set, int FD);
-void DestroyClient(client_set *Set, client_id ID);
+void DestroyClient(client_set_iterator *Iterator);
 client_set_iterator CreateClientSetIterator(client_set *Set);
 bool AdvanceClientSetIterator(client_set_iterator *Iterator);
 
