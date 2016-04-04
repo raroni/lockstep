@@ -72,7 +72,6 @@ bool FindPlayerByClientID(player_set *Set, client_id ID, memsize *Index) {
   return false;
 }
 
-static packet Packet;
 #define PACKET_BUFFER_SIZE 1024*10
 static ui8 PacketBuffer[PACKET_BUFFER_SIZE];
 
@@ -86,9 +85,6 @@ int main() {
   InitPlayerSet(&MainState.PlayerSet);
 
   DisconnectRequested = false;
-  ResetPacket(&Packet);
-  Packet.Data = &PacketBuffer;
-  Packet.Capacity = PACKET_BUFFER_SIZE;
 
   printf("Listening...\n");
 
@@ -139,9 +135,9 @@ int main() {
     else {
       if(MainState.GameState == game_state_waiting_for_clients && MainState.PlayerSet.Count == PLAYERS_MAX) {
         ui8 TypeInt = SafeCastIntToUI8(packet_type_start);
-        PacketWriteUI8(&Packet, TypeInt);
-        Broadcast(&MainState.PlayerSet, Packet.Data, Packet.Length);
-        ResetPacket(&Packet);
+        packet_cursor Writer = CreatePacketCursor(PacketBuffer, PACKET_BUFFER_SIZE);
+        PacketWriteUI8(&Writer, TypeInt);
+        Broadcast(&MainState.PlayerSet, Writer.Data, Writer.Position);
         printf("Starting game...\n");
         MainState.GameState = game_state_active;
       }

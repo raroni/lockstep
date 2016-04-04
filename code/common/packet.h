@@ -4,13 +4,14 @@
 #include <stddef.h>
 #include "shared.h"
 
-struct packet {
-  void *Data;
-  size_t Length;
+struct packet_cursor {
+  size_t Position;
   size_t Capacity;
+  void *Data;
 };
 
-void PacketWriteUI8(packet *Packet, ui8 Int);
-void ResetPacket(packet *Packet);
+packet_cursor CreatePacketCursor(void *Data, memsize Capacity);
+void PacketWriteUI8(packet_cursor *Cursor, ui8 Int);
+void ResetPacketCursor(packet_cursor *Cursor);
 
 #endif
