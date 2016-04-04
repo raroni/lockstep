@@ -2,8 +2,8 @@
 #include <signal.h>
 #include <sys/time.h>
 #include <pthread.h>
-#include "../shared.h"
-#include "../memory.h"
+#include "common/shared.h"
+#include "common/memory.h"
 #include "shared.h"
 #include "network.h"
 #include "network_client.h"

@@ -2,9 +2,9 @@
 #include <signal.h>
 #include <stdint.h>
 #include <pthread.h>
+#include "common/shared.h"
+#include "common/packet.h"
 #include "network.h"
-#include "../shared.h"
-#include "../packet.h"
 
 enum game_state {
   game_state_waiting_for_clients,

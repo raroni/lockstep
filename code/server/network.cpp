@@ -7,7 +7,7 @@
 #include "lib/assert.h"
 #include "lib/min_max.h"
 #include "lib/chunk_ring_buffer.h"
-#include "../shared.h"
+#include "common/shared.h"
 #include "client_set.h"
 
 enum main_state {
