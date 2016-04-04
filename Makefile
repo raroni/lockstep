@@ -8,7 +8,7 @@ PRODUCT_DIR = $(BUILD_DIR)/products
 OBJECTS_DIR = $(BUILD_DIR)/objects
 
 COMMON_SOURCES = code/common/shared.cpp code/common/memory.cpp code/common/network.cpp code/common/packet.cpp code/lib/assert.cpp
-COMMON_HEADER_INCLUDES = -Icode
+COMMON_HEADER_INCLUDES = -iquote code
 
 SERVER_PRODUCT_DIR = $(PRODUCT_DIR)/LockstepServer.app
 SERVER_BINARY = $(SERVER_PRODUCT_DIR)/Contents/MacOS/LockstepServer
