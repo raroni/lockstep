@@ -49,13 +49,13 @@ void RemovePlayer(player_set *Set, memsize Index) {
   Set->Count--;
 }
 
-void Broadcast(const player_set *Set, void *Packet, memsize Length) {
+void Broadcast(const player_set *Set, void *Message, memsize Length) {
   printf("Request broadcast!\n");
   client_id IDs[Set->Count];
   for(memsize I=0; I<Set->Count; ++I) {
     IDs[I] = Set->Players[I].ClientID;
   }
-  NetworkBroadcast(IDs, Set->Count, Packet, Length);
+  NetworkBroadcast(IDs, Set->Count, Message, Length);
 }
 
 bool FindPlayerByClientID(player_set *Set, client_id ID, memsize *Index) {
@@ -68,8 +68,8 @@ bool FindPlayerByClientID(player_set *Set, client_id ID, memsize *Index) {
   return false;
 }
 
-#define PACKET_BUFFER_SIZE 1024*10
-static ui8 PacketBuffer[PACKET_BUFFER_SIZE];
+#define MESSAGE_OUT_BUFFER_LENGTH 1024*10
+static ui8 MessageOutBuffer[MESSAGE_OUT_BUFFER_LENGTH];
 
 int main() {
   main_state MainState;
@@ -130,8 +130,8 @@ int main() {
     }
     else {
       if(MainState.GameState == game_state_waiting_for_clients && MainState.PlayerSet.Count == PLAYERS_MAX) {
-        memsize Length = SerializeStartMessage(PacketBuffer, PACKET_BUFFER_SIZE);
-        Broadcast(&MainState.PlayerSet, PacketBuffer, Length);
+        memsize Length = SerializeStartMessage(MessageOutBuffer, MESSAGE_OUT_BUFFER_LENGTH);
+        Broadcast(&MainState.PlayerSet, MessageOutBuffer, Length);
         printf("Starting game...\n");
         MainState.GameState = game_state_active;
       }
