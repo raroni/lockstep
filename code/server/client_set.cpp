@@ -5,7 +5,7 @@ typedef client_set set;
 typedef client_set_iterator iterator;
 
 static client_id CreateClientID() {
-  static client_id DummyHandleCount = 0;
+  static client_id DummyHandleCount = 1000;
   return DummyHandleCount++;
 }
 
@@ -20,10 +20,11 @@ void InitClientSet(set *Set) {
   }
 }
 
-void CreateClient(set *Set, int FD) {
+client* CreateClient(set *Set, int FD) {
   client *Client = &Set->Clients[Set->Count++];
   Client->FD = FD;
   Client->ID = CreateClientID();
+  return Client;
 }
 
 client_set_iterator CreateClientSetIterator(set *Set) {

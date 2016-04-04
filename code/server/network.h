@@ -1,6 +1,10 @@
 #ifndef SERVER_NETWORK_H
 #define SERVER_NETWORK_H
 
+#include "lib/def.h"
+
+typedef memsize client_id;
+
 enum network_event_type {
   network_event_type_connect,
   network_event_type_disconnect
@@ -8,6 +12,16 @@ enum network_event_type {
 
 struct network_base_event {
   network_event_type Type;
+};
+
+struct network_connect_event {
+  network_base_event Base;
+  client_id ClientID;
+};
+
+struct network_disconnect_event {
+  network_base_event Base;
+  client_id ClientID;
 };
 
 void InitNetwork();

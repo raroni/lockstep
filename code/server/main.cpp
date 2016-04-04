@@ -17,7 +17,7 @@ enum game_state {
 static bool DisconnectRequested;
 
 struct player {
-
+  client_id ClientID;
 };
 
 #define PLAYERS_MAX 1
@@ -44,12 +44,23 @@ void InitPlayerSet(player_set *Set) {
   Set->Count = 0;
 }
 
-void AddPlayer(player_set *Set) {
-  Set->Count++;
+void AddPlayer(player_set *Set, client_id ID) {
+  printf("Added player with client id %zu\n", ID);
+  Set->Players[Set->Count++].ClientID = ID;
 }
 
-void RemovePlayer(player_set *Set) {
+void RemovePlayer(player_set *Set, memsize Index) {
   Set->Count--;
+}
+
+bool FindPlayerByClientID(player_set *Set, client_id ID, memsize *Index) {
+  for(memsize I=0; I<Set->Count; ++I) {
+    if(Set->Players[I].ClientID == ID) {
+      *Index = I;
+      return true;
+    }
+  }
+  return false;
 }
 
 static packet Packet;
@@ -83,13 +94,21 @@ int main() {
           case network_event_type_connect:
             printf("Game got connection event!\n");
             if(MainState.PlayerSet.Count != PLAYERS_MAX) {
-              AddPlayer(&MainState.PlayerSet);
+              network_connect_event *Event = (network_connect_event*)BaseEvent;
+              AddPlayer(&MainState.PlayerSet, Event->ClientID);
             }
             break;
-          case network_event_type_disconnect:
+          case network_event_type_disconnect: {
             printf("Game got disconnect event!\n");
-            RemovePlayer(&MainState.PlayerSet);
+            network_disconnect_event *Event = (network_disconnect_event*)BaseEvent;
+            memsize PlayerIndex;
+            bool Result = FindPlayerByClientID(&MainState.PlayerSet, Event->ClientID, &PlayerIndex);
+            if(Result) {
+              RemovePlayer(&MainState.PlayerSet, PlayerIndex);
+              printf("Found and removed player with client ID %zu.\n", Event->ClientID);
+            }
             break;
+          }
           default:
             InvalidCodePath;
         }

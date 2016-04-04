@@ -173,8 +173,9 @@ void* RunNetwork(void *Data) {
             int Result = close(Client->FD);
             Assert(Result != -1);
             DestroyClient(&Iterator);
-            network_base_event Event;
-            Event.Type = network_event_type_disconnect;
+            network_disconnect_event Event;
+            Event.Base.Type = network_event_type_disconnect;
+            Event.ClientID = Client->ID;
             ChunkRingBufferWrite(&EventBuffer, &Event, sizeof(Event));
             printf("A client disconnected.\n");
           }
@@ -201,10 +202,11 @@ void* RunNetwork(void *Data) {
     ) {
       int ClientFD = accept(HostFD, NULL, NULL);
       Assert(ClientFD != -1);
-      CreateClient(&ClientSet, ClientFD);
+      client *Client = CreateClient(&ClientSet, ClientFD);
       CheckNewReadFD(ClientFD);
-      network_base_event Event;
-      Event.Type = network_event_type_connect;
+      network_connect_event Event;
+      Event.Base.Type = network_event_type_connect;
+      Event.ClientID = Client->ID;
       ChunkRingBufferWrite(&EventBuffer, &Event, sizeof(Event));
       printf("Someone connected!\n");
     }

@@ -1,12 +1,10 @@
 #ifndef SERVER_CLIENT_SET_H
 #define SERVER_CLIENT_SET_H
 
-#include "lib/def.h"
 #include "lib/byte_ring_buffer.h"
+#include "network.h"
 
 #define CLIENT_SET_MAX 16
-
-typedef memsize client_id;
 
 struct client {
   int FD;
@@ -28,7 +26,7 @@ struct client_set_iterator {
 
 void InitClientSet(client_set *Set);
 void TerminateClientSet(client_set *Set);
-void CreateClient(client_set *Set, int FD);
+client* CreateClient(client_set *Set, int FD);
 void DestroyClient(client_set_iterator *Iterator);
 client_set_iterator CreateClientSetIterator(client_set *Set);
 bool AdvanceClientSetIterator(client_set_iterator *Iterator);
