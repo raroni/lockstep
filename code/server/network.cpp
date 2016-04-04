@@ -18,11 +18,18 @@ enum main_state {
 };
 
 enum command_type {
-  command_type_disconnect
+  command_type_disconnect,
+  command_type_broadcast
 };
 
 struct base_command {
   command_type Type;
+};
+
+struct broadcast_command_header {
+  base_command Base;
+  memsize ClientCount;
+  memsize PacketLength;
 };
 
 #define RECEIVE_BUFFER_SIZE 4096
@@ -121,10 +128,10 @@ void DisconnectNetwork() {
 }
 
 static void ProcessCommands(main_state *MainState) {
-  base_command *Command;
+  base_command *BaseCommand;
   memsize Length;
-  while((Length = ChunkRingBufferRead(&CommandList, (void**)&Command))) {
-    switch(Command->Type) {
+  while((Length = ChunkRingBufferRead(&CommandList, (void**)&BaseCommand))) {
+    switch(BaseCommand->Type) {
       case command_type_disconnect: {
         client_set_iterator Iterator = CreateClientSetIterator(&ClientSet);
         while(AdvanceClientSetIterator(&Iterator)) {
@@ -133,6 +140,26 @@ static void ProcessCommands(main_state *MainState) {
           Assert(Result == 0);
         }
         *MainState = main_state_disconnecting;
+        break;
+      }
+      case command_type_broadcast: {
+        broadcast_command_header *Header = (broadcast_command_header*)BaseCommand;
+        ui8 *Cursor = (ui8*)BaseCommand;
+        Cursor += sizeof(broadcast_command_header);
+        client_id *IDs = (client_id*)Cursor;
+        Cursor += sizeof(client_id)*Header->ClientCount;
+        void *Packet = Cursor;
+
+        for(memsize I=0; I<Header->ClientCount; ++I) {
+          client *Client = FindClientByID(&ClientSet, IDs[I]);
+          if(Client) {
+            printf("Broadcasted to client id %zu\n", IDs[I]);
+            ssize_t Result = send(Client->FD, Packet, Header->PacketLength, 0);
+            Assert(Result != -1);
+          }
+        }
+
+        break;
       }
       break;
       default:
@@ -143,6 +170,22 @@ static void ProcessCommands(main_state *MainState) {
 
 memsize ReadNetworkEvent(network_base_event **Event) {
   return ChunkRingBufferRead(&EventBuffer, (void**)Event);
+}
+
+void NetworkBroadcast(client_id *IDs, memsize Count, void *Packet, memsize Length) {
+  ui8 Command[sizeof(broadcast_command_header) + sizeof(client_id)*Count + Length];
+  broadcast_command_header *Header = (broadcast_command_header*)Command;
+  Header->Base.Type = command_type_broadcast;
+  Header->ClientCount = Count;
+  Header->PacketLength = Length;
+
+  ui8 *Destination = Command + sizeof(broadcast_command_header);
+  memcpy(Destination, IDs, sizeof(client_id)*Count);
+  Destination += sizeof(client_id)*Count;
+  memcpy(Destination, Packet, sizeof(client_id)*Count);
+
+  ChunkRingBufferWrite(&CommandList, &Command, sizeof(Command));
+  RequestWake();
 }
 
 void* RunNetwork(void *Data) {

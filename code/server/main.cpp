@@ -37,7 +37,7 @@ static void HandleSignal(int signum) {
 }
 
 enum packet_type {
-  packet_type_start
+  packet_type_start = 123 // Temp dummy value
 };
 
 void InitPlayerSet(player_set *Set) {
@@ -51,6 +51,15 @@ void AddPlayer(player_set *Set, client_id ID) {
 
 void RemovePlayer(player_set *Set, memsize Index) {
   Set->Count--;
+}
+
+void Broadcast(const player_set *Set, void *Packet, memsize Length) {
+  printf("Request broadcast!\n");
+  client_id IDs[Set->Count];
+  for(memsize I=0; I<Set->Count; ++I) {
+    IDs[I] = Set->Players[I].ClientID;
+  }
+  NetworkBroadcast(IDs, Set->Count, Packet, Length);
 }
 
 bool FindPlayerByClientID(player_set *Set, client_id ID, memsize *Index) {
@@ -130,7 +139,8 @@ int main() {
       if(MainState.GameState == game_state_waiting_for_clients && MainState.PlayerSet.Count == PLAYERS_MAX) {
         ui8 TypeInt = SafeCastIntToUI8(packet_type_start);
         PacketWriteUI8(&Packet, TypeInt);
-        // NetworkBroadcast(Packet.Data, Packet.Length);
+        Broadcast(&MainState.PlayerSet, Packet.Data, Packet.Length);
+        ResetPacket(&Packet);
         printf("Starting game...\n");
         MainState.GameState = game_state_active;
       }

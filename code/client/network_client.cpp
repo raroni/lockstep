@@ -65,7 +65,7 @@ void UpdateNetwork() {
         Network.State = network_state_inactive;
       }
       else {
-        printf("Got something %d\n", (int)Result);
+        printf("Got something of length: %zd, as char %u\n", (int)Result, *(ui8*)ReceiveBuffer.Data);
       }
     }
   }

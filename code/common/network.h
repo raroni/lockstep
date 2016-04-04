@@ -12,6 +12,6 @@ struct network_buffer {
 void InitNetworkBuffer(network_buffer *Buffer, void *Data, size_t Capacity);
 void TerminateNetworkBuffer(network_buffer *Buffer);
 
-size_t NetworkReceive(int FD, network_buffer *Buffer);
+ssize_t NetworkReceive(int FD, network_buffer *Buffer);
 
 #endif

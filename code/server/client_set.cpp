@@ -20,6 +20,16 @@ void InitClientSet(set *Set) {
   }
 }
 
+client* FindClientByID(client_set *Set, client_id ID) {
+  for(memsize I=0; I<Set->Count; ++I) {
+    client *Client = Set->Clients + I;
+    if(Client->ID == ID) {
+      return Client;
+    }
+  }
+  return NULL;
+}
+
 client* CreateClient(set *Set, int FD) {
   client *Client = &Set->Clients[Set->Count++];
   Client->FD = FD;

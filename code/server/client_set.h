@@ -29,6 +29,7 @@ void TerminateClientSet(client_set *Set);
 client* CreateClient(client_set *Set, int FD);
 void DestroyClient(client_set_iterator *Iterator);
 client_set_iterator CreateClientSetIterator(client_set *Set);
+client* FindClientByID(client_set *Set, client_id ID);
 bool AdvanceClientSetIterator(client_set_iterator *Iterator);
 
 #endif

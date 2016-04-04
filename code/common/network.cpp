@@ -16,7 +16,7 @@ void TerminateNetworkBuffer(network_buffer *Buffer) {
   Buffer->Length = 0;
 }
 
-size_t NetworkReceive(int FD, network_buffer *Buffer) {
+ssize_t NetworkReceive(int FD, network_buffer *Buffer) {
   Assert(Buffer->Capacity != 0);
   void *Destination = ((ui8*)Buffer->Data) + Buffer->Length;
   ssize_t Capacity = Buffer->Capacity - Buffer->Length;
