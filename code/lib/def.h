@@ -1,6 +1,7 @@
 #ifndef DEF_H
 #define DEF_H
 
+#include <stddef.h>
 #include <stdint.h>
 
 typedef float real32;
