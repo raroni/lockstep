@@ -1,3 +1,4 @@
+#include <stdlib.h>
 #include "client_set.h"
 
 typedef client_set set;
@@ -10,6 +11,13 @@ static client_id CreateClientID() {
 
 void InitClientSet(set *Set) {
   Set->Count = 0;
+  memsize InBufferTotalCapacity = CLIENT_SET_MAX*1024*50;
+  memsize InBufferClientCapacity = InBufferTotalCapacity/CLIENT_SET_MAX;
+  Set->InBuffer = malloc(InBufferTotalCapacity);
+  for(memsize I=0; I<Set->Count; ++I) {
+    void *Data = ((ui8*)Set->InBuffer) + I*InBufferClientCapacity;
+    InitByteRingBuffer(&Set->Clients[I].InBuffer, Data, InBufferClientCapacity);
+  }
 }
 
 void CreateClient(set *Set, int FD) {
@@ -37,4 +45,14 @@ bool AdvanceClientSetIterator(iterator *Iterator) {
   client_set *Set = Iterator->Set;
   Iterator->Client++;
   return Set->Clients + Set->Count > Iterator->Client;
+}
+
+void TerminateClientSet(client_set *Set) {
+  for(memsize I=0; I<Set->Count; ++I) {
+    TerminateByteRingBuffer(&Set->Clients[I].InBuffer);
+  }
+
+  free(Set->InBuffer);
+  Set->InBuffer = NULL;
+  Set->Count = 0;
 }

@@ -24,8 +24,8 @@ struct base_command {
   command_type Type;
 };
 
-#define TEST_BUFFER_SIZE 4096
-static ui8 TestBuffer[TEST_BUFFER_SIZE];
+#define RECEIVE_BUFFER_SIZE 4096
+static ui8 ReceiveBuffer[RECEIVE_BUFFER_SIZE];
 static int WakeReadFD;
 static int WakeWriteFD;
 static int HostFD;
@@ -95,6 +95,8 @@ void TerminateNetwork() {
   int Result = close(HostFD);
   Assert(Result == 0);
 
+  TerminateClientSet(&ClientSet);
+
   TerminateChunkRingBuffer(&CommandList);
   free(CommandData);
   CommandData = NULL;
@@ -151,7 +153,7 @@ void* RunNetwork(void *Data) {
       while(AdvanceClientSetIterator(&Iterator)) {
         client *Client = Iterator.Client;
         if(FD_ISSET(Client->FD, &FDSet)) {
-          ssize_t Result = recv(Client->FD, TestBuffer, TEST_BUFFER_SIZE, 0); // TODO: Loop until you have all
+          ssize_t Result = recv(Client->FD, ReceiveBuffer, RECEIVE_BUFFER_SIZE, 0);
           if(Result == 0) {
             int Result = close(Client->FD);
             Assert(Result != -1);
@@ -159,6 +161,7 @@ void* RunNetwork(void *Data) {
             printf("A client disconnected.\n");
           }
           else {
+            ByteRingBufferWrite(&Client->InBuffer, ReceiveBuffer, Result);
             printf("Got something\n");
           }
         }
