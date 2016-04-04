@@ -2,6 +2,7 @@
 #include <signal.h>
 #include <stdint.h>
 #include <pthread.h>
+#include "lib/assert.h"
 #include "common/shared.h"
 #include "common/packet.h"
 #include "network.h"
@@ -53,6 +54,23 @@ int main() {
   int PlayerCountDummy = 0;
 
   while(MainState.ServerRunning) {
+    {
+      memsize Length;
+      network_base_event *BaseEvent;
+      while((Length = ReadNetworkEvent(&BaseEvent))) {
+        switch(BaseEvent->Type) {
+          case network_event_type_connect:
+            printf("Game got connection event!\n");
+            break;
+          case network_event_type_disconnect:
+            printf("Game got disconnect event!\n");
+            break;
+          default:
+            InvalidCodePath;
+        }
+      }
+    }
+
     if(MainState.GameState != game_state_disconnecting && DisconnectRequested) {
       MainState.GameState = game_state_disconnecting;
       DisconnectNetwork();

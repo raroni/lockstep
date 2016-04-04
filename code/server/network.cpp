@@ -9,6 +9,7 @@
 #include "lib/chunk_ring_buffer.h"
 #include "common/shared.h"
 #include "client_set.h"
+#include "network.h"
 
 enum main_state {
   main_state_running,
@@ -32,8 +33,10 @@ static int HostFD;
 static int ReadFDMax;
 static client_set ClientSet;
 static void *CommandData;
+static void *EventData;
 static main_state MainState;
 static chunk_ring_buffer CommandList;
+static chunk_ring_buffer EventBuffer;
 
 static void RequestWake() {
   ui8 X = 1;
@@ -66,6 +69,10 @@ void InitNetwork() {
   memsize CommandDataLength = 1024*100;
   CommandData = malloc(CommandDataLength);
   InitChunkRingBuffer(&CommandList, 50, CommandData, CommandDataLength);
+
+  memsize EventDataLength = 1024*100;
+  EventData = malloc(EventDataLength);
+  InitChunkRingBuffer(&EventBuffer, 50, EventData, EventDataLength);
 
   InitClientSet(&ClientSet);
 
@@ -100,6 +107,10 @@ void TerminateNetwork() {
   TerminateChunkRingBuffer(&CommandList);
   free(CommandData);
   CommandData = NULL;
+
+  TerminateChunkRingBuffer(&EventBuffer);
+  free(EventData);
+  EventData = NULL;
 }
 
 void DisconnectNetwork() {
@@ -130,6 +141,10 @@ static void ProcessCommands(main_state *MainState) {
   }
 }
 
+memsize ReadNetworkEvent(network_base_event **Event) {
+  return ChunkRingBufferRead(&EventBuffer, (void**)Event);
+}
+
 void* RunNetwork(void *Data) {
   MainState = main_state_running;
 
@@ -158,6 +173,9 @@ void* RunNetwork(void *Data) {
             int Result = close(Client->FD);
             Assert(Result != -1);
             DestroyClient(&Iterator);
+            network_base_event Event;
+            Event.Type = network_event_type_disconnect;
+            ChunkRingBufferWrite(&EventBuffer, &Event, sizeof(Event));
             printf("A client disconnected.\n");
           }
           else {
@@ -181,6 +199,9 @@ void* RunNetwork(void *Data) {
       Assert(ClientFD != -1);
       CreateClient(&ClientSet, ClientFD);
       CheckNewReadFD(ClientFD);
+      network_base_event Event;
+      Event.Type = network_event_type_connect;
+      ChunkRingBufferWrite(&EventBuffer, &Event, sizeof(Event));
       printf("Someone connected!\n");
     }
 
