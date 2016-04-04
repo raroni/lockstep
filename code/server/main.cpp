@@ -10,15 +10,26 @@
 enum game_state {
   game_state_waiting_for_clients,
   game_state_active,
-  game_state_disconnecting
+  game_state_disconnecting,
+  game_state_stopped
 };
 
 static bool DisconnectRequested;
 
+struct player {
+
+};
+
+#define PLAYERS_MAX 1
+struct player_set {
+  player Players[PLAYERS_MAX];
+  memsize Count;
+};
+
 struct main_state {
   game_state GameState;
   pthread_t NetworkThread;
-  bool ServerRunning;
+  player_set PlayerSet;
 };
 
 static void HandleSignal(int signum) {
@@ -29,20 +40,32 @@ enum packet_type {
   packet_type_start
 };
 
+void InitPlayerSet(player_set *Set) {
+  Set->Count = 0;
+}
+
+void AddPlayer(player_set *Set) {
+  Set->Count++;
+}
+
+void RemovePlayer(player_set *Set) {
+  Set->Count--;
+}
+
 static packet Packet;
 #define PACKET_BUFFER_SIZE 1024*10
 static ui8 PacketBuffer[PACKET_BUFFER_SIZE];
 
 int main() {
   main_state MainState;
-  MainState.ServerRunning = true;
   MainState.GameState = game_state_waiting_for_clients;
 
   InitNetwork();
   pthread_create(&MainState.NetworkThread, 0, RunNetwork, 0);
 
+  InitPlayerSet(&MainState.PlayerSet);
+
   DisconnectRequested = false;
-  int TargetClientCount = 1;
   ResetPacket(&Packet);
   Packet.Data = &PacketBuffer;
   Packet.Capacity = PACKET_BUFFER_SIZE;
@@ -51,9 +74,7 @@ int main() {
 
   signal(SIGINT, HandleSignal);
 
-  int PlayerCountDummy = 0;
-
-  while(MainState.ServerRunning) {
+  while(MainState.GameState != game_state_stopped) {
     {
       memsize Length;
       network_base_event *BaseEvent;
@@ -61,9 +82,13 @@ int main() {
         switch(BaseEvent->Type) {
           case network_event_type_connect:
             printf("Game got connection event!\n");
+            if(MainState.PlayerSet.Count != PLAYERS_MAX) {
+              AddPlayer(&MainState.PlayerSet);
+            }
             break;
           case network_event_type_disconnect:
             printf("Game got disconnect event!\n");
+            RemovePlayer(&MainState.PlayerSet);
             break;
           default:
             InvalidCodePath;
@@ -75,13 +100,15 @@ int main() {
       MainState.GameState = game_state_disconnecting;
       DisconnectNetwork();
     }
-    else if(MainState.GameState != game_state_waiting_for_clients && PlayerCountDummy == 0) {
+    else if(MainState.GameState != game_state_waiting_for_clients && MainState.PlayerSet.Count == 0) {
       printf("All players has left. Stopping game.\n");
-      // TestNetworkCommand();
-      MainState.ServerRunning = false;
+      if(MainState.GameState != game_state_disconnecting) {
+        DisconnectNetwork();
+      }
+      MainState.GameState = game_state_stopped;
     }
     else {
-      if(MainState.GameState == game_state_waiting_for_clients && PlayerCountDummy == TargetClientCount) {
+      if(MainState.GameState == game_state_waiting_for_clients && MainState.PlayerSet.Count == PLAYERS_MAX) {
         ui8 TypeInt = SafeCastIntToUI8(packet_type_start);
         PacketWriteUI8(&Packet, TypeInt);
         // NetworkBroadcast(Packet.Data, Packet.Length);
