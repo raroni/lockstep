@@ -194,7 +194,11 @@ void* RunNetwork(void *Data) {
       ProcessCommands(&MainState);
     }
 
-    if(FD_ISSET(HostFD, &FDSet) && ClientSet.Count != CLIENT_SET_MAX) {
+    if(
+      FD_ISSET(HostFD, &FDSet) &&
+      ClientSet.Count != CLIENT_SET_MAX &&
+      MainState == main_state_running
+    ) {
       int ClientFD = accept(HostFD, NULL, NULL);
       Assert(ClientFD != -1);
       CreateClient(&ClientSet, ClientFD);
