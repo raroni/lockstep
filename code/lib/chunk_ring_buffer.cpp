@@ -56,15 +56,22 @@ void ChunkRingBufferWrite(crb *Buffer, const void *Data, memsize Length) {
   Buffer->WriteIndex = NewWriteIndex;
 }
 
-memsize ChunkRingBufferRead(crb *Buffer, void **Chunk) {
+memsize ChunkRingBufferRead(chunk_ring_buffer *Buffer, void *ReadBuffer, memsize MaxLength) {
   if(Buffer->ReadIndex == Buffer->WriteIndex) {
     return 0;
   }
+  memsize ChunkSize = Buffer->Sizes[Buffer->ReadIndex];
+
+  Assert(MaxLength >= ChunkSize);
+
   memsize ReadOffset = Buffer->Offsets[Buffer->ReadIndex];
-  *Chunk = ((ui8*)Buffer->Data) + ReadOffset;
-  memsize Size = Buffer->Sizes[Buffer->ReadIndex];
+  void *Source = ((ui8*)Buffer->Data) + ReadOffset;
+  memcpy(ReadBuffer, Source, ChunkSize);
+
+  MemoryBarrier;
+
   Buffer->ReadIndex = (Buffer->ReadIndex + 1) % Buffer->ChunkCount;
-  return Size;
+  return ChunkSize;
 }
 
 void TerminateChunkRingBuffer(crb *Buffer) {

@@ -20,7 +20,7 @@ void InitChunkRingBuffer(
   memsize DataLength
 );
 void ChunkRingBufferWrite(chunk_ring_buffer *Buffer, const void *Data, memsize Length);
-memsize ChunkRingBufferRead(chunk_ring_buffer *Buffer, void **ReadBuffer);
+memsize ChunkRingBufferRead(chunk_ring_buffer *Buffer, void *ReadBuffer, memsize MaxLength);
 void TerminateChunkRingBuffer(chunk_ring_buffer *Buffer);
 
 #endif

@@ -97,8 +97,9 @@ int main() {
   while(MainState.GameState != game_state_stopped) {
     {
       memsize Length;
-      network_base_event *BaseEvent;
-      while((Length = ReadNetworkEvent(&BaseEvent))) {
+      static ui8 ReadBuffer[NETWORK_EVENT_MAX_LENGTH];
+      while((Length = ReadNetworkEvent((network_base_event*)ReadBuffer, sizeof(ReadBuffer)))) {
+        network_base_event *BaseEvent = (network_base_event*)ReadBuffer;
         switch(BaseEvent->Type) {
           case network_event_type_connect:
             printf("Game got connection event!\n");

@@ -8,11 +8,11 @@ static void TestBasicWriteRead(ow_test_context Context) {
   InitChunkRingBuffer(&Buffer, 2, RingBufferData, sizeof(RingBufferData));
   ChunkRingBufferWrite(&Buffer, "hey", 4);
 
-  void *Result;
-  memsize ReadLength = ChunkRingBufferRead(&Buffer, &Result);
+  char Result[8];
+  memsize ReadLength = ChunkRingBufferRead(&Buffer, Result, sizeof(Result));
 
   OW_AssertEqualInt(4, ReadLength);
-  OW_AssertEqualStr("hey", (const char*)(Result));
+  OW_AssertEqualStr("hey", Result);
 
   TerminateChunkRingBuffer(&Buffer);
 }
@@ -29,8 +29,8 @@ static void TestLoopingWriteRead(ow_test_context Context) {
   memsize WriteIndex = 2;
 
   for(memsize I=0; I<200; I++) {
-    void *Result;
-    memsize ReadLength = ChunkRingBufferRead(&Buffer, &Result);
+    char Result[10];
+    memsize ReadLength = ChunkRingBufferRead(&Buffer, Result, sizeof(Result));
     OW_AssertEqualInt(strlen(Words[ReadIndex])+1, ReadLength);
     OW_AssertEqualStr(Words[ReadIndex], (const char*)(Result));
 
@@ -50,12 +50,12 @@ static void TestEmpty(ow_test_context Context) {
   ui8 Input[4];
   ChunkRingBufferWrite(&Buffer, Input, sizeof(Input));
 
-  void *Result;
-  memsize ReadLength = ChunkRingBufferRead(&Buffer, &Result);
+  char Result[8];
+  memsize ReadLength = ChunkRingBufferRead(&Buffer, Result, sizeof(Result));
   OW_AssertEqualInt(4, ReadLength);
-  ReadLength = ChunkRingBufferRead(&Buffer, &Result);
+  ReadLength = ChunkRingBufferRead(&Buffer, Result, sizeof(Result));
   OW_AssertEqualInt(0, ReadLength);
-  ReadLength = ChunkRingBufferRead(&Buffer, &Result);
+  ReadLength = ChunkRingBufferRead(&Buffer, Result, sizeof(Result));
   OW_AssertEqualInt(0, ReadLength);
 
   TerminateChunkRingBuffer(&Buffer);

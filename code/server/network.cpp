@@ -22,6 +22,8 @@ enum command_type {
   command_type_broadcast
 };
 
+#define COMMAND_MAX_LENGTH 512
+
 struct base_command {
   command_type Type;
 };
@@ -128,9 +130,10 @@ void DisconnectNetwork() {
 }
 
 static void ProcessCommands(main_state *MainState) {
-  base_command *BaseCommand;
+  static ui8 ReadBuffer[COMMAND_MAX_LENGTH];
   memsize Length;
-  while((Length = ChunkRingBufferRead(&CommandList, (void**)&BaseCommand))) {
+  while((Length = ChunkRingBufferRead(&CommandList, ReadBuffer, sizeof(ReadBuffer)))) {
+    base_command *BaseCommand = (base_command*)ReadBuffer;
     switch(BaseCommand->Type) {
       case command_type_disconnect: {
         client_set_iterator Iterator = CreateClientSetIterator(&ClientSet);
@@ -168,8 +171,8 @@ static void ProcessCommands(main_state *MainState) {
   }
 }
 
-memsize ReadNetworkEvent(network_base_event **Event) {
-  return ChunkRingBufferRead(&EventBuffer, (void**)Event);
+memsize ReadNetworkEvent(network_base_event *Event, memsize MaxLength) {
+  return ChunkRingBufferRead(&EventBuffer, Event, MaxLength);
 }
 
 void NetworkBroadcast(client_id *IDs, memsize Count, void *Packet, memsize Length) {
