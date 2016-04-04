@@ -1,6 +1,6 @@
 #include <string.h>
 #include "orwell.h"
-#include "../code/lib/chunk_ring_buffer.h"
+#include "lib/chunk_ring_buffer.h"
 
 static void TestBasicWriteRead(ow_test_context Context) {
   ui8 RingBufferData[256];

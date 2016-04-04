@@ -1,5 +1,5 @@
 #include "orwell.h"
-#include "../code/server/client_set.h"
+#include "server/client_set.h"
 
 typedef client_set set;
 typedef client_set_iterator iterator;

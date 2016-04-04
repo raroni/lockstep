@@ -1,5 +1,5 @@
 #include "orwell.h"
-#include "../code/lib/byte_ring_buffer.h"
+#include "lib/byte_ring_buffer.h"
 
 static void TestBasicWriteRead(ow_test_context Context) {
   ui8 RingBufferData[16];
