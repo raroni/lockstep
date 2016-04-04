@@ -4,7 +4,7 @@
 #include <pthread.h>
 #include "lib/assert.h"
 #include "common/shared.h"
-#include "common/packet.h"
+#include "common/messages.h"
 #include "network.h"
 
 enum game_state {
@@ -35,10 +35,6 @@ struct main_state {
 static void HandleSignal(int signum) {
   DisconnectRequested = true;
 }
-
-enum packet_type {
-  packet_type_start = 123 // Temp dummy value
-};
 
 void InitPlayerSet(player_set *Set) {
   Set->Count = 0;
@@ -134,10 +130,8 @@ int main() {
     }
     else {
       if(MainState.GameState == game_state_waiting_for_clients && MainState.PlayerSet.Count == PLAYERS_MAX) {
-        ui8 TypeInt = SafeCastIntToUI8(packet_type_start);
-        packet_cursor Writer = CreatePacketCursor(PacketBuffer, PACKET_BUFFER_SIZE);
-        PacketWriteUI8(&Writer, TypeInt);
-        Broadcast(&MainState.PlayerSet, Writer.Data, Writer.Position);
+        memsize Length = SerializeStartMessage(PacketBuffer, PACKET_BUFFER_SIZE);
+        Broadcast(&MainState.PlayerSet, PacketBuffer, Length);
         printf("Starting game...\n");
         MainState.GameState = game_state_active;
       }
