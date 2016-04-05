@@ -7,7 +7,8 @@
 #include "common/memory.h"
 #include "shared.h"
 #include "network.h"
-#include "network_client.h"
+
+static bool DisconnectRequested;
 
 struct main_state {
   void *Memory;
@@ -16,7 +17,7 @@ struct main_state {
 };
 
 static void HandleSigint(int signum) {
-  ClientRunning = false;
+  DisconnectRequested = true;
 }
 
 void InitMemory(main_state *State) {
@@ -37,7 +38,7 @@ int main() {
 
   main_state MainState;
   InitMemory(&MainState);
-  InitNetwork();
+  InitNetwork2();
   {
     int Result = pthread_create(&MainState.NetworkThread, 0, RunNetwork, 0);
     Assert(Result == 0);
@@ -45,20 +46,20 @@ int main() {
 
   // TODO: Implement "nice" TCP shutdown instead of just using close()
   while(ClientRunning) {
-    if(Network.State != network_state_inactive) {
-      UpdateNetwork();
-    }
-    else {
+    if(DisconnectRequested) {
+      printf("Requesting network shutdown...\n");
+      ShutdownNetwork();
       ClientRunning = false;
     }
   }
 
   {
+    printf("Waiting for thread join...\n");
     int Result = pthread_join(MainState.NetworkThread, 0);
     Assert(Result == 0);
   }
 
-  TerminateNetwork();
+  TerminateNetwork2();
   TerminateMemory(&MainState);
   printf("Gracefully terminated.\n");
   return 0;

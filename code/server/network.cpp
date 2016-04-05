@@ -110,10 +110,12 @@ void InitNetwork() {
 }
 
 void TerminateNetwork() {
-  close(WakeReadFD);
-  close(WakeWriteFD);
+  int Result = close(WakeReadFD);
+  Assert(Result == 0);
+  Result = close(WakeWriteFD);
+  Assert(Result == 0);
 
-  int Result = close(HostFD);
+  Result = close(HostFD);
   Assert(Result == 0);
 
   TerminateClientSet(&ClientSet);
