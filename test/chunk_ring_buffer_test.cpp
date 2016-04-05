@@ -25,12 +25,13 @@ static void TestBasicWriteRead(ow_test_context Context) {
 }
 
 static void TestLoopingWriteRead(ow_test_context Context) {
-  char Input0[] = { 'h', 'e', 'l', 'l', 'o', '\0' };
-  char Input1[] = { 'w', 'h', 'a', 't', '\0' };
-  char Input2[] = { 'i', 's', '\0' };
-  char Input3[] = { 'u', 'p', '\0' };
-  char Input4[] = { 'o', 'v', 'e', 'r', 't', 'h', 'e', 'r', 'e', '\0' };
-  char* InputBufferBlocks[] = { Input0, Input1, Input2, Input3, Input4 };
+  char InputBufferBlocks[5][10];
+  strcpy(InputBufferBlocks[0], "hello");
+  strcpy(InputBufferBlocks[1], "what");
+  strcpy(InputBufferBlocks[2], "is");
+  strcpy(InputBufferBlocks[3], "up");
+  strcpy(InputBufferBlocks[4], "overthere");
+
   buffer Inputs[] = {
     { .Addr = InputBufferBlocks[0], .Length = strlen(InputBufferBlocks[0])+1 },
     { .Addr = InputBufferBlocks[1], .Length = strlen(InputBufferBlocks[1])+1 },
