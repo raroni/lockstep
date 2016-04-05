@@ -2,6 +2,7 @@
 #include <signal.h>
 #include <sys/time.h>
 #include <pthread.h>
+#include "lib/assert.h"
 #include "common/shared.h"
 #include "common/memory.h"
 #include "shared.h"
@@ -37,7 +38,10 @@ int main() {
   main_state MainState;
   InitMemory(&MainState);
   InitNetwork();
-  pthread_create(&MainState.NetworkThread, 0, RunNetwork, 0);
+  {
+    int Result = pthread_create(&MainState.NetworkThread, 0, RunNetwork, 0);
+    Assert(Result == 0);
+  }
 
   // TODO: Implement "nice" TCP shutdown instead of just using close()
   while(ClientRunning) {
@@ -49,7 +53,10 @@ int main() {
     }
   }
 
-  pthread_join(MainState.NetworkThread, 0);
+  {
+    int Result = pthread_join(MainState.NetworkThread, 0);
+    Assert(Result == 0);
+  }
 
   TerminateNetwork();
   TerminateMemory(&MainState);

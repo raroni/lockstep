@@ -76,7 +76,10 @@ int main() {
   MainState.GameState = game_state_waiting_for_clients;
 
   InitNetwork();
-  pthread_create(&MainState.NetworkThread, 0, RunNetwork, 0);
+  {
+    int Result = pthread_create(&MainState.NetworkThread, 0, RunNetwork, 0);
+    Assert(Result == 0);
+  }
 
   InitPlayerSet(&MainState.PlayerSet);
 
@@ -144,7 +147,10 @@ int main() {
     }
   }
 
-  pthread_join(MainState.NetworkThread, 0);
+  {
+    int Result = pthread_join(MainState.NetworkThread, 0);
+    Assert(Result == 0);
+  }
 
   TerminateNetwork();
   printf("Gracefully terminated.\n");
