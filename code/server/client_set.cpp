@@ -5,7 +5,7 @@ typedef client_set set;
 typedef client_set_iterator iterator;
 
 static client_id CreateClientID() {
-  static client_id DummyHandleCount = 1000;
+  static client_id DummyHandleCount = 10;
   return DummyHandleCount++;
 }
 

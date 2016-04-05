@@ -9,6 +9,8 @@
 #include "lib/chunk_ring_buffer.h"
 #include "common/shared.h"
 #include "client_set.h"
+#include "network_events.h"
+#include "network_commands.h"
 #include "network.h"
 
 enum main_state {
@@ -17,25 +19,10 @@ enum main_state {
   main_state_stopped
 };
 
-enum command_type {
-  command_type_disconnect,
-  command_type_broadcast
-};
-
-#define COMMAND_MAX_LENGTH 512
-
-struct base_command {
-  command_type Type;
-};
-
-struct broadcast_command_header {
-  base_command Base;
-  memsize ClientCount;
-  memsize PacketLength;
-};
-
 #define RECEIVE_BUFFER_SIZE 4096
 static ui8 ReceiveBuffer[RECEIVE_BUFFER_SIZE];
+static ui8 EventOutBuffer[NETWORK_EVENT_MAX_LENGTH];
+static ui8 CommandSerializationBuffer[COMMAND_MAX_LENGTH];
 static int WakeReadFD;
 static int WakeWriteFD;
 static int HostFD;
@@ -123,41 +110,33 @@ void TerminateNetwork() {
 }
 
 void DisconnectNetwork() {
-  base_command Command;
-  Command.Type = command_type_disconnect;
-  ChunkRingBufferWrite(&CommandList, &Command, sizeof(Command));
+  memsize Length = SerializeDisconnectNetworkCommand(CommandSerializationBuffer, sizeof(CommandSerializationBuffer));
+  ChunkRingBufferWrite(&CommandList, CommandSerializationBuffer, Length);
   RequestWake();
 }
 
 static void ProcessCommands(main_state *MainState) {
-  static ui8 ReadBuffer[COMMAND_MAX_LENGTH];
   memsize Length;
-  while((Length = ChunkRingBufferRead(&CommandList, ReadBuffer, sizeof(ReadBuffer)))) {
-    base_command *BaseCommand = (base_command*)ReadBuffer;
-    switch(BaseCommand->Type) {
-      case command_type_disconnect: {
+  static ui8 CommandUnserializationBuffer[COMMAND_MAX_LENGTH];
+  while((Length = ChunkRingBufferRead(&CommandList, CommandUnserializationBuffer, sizeof(CommandUnserializationBuffer)))) {
+    network_command_type Type = UnserializeNetworkCommandType(CommandUnserializationBuffer, sizeof(CommandUnserializationBuffer));
+    switch(Type) {
+      case network_command_type_disconnect: {
         client_set_iterator Iterator = CreateClientSetIterator(&ClientSet);
         while(AdvanceClientSetIterator(&Iterator)) {
-          printf("Shutdown...\n");
           int Result = shutdown(Iterator.Client->FD, SHUT_RDWR);
           Assert(Result == 0);
         }
         *MainState = main_state_disconnecting;
         break;
       }
-      case command_type_broadcast: {
-        broadcast_command_header *Header = (broadcast_command_header*)BaseCommand;
-        ui8 *Cursor = (ui8*)BaseCommand;
-        Cursor += sizeof(broadcast_command_header);
-        client_id *IDs = (client_id*)Cursor;
-        Cursor += sizeof(client_id)*Header->ClientCount;
-        void *Packet = Cursor;
-
-        for(memsize I=0; I<Header->ClientCount; ++I) {
-          client *Client = FindClientByID(&ClientSet, IDs[I]);
+      case network_command_type_broadcast: {
+        broadcast_network_command Command = UnserializeBroadcastNetworkCommand(CommandUnserializationBuffer, Length);
+        for(memsize I=0; I<Command.ClientIDCount; ++I) {
+          client *Client = FindClientByID(&ClientSet, Command.ClientIDs[I]);
           if(Client) {
-            printf("Broadcasted to client id %zu\n", IDs[I]);
-            ssize_t Result = send(Client->FD, Packet, Header->PacketLength, 0);
+            printf("Broadcasted to client id %zu\n", Command.ClientIDs[I]);
+            ssize_t Result = send(Client->FD, Command.Message, Command.MessageLength, 0);
             Assert(Result != -1);
           }
         }
@@ -171,23 +150,20 @@ static void ProcessCommands(main_state *MainState) {
   }
 }
 
-memsize ReadNetworkEvent(network_base_event *Event, memsize MaxLength) {
-  return ChunkRingBufferRead(&EventBuffer, Event, MaxLength);
+memsize ReadNetworkEvent(void *Buffer, memsize MaxLength) {
+  return ChunkRingBufferRead(&EventBuffer, Buffer, MaxLength);
 }
 
-void NetworkBroadcast(client_id *IDs, memsize Count, void *Packet, memsize Length) {
-  ui8 Command[sizeof(broadcast_command_header) + sizeof(client_id)*Count + Length];
-  broadcast_command_header *Header = (broadcast_command_header*)Command;
-  Header->Base.Type = command_type_broadcast;
-  Header->ClientCount = Count;
-  Header->PacketLength = Length;
-
-  ui8 *Destination = Command + sizeof(broadcast_command_header);
-  memcpy(Destination, IDs, sizeof(client_id)*Count);
-  Destination += sizeof(client_id)*Count;
-  memcpy(Destination, Packet, sizeof(client_id)*Count);
-
-  ChunkRingBufferWrite(&CommandList, &Command, sizeof(Command));
+void NetworkBroadcast(client_id *IDs, memsize IDCount, void *Message, memsize MessageLength) {
+  memsize Length = SerializeBroadcastNetworkCommand(
+    IDs,
+    IDCount,
+    Message,
+    MessageLength,
+    CommandSerializationBuffer,
+    sizeof(CommandSerializationBuffer)
+  );
+  ChunkRingBufferWrite(&CommandList, CommandSerializationBuffer, Length);
   RequestWake();
 }
 
@@ -219,10 +195,8 @@ void* RunNetwork(void *Data) {
             int Result = close(Client->FD);
             Assert(Result != -1);
             DestroyClient(&Iterator);
-            network_disconnect_event Event;
-            Event.Base.Type = network_event_type_disconnect;
-            Event.ClientID = Client->ID;
-            ChunkRingBufferWrite(&EventBuffer, &Event, sizeof(Event));
+            memsize Length = SerializeDisconnectNetworkEvent(Client->ID, EventOutBuffer, sizeof(EventOutBuffer));
+            ChunkRingBufferWrite(&EventBuffer, EventOutBuffer, Length);
             printf("A client disconnected.\n");
           }
           else {
@@ -250,10 +224,8 @@ void* RunNetwork(void *Data) {
       Assert(ClientFD != -1);
       client *Client = CreateClient(&ClientSet, ClientFD);
       CheckNewReadFD(ClientFD);
-      network_connect_event Event;
-      Event.Base.Type = network_event_type_connect;
-      Event.ClientID = Client->ID;
-      ChunkRingBufferWrite(&EventBuffer, &Event, sizeof(Event));
+      memsize Length = SerializeConnectNetworkEvent(Client->ID, EventOutBuffer, sizeof(EventOutBuffer));
+      ChunkRingBufferWrite(&EventBuffer, EventOutBuffer, Length);
       printf("Someone connected!\n");
     }
 

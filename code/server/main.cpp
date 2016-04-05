@@ -5,6 +5,7 @@
 #include "lib/assert.h"
 #include "common/shared.h"
 #include "common/messages.h"
+#include "network_events.h"
 #include "network.h"
 
 enum game_state {
@@ -93,24 +94,24 @@ int main() {
     {
       memsize Length;
       static ui8 ReadBuffer[NETWORK_EVENT_MAX_LENGTH];
-      while((Length = ReadNetworkEvent((network_base_event*)ReadBuffer, sizeof(ReadBuffer)))) {
-        network_base_event *BaseEvent = (network_base_event*)ReadBuffer;
-        switch(BaseEvent->Type) {
+      while((Length = ReadNetworkEvent(ReadBuffer, sizeof(ReadBuffer)))) {
+        network_event_type Type = UnserializeNetworkEventType(ReadBuffer, sizeof(ReadBuffer));
+        switch(Type) {
           case network_event_type_connect:
             printf("Game got connection event!\n");
             if(MainState.PlayerSet.Count != PLAYERS_MAX) {
-              network_connect_event *Event = (network_connect_event*)BaseEvent;
-              AddPlayer(&MainState.PlayerSet, Event->ClientID);
+              connect_network_event Event = UnserializeConnectNetworkEvent(ReadBuffer, Length);
+              AddPlayer(&MainState.PlayerSet, Event.ClientID);
             }
             break;
           case network_event_type_disconnect: {
             printf("Game got disconnect event!\n");
-            network_disconnect_event *Event = (network_disconnect_event*)BaseEvent;
+            disconnect_network_event Event = UnserializeDisconnectNetworkEvent(ReadBuffer, Length);
             memsize PlayerIndex;
-            bool Result = FindPlayerByClientID(&MainState.PlayerSet, Event->ClientID, &PlayerIndex);
+            bool Result = FindPlayerByClientID(&MainState.PlayerSet, Event.ClientID, &PlayerIndex);
             if(Result) {
               RemovePlayer(&MainState.PlayerSet, PlayerIndex);
-              printf("Found and removed player with client ID %zu.\n", Event->ClientID);
+              printf("Found and removed player with client ID %zu.\n", Event.ClientID);
             }
             break;
           }
