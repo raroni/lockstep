@@ -17,16 +17,9 @@ struct broadcast_network_command {
   memsize MessageLength;
 };
 
-memsize SerializeDisconnectNetworkCommand(void *Buffer, memsize Capacity);
-memsize SerializeBroadcastNetworkCommand(
-    const client_id *IDs,
-    memsize IDCount,
-    const void *Message,
-    memsize MessageLength,
-    void *Buffer,
-    memsize BufferCapacity
-);
-network_command_type UnserializeNetworkCommandType(void *Buffer, memsize Capacity);
-broadcast_network_command UnserializeBroadcastNetworkCommand(void *Buffer, memsize Capacity);
+memsize SerializeDisconnectNetworkCommand(buffer Buffer);
+memsize SerializeBroadcastNetworkCommand(const client_id *IDs, memsize IDCount, const buffer Message, buffer Out);
+network_command_type UnserializeNetworkCommandType(buffer Buffer);
+broadcast_network_command UnserializeBroadcastNetworkCommand(buffer Buffer);
 
 #endif

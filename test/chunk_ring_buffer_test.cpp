@@ -3,62 +3,89 @@
 #include "lib/chunk_ring_buffer.h"
 
 static void TestBasicWriteRead(ow_test_context Context) {
-  ui8 RingBufferData[256];
-  chunk_ring_buffer Buffer;
-  InitChunkRingBuffer(&Buffer, 2, RingBufferData, sizeof(RingBufferData));
-  ChunkRingBufferWrite(&Buffer, "hey", 4);
+  ui8 RingBufferBlock[256];
+  buffer RingBuffer = {
+    .Addr = &RingBufferBlock,
+    .Length = sizeof(RingBufferBlock)
+  };
+  chunk_ring_buffer Ring;
+  InitChunkRingBuffer(&Ring, 2, RingBuffer);
+  char InputBlock[] = { 'h', 'e', 'y', '\0' };
+  const buffer Input = { .Addr = &InputBlock, .Length = 4 };
+  ChunkRingBufferWrite(&Ring, Input);
 
-  char Result[8];
-  memsize ReadLength = ChunkRingBufferRead(&Buffer, Result, sizeof(Result));
+  char OutputBlock[8];
+  buffer Output = { .Addr = &OutputBlock, .Length = sizeof(OutputBlock) };
+  memsize ReadLength = ChunkRingBufferRead(&Ring, Output);
 
   OW_AssertEqualInt(4, ReadLength);
-  OW_AssertEqualStr("hey", Result);
+  OW_AssertEqualStr("hey", OutputBlock);
 
-  TerminateChunkRingBuffer(&Buffer);
+  TerminateChunkRingBuffer(&Ring);
 }
 
 static void TestLoopingWriteRead(ow_test_context Context) {
-  const char *Words[] = { "hello", "what", "is", "up", "overthere" };
-  ui8 WordCount = sizeof(Words)/sizeof(char*);
-  ui8 RingBufferData[256];
-  chunk_ring_buffer Buffer;
-  InitChunkRingBuffer(&Buffer, 5, RingBufferData, sizeof(RingBufferData));
-  ChunkRingBufferWrite(&Buffer, Words[0], strlen(Words[0])+1);
-  ChunkRingBufferWrite(&Buffer, Words[1], strlen(Words[1])+1);
+  char Input0[] = { 'h', 'e', 'l', 'l', 'o', '\0' };
+  char Input1[] = { 'w', 'h', 'a', 't', '\0' };
+  char Input2[] = { 'i', 's', '\0' };
+  char Input3[] = { 'u', 'p', '\0' };
+  char Input4[] = { 'o', 'v', 'e', 'r', 't', 'h', 'e', 'r', 'e', '\0' };
+  char* InputBufferBlocks[] = { Input0, Input1, Input2, Input3, Input4 };
+  buffer Inputs[] = {
+    { .Addr = InputBufferBlocks[0], .Length = strlen(InputBufferBlocks[0])+1 },
+    { .Addr = InputBufferBlocks[1], .Length = strlen(InputBufferBlocks[1])+1 },
+    { .Addr = InputBufferBlocks[2], .Length = strlen(InputBufferBlocks[2])+1 },
+    { .Addr = InputBufferBlocks[3], .Length = strlen(InputBufferBlocks[3])+1 },
+  };
+  ui8 InputCount = sizeof(Inputs)/sizeof(Inputs[0]);
+
+  ui8 RingBufferBlock[256];
+  buffer RingBuffer = {
+    .Addr = &RingBufferBlock,
+    .Length = sizeof(RingBufferBlock)
+  };
+  chunk_ring_buffer Ring;
+  InitChunkRingBuffer(&Ring, 5, RingBuffer);
+  ChunkRingBufferWrite(&Ring, Inputs[0]);
+  ChunkRingBufferWrite(&Ring, Inputs[1]);
   memsize ReadIndex = 0;
   memsize WriteIndex = 2;
 
   for(memsize I=0; I<200; I++) {
-    char Result[10];
-    memsize ReadLength = ChunkRingBufferRead(&Buffer, Result, sizeof(Result));
-    OW_AssertEqualInt(strlen(Words[ReadIndex])+1, ReadLength);
-    OW_AssertEqualStr(Words[ReadIndex], (const char*)(Result));
+    char ResultBuffer[10];
+    buffer Result = { .Addr = &ResultBuffer, .Length = sizeof(ResultBuffer) };
+    memsize ReadLength = ChunkRingBufferRead(&Ring, Result);
+    OW_AssertEqualInt(Inputs[ReadIndex].Length, ReadLength);
+    OW_AssertEqualStr((const char*)Inputs[ReadIndex].Addr, (const char*)Result.Addr);
 
-    ChunkRingBufferWrite(&Buffer, Words[WriteIndex], strlen(Words[WriteIndex])+1);
+    ChunkRingBufferWrite(&Ring, Inputs[WriteIndex]);
 
-    ReadIndex = (ReadIndex + 1) % WordCount;
-    WriteIndex = (WriteIndex + 1) % WordCount;
+    ReadIndex = (ReadIndex + 1) % InputCount;
+    WriteIndex = (WriteIndex + 1) % InputCount;
   }
 
-  TerminateChunkRingBuffer(&Buffer);
+  TerminateChunkRingBuffer(&Ring);
 }
 
 static void TestEmpty(ow_test_context Context) {
-  ui8 RingBufferData[128];
-  chunk_ring_buffer Buffer;
-  InitChunkRingBuffer(&Buffer, 4, RingBufferData, sizeof(RingBufferData));
-  ui8 Input[4];
-  ChunkRingBufferWrite(&Buffer, Input, sizeof(Input));
+  ui8 RingBufferBlock[128];
+  buffer RingBuffer = { .Addr = RingBufferBlock, .Length = sizeof(RingBufferBlock) };
+  chunk_ring_buffer Ring;
+  InitChunkRingBuffer(&Ring, 4, RingBuffer);
+  ui8 InputBlock[4];
+  buffer Input = { .Addr = InputBlock, .Length = sizeof(InputBlock) };
+  ChunkRingBufferWrite(&Ring, Input);
 
-  char Result[8];
-  memsize ReadLength = ChunkRingBufferRead(&Buffer, Result, sizeof(Result));
+  char ResultBlock[8];
+  buffer Result = { .Addr = ResultBlock, .Length = sizeof(ResultBlock) };
+  memsize ReadLength = ChunkRingBufferRead(&Ring, Result);
   OW_AssertEqualInt(4, ReadLength);
-  ReadLength = ChunkRingBufferRead(&Buffer, Result, sizeof(Result));
+  ReadLength = ChunkRingBufferRead(&Ring, Result);
   OW_AssertEqualInt(0, ReadLength);
-  ReadLength = ChunkRingBufferRead(&Buffer, Result, sizeof(Result));
+  ReadLength = ChunkRingBufferRead(&Ring, Result);
   OW_AssertEqualInt(0, ReadLength);
 
-  TerminateChunkRingBuffer(&Buffer);
+  TerminateChunkRingBuffer(&Ring);
 }
 
 void SetupChunkRingBufferGroup(ow_suite *S) {

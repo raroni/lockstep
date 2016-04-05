@@ -9,7 +9,7 @@ void InitNetwork();
 void* RunNetwork(void *Data);
 void DisconnectNetwork();
 void TerminateNetwork();
-void NetworkBroadcast(client_id *IDs, memsize Count, void *Packet, memsize Length);
-memsize ReadNetworkEvent(void *Event, memsize MaxLength);
+void NetworkBroadcast(client_id *IDs, memsize Count, buffer Message);
+memsize ReadNetworkEvent(buffer Output);
 
 #endif

@@ -6,15 +6,15 @@
 
 struct serializer {
   size_t Position;
-  size_t Capacity;
-  void *Data;
+  buffer Buffer;
 };
 
-serializer CreateSerializer(void *Data, memsize Capacity);
+serializer CreateSerializer(buffer Buffer);
 void ResetSerializer(serializer *Serializer);
 
 void SerializerWrite(serializer *S, const void *Data, memsize Length);
 void SerializerWriteMemsize(serializer *S, memsize Size);
+void SerializerWriteBuffer(serializer *S, buffer Buffer);
 void SerializerWriteUI8(serializer *Serializer, ui8 Int);
 
 void* SerializerRead(serializer *S, memsize Length);

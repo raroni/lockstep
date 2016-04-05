@@ -50,13 +50,13 @@ void RemovePlayer(player_set *Set, memsize Index) {
   Set->Count--;
 }
 
-void Broadcast(const player_set *Set, void *Message, memsize Length) {
+void Broadcast(const player_set *Set, const buffer Message) {
   printf("Request broadcast!\n");
   client_id IDs[Set->Count];
   for(memsize I=0; I<Set->Count; ++I) {
     IDs[I] = Set->Players[I].ClientID;
   }
-  NetworkBroadcast(IDs, Set->Count, Message, Length);
+  NetworkBroadcast(IDs, Set->Count, Message);
 }
 
 bool FindPlayerByClientID(player_set *Set, client_id ID, memsize *Index) {
@@ -70,7 +70,11 @@ bool FindPlayerByClientID(player_set *Set, client_id ID, memsize *Index) {
 }
 
 #define MESSAGE_OUT_BUFFER_LENGTH 1024*10
-static ui8 MessageOutBuffer[MESSAGE_OUT_BUFFER_LENGTH];
+static ui8 MessageOutBufferBlock[MESSAGE_OUT_BUFFER_LENGTH];
+static buffer MessageOutBuffer = {
+  .Addr = &MessageOutBufferBlock,
+  .Length = sizeof(MessageOutBufferBlock)
+};
 
 int main() {
   main_state MainState;
@@ -93,20 +97,28 @@ int main() {
   while(MainState.GameState != game_state_stopped) {
     {
       memsize Length;
-      static ui8 ReadBuffer[NETWORK_EVENT_MAX_LENGTH];
-      while((Length = ReadNetworkEvent(ReadBuffer, sizeof(ReadBuffer)))) {
-        network_event_type Type = UnserializeNetworkEventType(ReadBuffer, sizeof(ReadBuffer));
+      static ui8 ReadBufferBlock[NETWORK_EVENT_MAX_LENGTH];
+      static buffer ReadBuffer = {
+        .Addr = &ReadBufferBlock,
+        .Length = sizeof(ReadBufferBlock)
+      };
+      while((Length = ReadNetworkEvent(ReadBuffer))) {
+        network_event_type Type = UnserializeNetworkEventType(ReadBuffer);
+        buffer EventBuffer = {
+          .Addr = ReadBuffer.Addr,
+          .Length = Length
+        };
         switch(Type) {
           case network_event_type_connect:
             printf("Game got connection event!\n");
             if(MainState.PlayerSet.Count != PLAYERS_MAX) {
-              connect_network_event Event = UnserializeConnectNetworkEvent(ReadBuffer, Length);
+              connect_network_event Event = UnserializeConnectNetworkEvent(EventBuffer);
               AddPlayer(&MainState.PlayerSet, Event.ClientID);
             }
             break;
           case network_event_type_disconnect: {
             printf("Game got disconnect event!\n");
-            disconnect_network_event Event = UnserializeDisconnectNetworkEvent(ReadBuffer, Length);
+            disconnect_network_event Event = UnserializeDisconnectNetworkEvent(EventBuffer);
             memsize PlayerIndex;
             bool Result = FindPlayerByClientID(&MainState.PlayerSet, Event.ClientID, &PlayerIndex);
             if(Result) {
@@ -134,8 +146,12 @@ int main() {
     }
     else {
       if(MainState.GameState == game_state_waiting_for_clients && MainState.PlayerSet.Count == PLAYERS_MAX) {
-        memsize Length = SerializeStartMessage(MessageOutBuffer, MESSAGE_OUT_BUFFER_LENGTH);
-        Broadcast(&MainState.PlayerSet, MessageOutBuffer, Length);
+        memsize Length = SerializeStartMessage(MessageOutBuffer);
+        buffer MessageBuffer = {
+          .Addr = MessageOutBuffer.Addr,
+          .Length = Length
+        };
+        Broadcast(&MainState.PlayerSet, MessageBuffer);
         printf("Starting game...\n");
         MainState.GameState = game_state_active;
       }

@@ -8,19 +8,17 @@ struct chunk_ring_buffer {
   memsize ChunkCount;
   memsize *Offsets;
   memsize *Sizes;
-  void *Data;
-  memsize DataCapacity;
+  buffer Data;
   memsize ReadIndex;
 };
 
 void InitChunkRingBuffer(
   chunk_ring_buffer *Buffer,
   memsize ChunkCount,
-  void *Data,
-  memsize DataLength
+  buffer Storage
 );
-void ChunkRingBufferWrite(chunk_ring_buffer *Buffer, const void *Data, memsize Length);
-memsize ChunkRingBufferRead(chunk_ring_buffer *Buffer, void *ReadBuffer, memsize MaxLength);
+void ChunkRingBufferWrite(chunk_ring_buffer *Buffer, const buffer Input);
+memsize ChunkRingBufferRead(chunk_ring_buffer *Buffer, const buffer Output);
 void TerminateChunkRingBuffer(chunk_ring_buffer *Buffer);
 
 #endif

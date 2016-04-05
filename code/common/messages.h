@@ -3,6 +3,6 @@
 
 #include "lib/def.h"
 
-memsize SerializeStartMessage(void *Buffer, memsize Length);
+memsize SerializeStartMessage(buffer Buffer);
 
 #endif

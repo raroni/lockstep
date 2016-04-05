@@ -18,10 +18,10 @@ struct disconnect_network_event {
   client_id ClientID;
 };
 
-network_event_type UnserializeNetworkEventType(void *Buffer, memsize Length);
-memsize SerializeDisconnectNetworkEvent(client_id ID, void *Buffer, memsize Length);
-memsize SerializeConnectNetworkEvent(client_id ID, void *Buffer, memsize Length);
-connect_network_event UnserializeConnectNetworkEvent(void *Buffer, memsize Length);
-disconnect_network_event UnserializeDisconnectNetworkEvent(void *Buffer, memsize Length);
+memsize SerializeDisconnectNetworkEvent(client_id ID, buffer Out);
+memsize SerializeConnectNetworkEvent(client_id ID, buffer Out);
+network_event_type UnserializeNetworkEventType(buffer Input);
+connect_network_event UnserializeConnectNetworkEvent(buffer Input);
+disconnect_network_event UnserializeDisconnectNetworkEvent(buffer Input);
 
 #endif

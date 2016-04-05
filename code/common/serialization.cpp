@@ -2,11 +2,10 @@
 #include "lib/assert.h"
 #include "serialization.h"
 
-serializer CreateSerializer(void *Data, memsize Capacity) {
+serializer CreateSerializer(buffer Buffer) {
   serializer S;
   S.Position = 0;
-  S.Data = Data;
-  S.Capacity = Capacity;
+  S.Buffer = Buffer;
   return S;
 }
 
@@ -15,8 +14,8 @@ void ResetSerializer(serializer *Serializer) {
 }
 
 void SerializerWrite(serializer *S, const void *Data, memsize Length) {
-  Assert(Length <= S->Capacity - S->Position);
-  void *Destination = ((ui8*)S->Data) + S->Position;
+  Assert(Length <= S->Buffer.Length - S->Position);
+  void *Destination = ((ui8*)S->Buffer.Addr) + S->Position;
   memcpy(Destination, Data, Length);
   S->Position += Length;
 }
@@ -25,12 +24,16 @@ void SerializerWriteMemsize(serializer *S, memsize Size) {
   SerializerWrite(S, &Size, sizeof(Size));
 }
 
+void SerializerWriteBuffer(serializer *S, buffer Buffer) {
+  SerializerWrite(S, Buffer.Addr, Buffer.Length);
+}
+
 void SerializerWriteUI8(serializer *Serializer, ui8 Int) {
   SerializerWrite(Serializer, &Int, sizeof(Int));
 }
 
 void* SerializerRead(serializer *S, memsize Length) {
-  void *Result = (ui8*)S->Data + S->Position;
+  void *Result = (ui8*)S->Buffer.Addr + S->Position;
   S->Position += Length;
   return Result;
 }

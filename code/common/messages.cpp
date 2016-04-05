@@ -5,9 +5,9 @@ enum message_type {
   message_type_start = 123 // Temp dummy value
 };
 
-memsize SerializeStartMessage(void *Buffer, memsize Length) {
+memsize SerializeStartMessage(buffer Buffer) {
   ui8 TypeInt = SafeCastIntToUI8(message_type_start);
-  serializer Writer = CreateSerializer(Buffer, Length);
+  serializer Writer = CreateSerializer(Buffer);
   SerializerWriteUI8(&Writer, TypeInt);
   return Writer.Position;
 }

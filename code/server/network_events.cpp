@@ -30,39 +30,39 @@ static void WriteClientID(serializer *S, client_id ID) {
   SerializerWriteUI8(S, IDInt);
 }
 
-network_event_type UnserializeNetworkEventType(void *Buffer, memsize Length) {
-  serializer S = CreateSerializer(Buffer, Length);
-  return ReadType(&S);
-}
-
-memsize SerializeDisconnectNetworkEvent(client_id ID, void *Buffer, memsize Length) {
-  serializer S = CreateSerializer(Buffer, Length);
+memsize SerializeDisconnectNetworkEvent(client_id ID, buffer Out) {
+  serializer S = CreateSerializer(Out);
   WriteType(&S, network_event_type_disconnect);
   WriteClientID(&S, ID);
   return S.Position;
 }
 
-memsize SerializeConnectNetworkEvent(client_id ID, void *Buffer, memsize Length) {
-  serializer S = CreateSerializer(Buffer, Length);
+memsize SerializeConnectNetworkEvent(client_id ID, buffer Out) {
+  serializer S = CreateSerializer(Out);
   WriteType(&S, network_event_type_connect);
   WriteClientID(&S, ID);
   return S.Position;
 }
 
-connect_network_event UnserializeConnectNetworkEvent(void *Buffer, memsize Length) {
-  Assert(Length == ClientIDLength + TypeLength);
+network_event_type UnserializeNetworkEventType(buffer Input) {
+  serializer S = CreateSerializer(Input);
+  return ReadType(&S);
+}
+
+connect_network_event UnserializeConnectNetworkEvent(buffer Input) {
+  Assert(Input.Length == ClientIDLength + TypeLength);
   connect_network_event Event;
-  serializer S = CreateSerializer(Buffer, Length);
+  serializer S = CreateSerializer(Input);
   network_event_type Type = ReadType(&S);
   Assert(Type == network_event_type_connect);
   Event.ClientID = ReadClientID(&S);
   return Event;
 }
 
-disconnect_network_event UnserializeDisconnectNetworkEvent(void *Buffer, memsize Length) {
-  Assert(Length == ClientIDLength + TypeLength);
+disconnect_network_event UnserializeDisconnectNetworkEvent(buffer Input) {
+  Assert(Input.Length == ClientIDLength + TypeLength);
   disconnect_network_event Event;
-  serializer S = CreateSerializer(Buffer, Length);
+  serializer S = CreateSerializer(Input);
   network_event_type Type = ReadType(&S);
   Assert(Type == network_event_type_disconnect);
   Event.ClientID = ReadClientID(&S);
