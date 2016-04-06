@@ -38,7 +38,7 @@ int main() {
 
   main_state MainState;
   InitMemory(&MainState);
-  InitNetwork2();
+  InitNetwork();
   {
     int Result = pthread_create(&MainState.NetworkThread, 0, RunNetwork, 0);
     Assert(Result == 0);
@@ -59,7 +59,7 @@ int main() {
     Assert(Result == 0);
   }
 
-  TerminateNetwork2();
+  TerminateNetwork();
   TerminateMemory(&MainState);
   printf("Gracefully terminated.\n");
   return 0;

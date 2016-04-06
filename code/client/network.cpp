@@ -42,7 +42,7 @@ void InitReceiveBuffer() {
   InitNetworkBuffer(&ReceiveBuffer, Data, Capacity);
 }
 
-void InitNetwork2() {
+void InitNetwork() {
   InitReceiveBuffer();
 
   ShutdownRequested = false;
@@ -143,7 +143,7 @@ void ShutdownNetwork() {
   RequestWake();
 }
 
-void TerminateNetwork2() {
+void TerminateNetwork() {
   int Result = close(SocketFD);
   Assert(Result == 0);
 

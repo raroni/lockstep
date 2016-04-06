@@ -1,9 +1,9 @@
 #ifndef CLIENT_NETWORK
 #define CLIENT_NETWORK
 
-void InitNetwork2();
+void InitNetwork();
 void* RunNetwork(void *Data);
 void ShutdownNetwork();
-void TerminateNetwork2();
+void TerminateNetwork();
 
 #endif
