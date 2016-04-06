@@ -6,6 +6,7 @@
 #include "common/shared.h"
 #include "common/memory.h"
 #include "shared.h"
+#include "network_events.h"
 #include "network.h"
 
 static bool DisconnectRequested;
@@ -45,6 +46,30 @@ int main() {
   }
 
   while(ClientRunning) {
+    memsize Length;
+    static ui8 ReadBufferBlock[NETWORK_EVENT_MAX_LENGTH];
+    static buffer ReadBuffer = {
+      .Addr = &ReadBufferBlock,
+      .Length = sizeof(ReadBufferBlock)
+    };
+    while((Length = ReadNetworkEvent(ReadBuffer))) {
+      network_event_type Type = UnserializeNetworkEventType(ReadBuffer);
+      switch(Type) {
+        case network_event_type_connection_established:
+          printf("Game got connection established!\n");
+          break;
+        case network_event_type_connection_lost:
+          printf("Game got connection lost!\n");
+          ClientRunning = false;
+          break;
+        case network_event_type_connection_failed:
+          printf("Game got connection failed!\n");
+          break;
+        default:
+          InvalidCodePath;
+      }
+    }
+
     if(DisconnectRequested) {
       printf("Requesting network shutdown...\n");
       ShutdownNetwork();

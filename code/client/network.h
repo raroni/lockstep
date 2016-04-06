@@ -4,6 +4,7 @@
 void InitNetwork();
 void* RunNetwork(void *Data);
 void ShutdownNetwork();
+memsize ReadNetworkEvent(buffer Buffer);
 void TerminateNetwork();
 
 #endif

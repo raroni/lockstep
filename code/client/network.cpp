@@ -6,8 +6,10 @@
 #include "lib/def.h"
 #include "lib/min_max.h"
 #include "lib/assert.h"
+#include "lib/chunk_ring_buffer.h"
 #include "common/network.h"
 #include "network.h"
+#include "network_events.h"
 
 network_buffer ReceiveBuffer;
 
@@ -30,6 +32,13 @@ static int WakeReadFD;
 static int WakeWriteFD;
 static int FDMax;
 static bool ShutdownRequested;
+static ui8 EventSerializationBufferBlock[NETWORK_EVENT_MAX_LENGTH];
+static buffer EventSerializationBuffer = {
+  .Addr = &EventSerializationBufferBlock,
+  .Length = sizeof(EventSerializationBufferBlock)
+};
+static void *EventBufferAddr;
+static chunk_ring_buffer EventRing;
 
 static void RequestWake() {
   ui8 X = 1;
@@ -61,6 +70,14 @@ void InitNetwork() {
 
   FDMax = MaxInt(WakeReadFD, SocketFD);
 
+  memsize EventBufferLength = 1024*100;
+  EventBufferAddr = malloc(EventBufferLength);
+  buffer EventBuffer = {
+    .Addr = EventBufferAddr,
+    .Length = EventBufferLength
+  };
+  InitChunkRingBuffer(&EventRing, 50, EventBuffer);
+
   MainState = main_state_inactive;
 }
 
@@ -76,6 +93,10 @@ void Connect() {
   Assert(ConnectResult != -1 || errno == errno_code_in_progress);
 
   MainState = main_state_connecting;
+}
+
+memsize ReadNetworkEvent(buffer Buffer) {
+  return ChunkRingBufferRead(&EventRing, Buffer);
 }
 
 void* RunNetwork(void *Data) {
@@ -112,10 +133,26 @@ void* RunNetwork(void *Data) {
         Assert(Result == 0);
         if(OptionValue == 0) {
           MainState = main_state_connected;
+
+          memsize Length = SerializeConnectionEstablishedNetworkEvent(EventSerializationBuffer);
+          buffer Event = {
+            .Addr = EventSerializationBuffer.Addr,
+            .Length = Length
+          };
+          ChunkRingBufferWrite(&EventRing, Event);
+
           printf("Connected.\n");
         }
         else {
           printf("Connection failed.\n");
+
+          memsize Length = SerializeConnectionFailedNetworkEvent(EventSerializationBuffer);
+          buffer Event = {
+            .Addr = EventSerializationBuffer.Addr,
+            .Length = Length
+          };
+          ChunkRingBufferWrite(&EventRing, Event);
+
           MainState = main_state_stopped;
         }
       }
@@ -123,6 +160,14 @@ void* RunNetwork(void *Data) {
         ssize_t ReceivedCount = NetworkReceive(SocketFD, &ReceiveBuffer);
         if(ReceivedCount == 0) {
           printf("Disconnected.\n");
+
+          memsize Length = SerializeConnectionLostNetworkEvent(EventSerializationBuffer);
+          buffer Event = {
+            .Addr = EventSerializationBuffer.Addr,
+            .Length = Length
+          };
+          ChunkRingBufferWrite(&EventRing, Event);
+
           MainState = main_state_stopped;
           continue;
         }
@@ -151,6 +196,10 @@ void TerminateNetwork() {
   Assert(Result == 0);
   Result = close(WakeWriteFD);
   Assert(Result == 0);
+
+  TerminateChunkRingBuffer(&EventRing);
+  free(EventBufferAddr);
+  EventBufferAddr = NULL;
 
   free(ReceiveBuffer.Data);
   TerminateNetworkBuffer(&ReceiveBuffer);
