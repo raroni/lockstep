@@ -104,29 +104,31 @@ void* RunNetwork(void *Data) {
       }
     }
 
-    if(MainState == main_state_connected || MainState == main_state_shutting_down) {
-      if(FD_ISSET(SocketFD, &FDSet)) {
-        ssize_t Result = NetworkReceive(SocketFD, &ReceiveBuffer);
-        if(Result == 0) {
-          printf("Disconnected.\n");
-          MainState = main_state_stopped;
+    if(FD_ISSET(SocketFD, &FDSet)) {
+      if(MainState == main_state_connecting) {
+        int OptionValue;
+        socklen_t OptionLength = sizeof(OptionValue);
+        int Result = getsockopt(SocketFD, SOL_SOCKET, SO_ERROR, &OptionValue, &OptionLength);
+        Assert(Result == 0);
+        if(OptionValue == 0) {
+          MainState = main_state_connected;
+          printf("Connected.\n");
         }
         else {
-          printf("Got something of length: %zd, as char %u\n", (int)Result, *(ui8*)ReceiveBuffer.Data);
+          printf("Connection failed.\n");
+          MainState = main_state_stopped;
         }
       }
-    }
-    else if(MainState == main_state_connecting) {
-      int OptionValue;
-      socklen_t OptionLength = sizeof(OptionValue);
-      getsockopt(SocketFD, SOL_SOCKET, SO_ERROR, &OptionValue, &OptionLength);
-      if(OptionValue == 0) {
-        MainState = main_state_connected;
-        printf("Connected.\n");
-      }
       else {
-        printf("Connection failed.\n");
-        MainState = main_state_stopped;
+        ssize_t ReceivedCount = NetworkReceive(SocketFD, &ReceiveBuffer);
+        if(ReceivedCount == 0) {
+          printf("Disconnected.\n");
+          MainState = main_state_stopped;
+          continue;
+        }
+        else if(MainState == main_state_connected) {
+          printf("Got something of length: %zd, as char %u\n", (int)ReceivedCount, *(ui8*)ReceiveBuffer.Data);
+        }
       }
     }
   }
