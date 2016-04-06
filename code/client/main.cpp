@@ -44,7 +44,6 @@ int main() {
     Assert(Result == 0);
   }
 
-  // TODO: Implement "nice" TCP shutdown instead of just using close()
   while(ClientRunning) {
     if(DisconnectRequested) {
       printf("Requesting network shutdown...\n");
