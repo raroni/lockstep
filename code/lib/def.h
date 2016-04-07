@@ -1,5 +1,4 @@
-#ifndef DEF_H
-#define DEF_H
+#pragma once
 
 #include <stddef.h>
 #include <stdint.h>
@@ -29,5 +28,3 @@ struct buffer {
   void *Addr;
   memsize Length;
 };
-
-#endif

@@ -1,5 +1,4 @@
-#ifndef SERVER_NETWORK_H
-#define SERVER_NETWORK_H
+#pragma once
 
 #include "lib/def.h"
 
@@ -11,5 +10,3 @@ void DisconnectNetwork();
 void TerminateNetwork();
 void NetworkBroadcast(client_id *IDs, memsize Count, buffer Message);
 memsize ReadNetworkEvent(buffer Output);
-
-#endif

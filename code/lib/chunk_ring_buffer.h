@@ -1,5 +1,4 @@
-#ifndef CHUNK_RING_BUFFER_H
-#define CHUNK_RING_BUFFER_H
+#pragma once
 
 #include "def.h"
 
@@ -20,5 +19,3 @@ void InitChunkRingBuffer(
 void ChunkRingBufferWrite(chunk_ring_buffer *Buffer, const buffer Input);
 memsize ChunkRingBufferRead(chunk_ring_buffer *Buffer, const buffer Output);
 void TerminateChunkRingBuffer(chunk_ring_buffer *Buffer);
-
-#endif

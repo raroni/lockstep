@@ -1,5 +1,4 @@
-#ifndef RING_BUFFER_H
-#define RING_BUFFER_H
+#pragma once
 
 #include "def.h"
 
@@ -15,5 +14,3 @@ void ByteRingBufferWrite(byte_ring_buffer *Buffer, const void *Data, memsize Len
 memsize ByteRingBufferRead(byte_ring_buffer *Buffer, void *ReadBuffer, memsize MaxLength);
 memsize ByteRingBufferCalcFree(byte_ring_buffer *Buffer);
 void TerminateByteRingBuffer(byte_ring_buffer *Buffer);
-
-#endif

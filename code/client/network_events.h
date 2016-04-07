@@ -1,5 +1,4 @@
-#ifndef CLIENT_NETWORK_EVENTS_H
-#define CLIENT_NETWORK_EVENTS_H
+#pragma once
 
 #include "lib/def.h"
 
@@ -15,5 +14,3 @@ memsize SerializeConnectionEstablishedNetworkEvent(buffer Out);
 memsize SerializeConnectionLostNetworkEvent(buffer Out);
 memsize SerializeConnectionFailedNetworkEvent(buffer Out);
 network_event_type UnserializeNetworkEventType(buffer Input);
-
-#endif

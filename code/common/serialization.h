@@ -1,5 +1,4 @@
-#ifndef SERIALIZATION_H
-#define SERIALIZATION_H
+#pragma once
 
 #include <stddef.h>
 #include "shared.h"
@@ -20,5 +19,3 @@ void SerializerWriteUI8(serializer *Serializer, ui8 Int);
 void* SerializerRead(serializer *S, memsize Length);
 ui8 SerializerReadUI8(serializer *Serializer);
 memsize SerializerReadMemsize(serializer *S);
-
-#endif

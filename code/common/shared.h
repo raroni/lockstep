@@ -1,5 +1,4 @@
-#ifndef SHARED_H
-#define SHARED_H
+#pragma once
 
 #include <stdint.h>
 #include <limits.h>
@@ -12,5 +11,3 @@ enum errno_code {
 };
 
 ui8 SafeCastIntToUI8(int Value);
-
-#endif

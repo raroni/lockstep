@@ -1,5 +1,4 @@
-#ifndef SERVER_NETWORK_COMMANDS_H
-#define SERVER_NETWORK_COMMANDS_H
+#pragma once
 
 #include "network.h"
 
@@ -21,5 +20,3 @@ memsize SerializeDisconnectNetworkCommand(buffer Buffer);
 memsize SerializeBroadcastNetworkCommand(const client_id *IDs, memsize IDCount, const buffer Message, buffer Out);
 network_command_type UnserializeNetworkCommandType(buffer Buffer);
 broadcast_network_command UnserializeBroadcastNetworkCommand(buffer Buffer);
-
-#endif

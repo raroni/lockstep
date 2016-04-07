@@ -1,5 +1,4 @@
-#ifndef SERVER_CLIENT_SET_H
-#define SERVER_CLIENT_SET_H
+#pragma once
 
 #include "lib/byte_ring_buffer.h"
 #include "network.h"
@@ -31,5 +30,3 @@ void DestroyClient(client_set_iterator *Iterator);
 client_set_iterator CreateClientSetIterator(client_set *Set);
 client* FindClientByID(client_set *Set, client_id ID);
 bool AdvanceClientSetIterator(client_set_iterator *Iterator);
-
-#endif

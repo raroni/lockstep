@@ -1,8 +1,5 @@
-#ifndef MESSAGES_H
-#define MESSAGES_H
+#pragma once
 
 #include "lib/def.h"
 
 memsize SerializeStartMessage(buffer Buffer);
-
-#endif
