@@ -5,7 +5,6 @@
 #include "lib/assert.h"
 #include "common/shared.h"
 #include "common/memory.h"
-#include "shared.h"
 #include "network_events.h"
 #include "network.h"
 
@@ -15,6 +14,7 @@ struct main_state {
   void *Memory;
   linear_allocator Allocator;
   pthread_t NetworkThread;
+  bool Running;
 };
 
 static void HandleSigint(int signum) {
@@ -34,18 +34,18 @@ void TerminateMemory(main_state *State) {
 }
 
 int main() {
-  ClientRunning = true;
-  signal(SIGINT, HandleSigint);
-
   main_state MainState;
+  MainState.Running = true;
   InitMemory(&MainState);
+
   InitNetwork();
   {
     int Result = pthread_create(&MainState.NetworkThread, 0, RunNetwork, 0);
     Assert(Result == 0);
   }
 
-  while(ClientRunning) {
+  signal(SIGINT, HandleSigint);
+  while(MainState.Running) {
     memsize Length;
     static ui8 ReadBufferBlock[NETWORK_EVENT_MAX_LENGTH];
     static buffer ReadBuffer = {
@@ -60,7 +60,7 @@ int main() {
           break;
         case network_event_type_connection_lost:
           printf("Game got connection lost!\n");
-          ClientRunning = false;
+          MainState.Running = false;
           break;
         case network_event_type_connection_failed:
           printf("Game got connection failed!\n");
@@ -73,7 +73,7 @@ int main() {
     if(DisconnectRequested) {
       printf("Requesting network shutdown...\n");
       ShutdownNetwork();
-      ClientRunning = false;
+      MainState.Running = false;
     }
   }
 
