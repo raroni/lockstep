@@ -10,6 +10,7 @@
 #include "common/network.h"
 #include "network.h"
 #include "network_events.h"
+#include "network_commands.h"
 
 network_buffer ReceiveBuffer;
 
@@ -31,7 +32,13 @@ static main_state MainState;
 static int WakeReadFD;
 static int WakeWriteFD;
 static int FDMax;
-static bool ShutdownRequested;
+
+static ui8 CommandSerializationBufferBlock[COMMAND_MAX_LENGTH];
+static buffer CommandSerializationBuffer = {
+  .Addr = &CommandSerializationBufferBlock,
+  .Length = sizeof(CommandSerializationBufferBlock)
+};
+
 static ui8 EventSerializationBufferBlock[NETWORK_EVENT_MAX_LENGTH];
 static buffer EventSerializationBuffer = {
   .Addr = &EventSerializationBufferBlock,
@@ -39,6 +46,8 @@ static buffer EventSerializationBuffer = {
 };
 static void *EventBufferAddr;
 static chunk_ring_buffer EventRing;
+static void *CommandBufferAddr;
+static chunk_ring_buffer CommandRing;
 
 static void RequestWake() {
   ui8 X = 1;
@@ -54,8 +63,6 @@ void InitReceiveBuffer() {
 void InitNetwork() {
   InitReceiveBuffer();
 
-  ShutdownRequested = false;
-
   SocketFD = socket(PF_INET, SOCK_STREAM, 0);
   Assert(SocketFD != -1);
   int Result = fcntl(SocketFD, F_SETFL, O_NONBLOCK);
@@ -70,13 +77,25 @@ void InitNetwork() {
 
   FDMax = MaxInt(WakeReadFD, SocketFD);
 
-  memsize EventBufferLength = 1024*100;
-  EventBufferAddr = malloc(EventBufferLength);
-  buffer EventBuffer = {
-    .Addr = EventBufferAddr,
-    .Length = EventBufferLength
-  };
-  InitChunkRingBuffer(&EventRing, 50, EventBuffer);
+  {
+    memsize EventBufferLength = 1024*100;
+    EventBufferAddr = malloc(EventBufferLength);
+    buffer EventBuffer = {
+      .Addr = EventBufferAddr,
+      .Length = EventBufferLength
+    };
+    InitChunkRingBuffer(&EventRing, 50, EventBuffer);
+  }
+
+  {
+    memsize CommandBufferLength = 1024*100;
+    CommandBufferAddr = malloc(CommandBufferLength);
+    buffer CommandBuffer = {
+      .Addr = CommandBufferAddr,
+      .Length = CommandBufferLength
+    };
+    InitChunkRingBuffer(&CommandRing, 50, CommandBuffer);
+  }
 
   MainState = main_state_inactive;
 }
@@ -99,6 +118,26 @@ memsize ReadNetworkEvent(buffer Buffer) {
   return ChunkRingBufferRead(&EventRing, Buffer);
 }
 
+void ProcessCommands(main_state *MainState) {
+  memsize Length;
+  static ui8 BufferStorage[COMMAND_MAX_LENGTH];
+  static buffer Buffer = { .Addr = BufferStorage, .Length = COMMAND_MAX_LENGTH };
+  while((Length = ChunkRingBufferRead(&CommandRing, Buffer))) {
+    network_command_type Type = UnserializeNetworkCommandType(Buffer);
+    switch(Type) {
+      case network_command_type_shutdown: {
+        if(*MainState != main_state_shutting_down) {
+          printf("Shutting down...\n");
+          int Result = shutdown(SocketFD, SHUT_RDWR);
+          Assert(Result == 0);
+          *MainState = main_state_shutting_down;
+        }
+        break;
+      }
+    }
+  }
+}
+
 void* RunNetwork(void *Data) {
   Connect();
 
@@ -115,14 +154,7 @@ void* RunNetwork(void *Data) {
       ui8 X;
       int Result = read(WakeReadFD, &X, 1);
       Assert(Result != -1);
-
-      if(ShutdownRequested && MainState != main_state_shutting_down) {
-        printf("Shutting down...\n");
-        int Result = shutdown(SocketFD, SHUT_RDWR);
-        Assert(Result == 0);
-        MainState = main_state_shutting_down;
-        continue;
-      }
+      ProcessCommands(&MainState);
     }
 
     if(FD_ISSET(SocketFD, &FDSet)) {
@@ -184,7 +216,12 @@ void* RunNetwork(void *Data) {
 }
 
 void ShutdownNetwork() {
-  ShutdownRequested = true;
+  memsize Length = SerializeShutdownNetworkCommand(CommandSerializationBuffer);
+  buffer Command = {
+    .Addr = CommandSerializationBuffer.Addr,
+    .Length = Length
+  };
+  ChunkRingBufferWrite(&CommandRing, Command);
   RequestWake();
 }
 
@@ -200,6 +237,10 @@ void TerminateNetwork() {
   TerminateChunkRingBuffer(&EventRing);
   free(EventBufferAddr);
   EventBufferAddr = NULL;
+
+  TerminateChunkRingBuffer(&CommandRing);
+  free(CommandBufferAddr);
+  CommandBufferAddr = NULL;
 
   free(ReceiveBuffer.Data);
   TerminateNetworkBuffer(&ReceiveBuffer);

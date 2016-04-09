@@ -80,13 +80,15 @@ void InitNetwork() {
     InitChunkRingBuffer(&CommandRing, 50, CommandBuffer);
   }
 
-  memsize EventBufferLength = 1024*100;
-  EventBufferAddr = malloc(EventBufferLength);
-  buffer EventBuffer = {
-    .Addr = EventBufferAddr,
-    .Length = EventBufferLength
-  };
-  InitChunkRingBuffer(&EventRing, 50, EventBuffer);
+  {
+    memsize EventBufferLength = 1024*100;
+    EventBufferAddr = malloc(EventBufferLength);
+    buffer EventBuffer = {
+      .Addr = EventBufferAddr,
+      .Length = EventBufferLength
+    };
+    InitChunkRingBuffer(&EventRing, 50, EventBuffer);
+  }
 
   InitClientSet(&ClientSet);
 
