@@ -1,7 +1,7 @@
 #pragma once
 
 #include <stddef.h>
-#include "shared.h"
+#include "lib/def.h"
 
 struct serializer {
   size_t Position;

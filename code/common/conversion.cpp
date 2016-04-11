@@ -1,5 +1,5 @@
 #include "lib/assert.h"
-#include "shared.h"
+#include "conversion.h"
 
 ui8 SafeCastIntToUI8(int Value) {
     Assert(Value <= UINT8_MAX);

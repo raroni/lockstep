@@ -3,7 +3,6 @@
 #include <stdint.h>
 #include <pthread.h>
 #include "lib/assert.h"
-#include "common/shared.h"
 #include "common/messages.h"
 #include "network_events.h"
 #include "network.h"

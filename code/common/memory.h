@@ -1,6 +1,6 @@
 #pragma once
 
-#include "shared.h"
+#include "lib/def.h"
 
 struct linear_allocator {
   memsize Capacity;

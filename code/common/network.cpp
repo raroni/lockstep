@@ -1,7 +1,7 @@
 #include <netinet/in.h>
+#include "lib/def.h"
 #include "lib/assert.h"
 #include "assert.h"
-#include "shared.h"
 #include "network.h"
 
 void InitNetworkBuffer(network_buffer *Buffer, void *Data, size_t Capacity) {

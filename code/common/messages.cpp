@@ -1,3 +1,4 @@
+#include "common/conversion.h"
 #include "serialization.h"
 #include "messages.h"
 
