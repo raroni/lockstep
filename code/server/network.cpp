@@ -7,6 +7,7 @@
 #include "lib/assert.h"
 #include "lib/min_max.h"
 #include "lib/chunk_ring_buffer.h"
+#include "common/network.h"
 #include "client_set.h"
 #include "network_events.h"
 #include "network_commands.h"
@@ -18,8 +19,12 @@ enum main_state {
   main_state_stopped
 };
 
-#define RECEIVE_BUFFER_SIZE 4096
-static ui8 ReceiveBuffer[RECEIVE_BUFFER_SIZE];
+static ui8 ReceiveBufferBlock[1024*10];
+static buffer ReceiveBuffer = {
+  .Addr = &ReceiveBufferBlock,
+  .Length = sizeof(ReceiveBufferBlock)
+};
+
 static ui8 EventOutBufferBlock[NETWORK_EVENT_MAX_LENGTH];
 static buffer EventOutBuffer = {
   .Addr = &EventOutBufferBlock,
@@ -218,7 +223,7 @@ void* RunNetwork(void *Data) {
       while(AdvanceClientSetIterator(&Iterator)) {
         client *Client = Iterator.Client;
         if(FD_ISSET(Client->FD, &FDSet)) {
-          ssize_t Result = recv(Client->FD, ReceiveBuffer, RECEIVE_BUFFER_SIZE, 0);
+          ssize_t Result = NetworkReceive(Client->FD, ReceiveBuffer);
           if(Result == 0) {
             int Result = close(Client->FD);
             Assert(Result != -1);
@@ -232,7 +237,7 @@ void* RunNetwork(void *Data) {
             printf("A client disconnected.\n");
           }
           else {
-            ByteRingBufferWrite(&Client->InBuffer, ReceiveBuffer, Result);
+            ByteRingBufferWrite(&Client->InBuffer, ReceiveBuffer.Addr, Result);
             printf("Got something\n");
           }
         }

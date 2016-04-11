@@ -37,8 +37,7 @@ static buffer CommandSerializationBuffer = {
   .Length = sizeof(CommandSerializationBufferBlock)
 };
 
-#define RECEIVE_BUFFER_LENGTH 1024*10
-static ui8 ReceiveBufferBlock[RECEIVE_BUFFER_LENGTH];
+static ui8 ReceiveBufferBlock[1024*10];
 static buffer ReceiveBuffer = {
   .Addr = &ReceiveBufferBlock,
   .Length = sizeof(ReceiveBufferBlock)
