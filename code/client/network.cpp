@@ -12,8 +12,6 @@
 #include "network_events.h"
 #include "network_commands.h"
 
-network_buffer ReceiveBuffer;
-
 enum errno_code {
   errno_code_interrupted_system_call = 4,
   errno_code_in_progress = 36
@@ -39,6 +37,13 @@ static buffer CommandSerializationBuffer = {
   .Length = sizeof(CommandSerializationBufferBlock)
 };
 
+#define RECEIVE_BUFFER_LENGTH 1024*10
+static ui8 ReceiveBufferBlock[RECEIVE_BUFFER_LENGTH];
+static buffer ReceiveBuffer = {
+  .Addr = &ReceiveBufferBlock,
+  .Length = sizeof(ReceiveBufferBlock)
+};
+
 static ui8 EventSerializationBufferBlock[NETWORK_EVENT_MAX_LENGTH];
 static buffer EventSerializationBuffer = {
   .Addr = &EventSerializationBufferBlock,
@@ -54,15 +59,7 @@ static void RequestWake() {
   write(WakeWriteFD, &X, 1);
 }
 
-void InitReceiveBuffer() {
-  size_t Capacity = 1024*100;
-  void *Data = malloc(Capacity);
-  InitNetworkBuffer(&ReceiveBuffer, Data, Capacity);
-}
-
 void InitNetwork() {
-  InitReceiveBuffer();
-
   SocketFD = socket(PF_INET, SOCK_STREAM, 0);
   Assert(SocketFD != -1);
   int Result = fcntl(SocketFD, F_SETFL, O_NONBLOCK);
@@ -189,7 +186,7 @@ void* RunNetwork(void *Data) {
         }
       }
       else {
-        ssize_t ReceivedCount = NetworkReceive(SocketFD, &ReceiveBuffer);
+        ssize_t ReceivedCount = NetworkReceive(SocketFD, ReceiveBuffer);
         if(ReceivedCount == 0) {
           printf("Disconnected.\n");
 
@@ -204,7 +201,7 @@ void* RunNetwork(void *Data) {
           continue;
         }
         else if(MainState == main_state_connected) {
-          printf("Got something of length: %zd, as char %u\n", (int)ReceivedCount, *(ui8*)ReceiveBuffer.Data);
+          printf("Got something of length: %zd, as char %u\n", (int)ReceivedCount, *(ui8*)ReceiveBuffer.Addr);
         }
       }
     }
@@ -242,7 +239,5 @@ void TerminateNetwork() {
   free(CommandBufferAddr);
   CommandBufferAddr = NULL;
 
-  free(ReceiveBuffer.Data);
-  TerminateNetworkBuffer(&ReceiveBuffer);
   MainState = main_state_inactive;
 }
