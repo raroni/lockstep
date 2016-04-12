@@ -134,12 +134,12 @@ int main() {
 
     if(MainState.GameState != game_state_disconnecting && DisconnectRequested) {
       MainState.GameState = game_state_disconnecting;
-      DisconnectNetwork();
+      ShutdownNetwork();
     }
     else if(MainState.GameState != game_state_waiting_for_clients && MainState.PlayerSet.Count == 0) {
       printf("All players has left. Stopping game.\n");
       if(MainState.GameState != game_state_disconnecting) {
-        DisconnectNetwork();
+        ShutdownNetwork();
       }
       MainState.GameState = game_state_stopped;
     }

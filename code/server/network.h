@@ -6,7 +6,7 @@ typedef memsize client_id;
 
 void InitNetwork();
 void* RunNetwork(void *Data);
-void DisconnectNetwork();
+void ShutdownNetwork();
 void TerminateNetwork();
 void NetworkBroadcast(client_id *IDs, memsize Count, buffer Message);
 memsize ReadNetworkEvent(buffer Output);

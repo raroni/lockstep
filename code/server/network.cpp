@@ -135,8 +135,8 @@ void TerminateNetwork() {
   EventBufferAddr = NULL;
 }
 
-void DisconnectNetwork() {
-  memsize Length = SerializeDisconnectNetworkCommand(CommandSerializationBuffer);
+void ShutdownNetwork() {
+  memsize Length = SerializeShutdownNetworkCommand(CommandSerializationBuffer);
   buffer Command = {
     .Addr = CommandSerializationBuffer.Addr,
     .Length = Length
@@ -152,7 +152,7 @@ static void ProcessCommands(main_state *MainState) {
   while((Length = ChunkRingBufferRead(&CommandRing, Buffer))) {
     network_command_type Type = UnserializeNetworkCommandType(Buffer);
     switch(Type) {
-      case network_command_type_disconnect: {
+      case network_command_type_shutdown: {
         client_set_iterator Iterator = CreateClientSetIterator(&ClientSet);
         while(AdvanceClientSetIterator(&Iterator)) {
           int Result = shutdown(Iterator.Client->FD, SHUT_RDWR);
