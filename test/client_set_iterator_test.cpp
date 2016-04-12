@@ -16,6 +16,8 @@ static void TestBasic(ow_test_context Context) {
   OW_AssertTrue(AdvanceClientSetIterator(&Iterator));
   OW_AssertEqualInt(34, Iterator.Client->FD);
   OW_AssertFalse(AdvanceClientSetIterator(&Iterator));
+
+  TerminateClientSet(&Set);
 }
 
 static void TestDestruction(ow_test_context Context) {
@@ -33,6 +35,8 @@ static void TestDestruction(ow_test_context Context) {
   OW_AssertEqualInt(3, Iterator.Client->FD);
   AdvanceClientSetIterator(&Iterator);
   OW_AssertFalse(AdvanceClientSetIterator(&Iterator));
+
+  TerminateClientSet(&Set);
 }
 
 void SetupClientSetIteratorGroup(ow_suite *S) {
