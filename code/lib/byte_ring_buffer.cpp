@@ -53,7 +53,7 @@ void ByteRingBufferWrite(brb *Buffer, buffer Input) {
   Buffer->WritePos = (Buffer->WritePos + Input.Length) % Buffer->Storage.Length;
 }
 
-memsize ByteRingBufferRead(brb *ByteRingBuffer, buffer Output) {
+memsize ByteRingBufferPeek(brb *ByteRingBuffer, buffer Output) {
   memsize Usage = ByteRingBufferCalcUsage(ByteRingBuffer);
   memsize ReadLength = MinMemsize(Output.Length, Usage);
 
@@ -74,9 +74,17 @@ memsize ByteRingBufferRead(brb *ByteRingBuffer, buffer Output) {
     memcpy(Destination2, Source2, ReadLength2);
   }
 
-  MemoryBarrier;
+  return ReadLength;
+}
 
-  ByteRingBuffer->ReadPos = (ByteRingBuffer->ReadPos + ReadLength) % ByteRingBuffer->Storage.Length;
+void ByteRingBufferReadAdvance(brb *Ring, memsize Length) {
+  Ring->ReadPos = (Ring->ReadPos + Length) % Ring->Storage.Length;
+}
+
+memsize ByteRingBufferRead(brb *Ring, buffer Output) {
+  memsize ReadLength = ByteRingBufferPeek(Ring, Output);
+  MemoryBarrier;
+  ByteRingBufferReadAdvance(Ring, ReadLength);
   return ReadLength;
 }
 
