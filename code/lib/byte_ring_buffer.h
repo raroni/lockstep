@@ -11,5 +11,7 @@ struct byte_ring_buffer {
 void InitByteRingBuffer(byte_ring_buffer *Buffer, buffer Storage);
 void ByteRingBufferWrite(byte_ring_buffer *Buffer, buffer Input);
 memsize ByteRingBufferRead(byte_ring_buffer *Buffer, buffer Output);
+memsize ByteRingBufferPeek(byte_ring_buffer *Buffer, buffer Output);
+void ByteRingBufferReadAdvance(byte_ring_buffer *Buffer, memsize Length);
 memsize ByteRingBufferCalcFree(byte_ring_buffer *Buffer);
 void TerminateByteRingBuffer(byte_ring_buffer *Buffer);
