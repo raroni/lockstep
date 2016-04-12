@@ -38,6 +38,10 @@ void* SerializerRead(serializer *S, memsize Length) {
   return Result;
 }
 
+memsize GetRemainingSize(serializer *S) {
+  return S->Buffer.Length - S->Position;
+}
+
 ui8 SerializerReadUI8(serializer *S) {
   ui8 Int = *(ui8*)SerializerRead(S, sizeof(ui8));
   return Int;

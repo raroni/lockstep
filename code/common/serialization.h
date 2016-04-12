@@ -10,6 +10,7 @@ struct serializer {
 
 serializer CreateSerializer(buffer Buffer);
 void ResetSerializer(serializer *Serializer);
+memsize GetRemainingSize(serializer *S);
 
 void SerializerWrite(serializer *S, const void *Data, memsize Length);
 void SerializerWriteMemsize(serializer *S, memsize Size);

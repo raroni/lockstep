@@ -240,8 +240,8 @@ void* RunNetwork(void *Data) {
             buffer Input;
             Input.Addr = ReceiveBuffer.Addr;
             Input.Length = Result;
+            printf("Write to %p\n", &Client->InBuffer);
             ByteRingBufferWrite(&Client->InBuffer, Input);
-            printf("Got something\n");
           }
         }
         RecalcReadFDMax();
@@ -270,7 +270,6 @@ void* RunNetwork(void *Data) {
         .Length = Length
       };
       ChunkRingBufferWrite(&EventRing, Event);
-      printf("Someone connected!\n");
     }
 
     if(MainState == main_state_disconnecting) {

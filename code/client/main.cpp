@@ -4,6 +4,7 @@
 #include <pthread.h>
 #include "lib/assert.h"
 #include "common/memory.h"
+#include "common/network_messages.h"
 #include "network_events.h"
 #include "network.h"
 
@@ -65,9 +66,23 @@ int main() {
           printf("Game got connection failed!\n");
           MainState.Running = false;
           break;
-        case network_event_type_start:
+        case network_event_type_start: {
           printf("Game got start event!\n");
+
+          static ui8 TempBufferBlock[MAX_MESSAGE_LENGTH];
+          buffer TempBuffer = {
+            .Addr = TempBufferBlock,
+            .Length = sizeof(TempBufferBlock)
+          };
+          memsize Length = SerializeStartNetworkMessage(TempBuffer);
+          buffer Message = {
+            .Addr = TempBuffer.Addr,
+            .Length = Length
+          };
+          printf("Starting game and replying...\n");
+          NetworkSend(Message);
           break;
+        }
         default:
           InvalidCodePath;
       }

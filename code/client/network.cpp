@@ -121,6 +121,8 @@ void Connect() {
   int ConnectResult = connect(SocketFD, (struct sockaddr *)&Address, sizeof(Address));
   Assert(ConnectResult != -1 || errno == errno_code_in_progress);
 
+  printf("Connecting...\n");
+
   MainState = main_state_connecting;
 }
 
@@ -134,6 +136,10 @@ void ProcessCommands(main_state *MainState) {
   static buffer Buffer = { .Addr = BufferStorage, .Length = COMMAND_MAX_LENGTH };
   while((Length = ChunkRingBufferRead(&CommandRing, Buffer))) {
     network_command_type Type = UnserializeNetworkCommandType(Buffer);
+    buffer Command = {
+      .Addr = Buffer.Addr,
+      .Length = Length
+    };
     switch(Type) {
       case network_command_type_shutdown: {
         if(*MainState != main_state_shutting_down) {
@@ -141,6 +147,15 @@ void ProcessCommands(main_state *MainState) {
           int Result = shutdown(SocketFD, SHUT_RDWR);
           Assert(Result == 0);
           *MainState = main_state_shutting_down;
+        }
+        break;
+      }
+      case network_command_type_send: {
+        if(*MainState == main_state_connected) {
+          send_network_command SendCommand = UnserializeSendNetworkCommand(Command);
+          buffer Message = SendCommand.Message;
+          printf("Sending message of size %zu!\n", Message.Length);
+          send(SocketFD, Message.Addr, Message.Length, 0);
         }
         break;
       }
@@ -270,6 +285,16 @@ void* RunNetwork(void *Data) {
 
 void ShutdownNetwork() {
   memsize Length = SerializeShutdownNetworkCommand(CommandSerializationBuffer);
+  buffer Command = {
+    .Addr = CommandSerializationBuffer.Addr,
+    .Length = Length
+  };
+  ChunkRingBufferWrite(&CommandRing, Command);
+  RequestWake();
+}
+
+void NetworkSend(buffer Message) {
+  memsize Length = SerializeSendNetworkCommand(CommandSerializationBuffer, Message);
   buffer Command = {
     .Addr = CommandSerializationBuffer.Addr,
     .Length = Length
