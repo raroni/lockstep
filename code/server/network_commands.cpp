@@ -32,9 +32,9 @@ broadcast_network_command UnserializeBroadcastNetworkCommand(buffer Buffer) {
 
   broadcast_network_command Cmd;
   Cmd.ClientIDCount = SerializerReadMemsize(&S);
-  Cmd.MessageLength = SerializerReadMemsize(&S);
+  Cmd.Message.Length = SerializerReadMemsize(&S);
   Cmd.ClientIDs = (client_id*)SerializerRead(&S, sizeof(client_id)*Cmd.ClientIDCount);
-  Cmd.Message = SerializerRead(&S, Cmd.MessageLength);
+  Cmd.Message.Addr = SerializerRead(&S, Cmd.Message.Length);
 
   return Cmd;
 }

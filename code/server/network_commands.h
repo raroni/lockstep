@@ -12,8 +12,7 @@ enum network_command_type {
 struct broadcast_network_command {
   client_id *ClientIDs;
   memsize ClientIDCount;
-  void *Message;
-  memsize MessageLength;
+  buffer Message;
 };
 
 memsize SerializeDisconnectNetworkCommand(buffer Buffer);

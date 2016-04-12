@@ -167,7 +167,7 @@ static void ProcessCommands(main_state *MainState) {
           client *Client = FindClientByID(&ClientSet, Command.ClientIDs[I]);
           if(Client) {
             printf("Broadcasted to client id %zu\n", Command.ClientIDs[I]);
-            ssize_t Result = send(Client->FD, Command.Message, Command.MessageLength, 0);
+            ssize_t Result = send(Client->FD, Command.Message.Addr, Command.Message.Length, 0);
             Assert(Result != -1);
           }
         }
