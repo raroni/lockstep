@@ -155,7 +155,7 @@ void ProcessCommands(main_state *MainState) {
           send_network_command SendCommand = UnserializeSendNetworkCommand(Command);
           buffer Message = SendCommand.Message;
           printf("Sending message of size %zu!\n", Message.Length);
-          send(SocketFD, Message.Addr, Message.Length, 0);
+          NetworkSend(SocketFD, Message);
         }
         break;
       }

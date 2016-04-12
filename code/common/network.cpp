@@ -7,3 +7,8 @@ ssize_t NetworkReceive(int FD, buffer Buffer) {
   ssize_t Result = recv(FD, Buffer.Addr, Buffer.Length, 0);
   return Result;
 }
+
+ssize_t NetworkSend(int FD, buffer Buffer) {
+  ssize_t Result = send(FD, Buffer.Addr, Buffer.Length, 0);
+  return Result;
+}
