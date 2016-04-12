@@ -88,6 +88,11 @@ memsize ByteRingBufferRead(brb *Ring, buffer Output) {
   return ReadLength;
 }
 
+void ByteRingBufferReset(brb *Ring) {
+  Ring->WritePos = 0;
+  Ring->ReadPos = 0;
+}
+
 void TerminateByteRingBuffer(brb *Buffer) {
   Buffer->Storage.Addr = NULL;
   Buffer->WritePos = 0;

@@ -156,6 +156,24 @@ static void TestReadAdvance(ow_test_context Context) {
   DestroyTestBuffer(Storage);
 }
 
+static void TestReset(ow_test_context Context) {
+  buffer Storage = CreateTestBuffer(8);
+  byte_ring_buffer Ring;
+  InitByteRingBuffer(&Ring, Storage);
+
+  ui8 DummyBlock[] = { 1, 2, 3, 4 };
+  buffer Input = { .Addr = DummyBlock, .Length = sizeof(DummyBlock) };
+  buffer Output = { .Addr = DummyBlock, .Length = sizeof(DummyBlock)/2 };
+  ByteRingBufferWrite(&Ring, Input);
+  ByteRingBufferRead(&Ring, Output);
+  ByteRingBufferReset(&Ring);
+  OW_AssertEqualInt(0, Ring.ReadPos);
+  OW_AssertEqualInt(0, Ring.WritePos);
+
+  TerminateByteRingBuffer(&Ring);
+  DestroyTestBuffer(Storage);
+}
+
 void SetupByteRingBufferGroup(ow_suite *S) {
   ow_group_index G = OW_CreateGroup(S);
   OW_AddTest(S, G, TestBasicWriteRead);
@@ -165,4 +183,5 @@ void SetupByteRingBufferGroup(ow_suite *S) {
   OW_AddTest(S, G, TestEmpty);
   OW_AddTest(S, G, TestPeek);
   OW_AddTest(S, G, TestReadAdvance);
+  OW_AddTest(S, G, TestReset);
 }
