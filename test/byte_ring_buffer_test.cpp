@@ -1,31 +1,43 @@
 #include <string.h>
+#include <stdlib.h>
 #include "orwell.h"
 #include "lib/byte_ring_buffer.h"
 
+buffer CreateTestBuffer(memsize Length) {
+  void *Addr = malloc(Length);
+  buffer Buffer;
+  Buffer.Addr = Addr;
+  Buffer.Length = Length;
+  return Buffer;
+}
+
+void DestroyTestBuffer(buffer Buffer) {
+  free(Buffer.Addr);
+}
+
 static void TestBasicWriteRead(ow_test_context Context) {
-  ui8 RingStorageBlock[16];
-  buffer Storage = { .Addr = &RingStorageBlock, .Length = sizeof(RingStorageBlock) };
+  buffer Storage = CreateTestBuffer(16);
   byte_ring_buffer Ring;
   InitByteRingBuffer(&Ring, Storage);
 
-  char InputBlock[4];
-  strcpy(InputBlock, "hey");
-  buffer Input = { .Addr = InputBlock, .Length = 4 };
+  buffer Input = CreateTestBuffer(4);
+  strcpy((char*)Input.Addr, "hey");
   ByteRingBufferWrite(&Ring, Input);
 
-  ui8 OutputBlock[4];
-  buffer Output = { .Addr = OutputBlock, .Length = sizeof(OutputBlock) };
+  buffer Output = CreateTestBuffer(4);
   memsize ReadLength = ByteRingBufferRead(&Ring, Output);
 
   OW_AssertEqualInt(4, ReadLength);
   OW_AssertEqualStr("hey", (const char*)(Output.Addr));
 
+  DestroyTestBuffer(Output);
+  DestroyTestBuffer(Input);
   TerminateByteRingBuffer(&Ring);
+  DestroyTestBuffer(Storage);
 }
 
 static void TestWrappingWriteRead(ow_test_context Context) {
-  ui8 RingStorageBlock[8];
-  buffer Storage = { .Addr = &RingStorageBlock, .Length = sizeof(RingStorageBlock) };
+  buffer Storage = CreateTestBuffer(8);
   byte_ring_buffer Ring;
   InitByteRingBuffer(&Ring, Storage);
   ui8 OutputBlock[8];
@@ -54,23 +66,23 @@ static void TestWrappingWriteRead(ow_test_context Context) {
   OW_AssertEqualInt(15, OutputBlock[5]);
 
   TerminateByteRingBuffer(&Ring);
+  DestroyTestBuffer(Storage);
 }
 
 static void TestBasicCalcFree(ow_test_context Context) {
-  ui8 RingStorageBlock[8];
-  buffer Storage = { .Addr = &RingStorageBlock, .Length = sizeof(RingStorageBlock) };
+  buffer Storage = CreateTestBuffer(8);
   byte_ring_buffer Ring;
   InitByteRingBuffer(&Ring, Storage);
-  ui8 DummyBuffer[4] = { };
-  buffer Input = { .Addr = DummyBuffer, .Length = sizeof(DummyBuffer) };
+  buffer Input = CreateTestBuffer(4);
   ByteRingBufferWrite(&Ring, Input);
+  DestroyTestBuffer(Input);
   OW_AssertEqualInt(3, ByteRingBufferCalcFree(&Ring));
   TerminateByteRingBuffer(&Ring);
+  DestroyTestBuffer(Storage);
 }
 
 static void TestWrappingCalcFree(ow_test_context Context) {
-  ui8 RingStorageBlock[8];
-  buffer Storage = { .Addr = &RingStorageBlock, .Length = sizeof(RingStorageBlock) };
+  buffer Storage = CreateTestBuffer(8);
   byte_ring_buffer Ring;
   InitByteRingBuffer(&Ring, Storage);
   ui8 DummyBuffer[8] = { };
@@ -82,19 +94,17 @@ static void TestWrappingCalcFree(ow_test_context Context) {
   ByteRingBufferWrite(&Ring, Input2);
   OW_AssertEqualInt(1, ByteRingBufferCalcFree(&Ring));
   TerminateByteRingBuffer(&Ring);
+  DestroyTestBuffer(Storage);
 }
 
 static void TestEmpty(ow_test_context Context) {
-  ui8 RingStorageBlock[8];
-  buffer Storage = { .Addr = &RingStorageBlock, .Length = sizeof(RingStorageBlock) };
+  buffer Storage = CreateTestBuffer(8);
   byte_ring_buffer Ring;
   InitByteRingBuffer(&Ring, Storage);
-  ui8 InputBlock[4];
-  buffer Input = { .Addr = InputBlock, .Length = sizeof(InputBlock) };
+  buffer Input = CreateTestBuffer(4);
   ByteRingBufferWrite(&Ring, Input);
 
-  ui8 OutputBlock[2];
-  buffer Output = { .Addr = OutputBlock, .Length = sizeof(OutputBlock) };
+  buffer Output = CreateTestBuffer(2);
   memsize OutputLength = ByteRingBufferRead(&Ring, Output);
   OW_AssertEqualInt(2, OutputLength);
   OutputLength = ByteRingBufferRead(&Ring, Output);
@@ -104,7 +114,10 @@ static void TestEmpty(ow_test_context Context) {
   OutputLength = ByteRingBufferRead(&Ring, Output);
   OW_AssertEqualInt(0, OutputLength);
 
+  DestroyTestBuffer(Output);
+  DestroyTestBuffer(Input);
   TerminateByteRingBuffer(&Ring);
+  DestroyTestBuffer(Storage);
 }
 
 void SetupByteRingBufferGroup(ow_suite *S) {
