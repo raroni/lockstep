@@ -12,38 +12,37 @@ memsize ByteRingBufferCalcUsage(brb *Buffer) {
     Result = Buffer->WritePos - Buffer->ReadPos;
   }
   else {
-    Result = Buffer->Capacity - Buffer->ReadPos + Buffer->WritePos;
+    Result = Buffer->Storage.Length - Buffer->ReadPos + Buffer->WritePos;
   }
   return Result;
 }
 
 memsize ByteRingBufferCalcFree(brb *Buffer) {
   memsize Usage = ByteRingBufferCalcUsage(Buffer);
-  return Buffer->Capacity - 1 - Usage;
+  return Buffer->Storage.Length - 1 - Usage;
 }
 
-void InitByteRingBuffer(brb *Buffer, void *Data, memsize Capacity) {
-  Buffer->Data = Data;
+void InitByteRingBuffer(brb *Buffer, buffer Storage) {
+  Buffer->Storage = Storage;
   Buffer->WritePos = 0;
   Buffer->ReadPos = 0;
-  Buffer->Capacity = Capacity;
 }
 
-void ByteRingBufferWrite(brb *Buffer, const void *Source, memsize Length) {
-  Assert(ByteRingBufferCalcFree(Buffer) > Length);
+void ByteRingBufferWrite(brb *Buffer, buffer Input) {
+  Assert(ByteRingBufferCalcFree(Buffer) > Input.Length);
 
-  if(Buffer->Capacity - Buffer->WritePos >= Length) {
-    void *Destination = ((ui8*)Buffer->Data) + Buffer->WritePos;
-    memcpy(Destination, Source, Length);
+  if(Buffer->Storage.Length - Buffer->WritePos >= Input.Length) {
+    void *Destination = ((ui8*)Buffer->Storage.Addr) + Buffer->WritePos;
+    memcpy(Destination, Input.Addr, Input.Length);
   }
   else {
-    void *Destination1 = ((ui8*)Buffer->Data) + Buffer->WritePos;
-    const void *Source1 = Source;
-    memsize WriteSize1 = Buffer->Capacity - Buffer->WritePos;
+    void *Destination1 = ((ui8*)Buffer->Storage.Addr) + Buffer->WritePos;
+    const void *Source1 = Input.Addr;
+    memsize WriteSize1 = Buffer->Storage.Length - Buffer->WritePos;
 
-    void *Destination2 = Buffer->Data;
-    const void *Source2 = ((ui8*)Source) + WriteSize1;
-    memsize WriteSize2 = Length - WriteSize1;
+    void *Destination2 = Buffer->Storage.Addr;
+    const void *Source2 = ((ui8*)Input.Addr) + WriteSize1;
+    memsize WriteSize2 = Input.Length - WriteSize1;
 
     memcpy(Destination1, Source1, WriteSize1);
     memcpy(Destination2, Source2, WriteSize2);
@@ -51,24 +50,24 @@ void ByteRingBufferWrite(brb *Buffer, const void *Source, memsize Length) {
 
   MemoryBarrier;
 
-  Buffer->WritePos = (Buffer->WritePos + Length) % Buffer->Capacity;
+  Buffer->WritePos = (Buffer->WritePos + Input.Length) % Buffer->Storage.Length;
 }
 
-memsize ByteRingBufferRead(brb *ByteRingBuffer, void *ReadBuffer, memsize MaxLength) {
+memsize ByteRingBufferRead(brb *ByteRingBuffer, buffer Output) {
   memsize Usage = ByteRingBufferCalcUsage(ByteRingBuffer);
-  memsize ReadLength = MinMemsize(MaxLength, Usage);
+  memsize ReadLength = MinMemsize(Output.Length, Usage);
 
-  if(ByteRingBuffer->Capacity - ByteRingBuffer->ReadPos >= ReadLength) {
-    void *Source = ((ui8*)ByteRingBuffer->Data) + ByteRingBuffer->ReadPos;
-    memcpy(ReadBuffer, Source, ReadLength);
+  if(ByteRingBuffer->Storage.Length - ByteRingBuffer->ReadPos >= ReadLength) {
+    void *Source = ((ui8*)ByteRingBuffer->Storage.Addr) + ByteRingBuffer->ReadPos;
+    memcpy(Output.Addr, Source, ReadLength);
   }
   else {
-    void *Destination1 = ReadBuffer;
-    const void *Source1 = ((ui8*)ByteRingBuffer->Data + ByteRingBuffer->ReadPos);
-    memsize ReadLength1 = ByteRingBuffer->Capacity - ByteRingBuffer->ReadPos;
+    void *Destination1 = Output.Addr;
+    const void *Source1 = ((ui8*)ByteRingBuffer->Storage.Addr + ByteRingBuffer->ReadPos);
+    memsize ReadLength1 = ByteRingBuffer->Storage.Length - ByteRingBuffer->ReadPos;
 
-    void *Destination2 = ((ui8*)ReadBuffer) + ReadLength1;
-    const void *Source2 = ByteRingBuffer->Data;
+    void *Destination2 = ((ui8*)Output.Addr) + ReadLength1;
+    const void *Source2 = ByteRingBuffer->Storage.Addr;
     memsize ReadLength2 = ReadLength - ReadLength1;
 
     memcpy(Destination1, Source1, ReadLength1);
@@ -77,13 +76,13 @@ memsize ByteRingBufferRead(brb *ByteRingBuffer, void *ReadBuffer, memsize MaxLen
 
   MemoryBarrier;
 
-  ByteRingBuffer->ReadPos = (ByteRingBuffer->ReadPos + ReadLength) % ByteRingBuffer->Capacity;
+  ByteRingBuffer->ReadPos = (ByteRingBuffer->ReadPos + ReadLength) % ByteRingBuffer->Storage.Length;
   return ReadLength;
 }
 
 void TerminateByteRingBuffer(brb *Buffer) {
-  Buffer->Data = NULL;
+  Buffer->Storage.Addr = NULL;
   Buffer->WritePos = 0;
   Buffer->ReadPos = 0;
-  Buffer->Capacity = 0;
+  Buffer->Storage.Length = 0;
 }

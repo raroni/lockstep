@@ -15,8 +15,10 @@ void InitClientSet(set *Set) {
   memsize InBufferClientCapacity = InBufferTotalCapacity/CLIENT_SET_MAX;
   Set->InBuffer = malloc(InBufferTotalCapacity);
   for(memsize I=0; I<Set->Count; ++I) {
-    void *Data = ((ui8*)Set->InBuffer) + I*InBufferClientCapacity;
-    InitByteRingBuffer(&Set->Clients[I].InBuffer, Data, InBufferClientCapacity);
+    buffer Storage;
+    Storage.Addr = ((ui8*)Set->InBuffer) + I*InBufferClientCapacity;
+    Storage.Length = InBufferClientCapacity;
+    InitByteRingBuffer(&Set->Clients[I].InBuffer, Storage);
   }
 }
 

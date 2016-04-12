@@ -237,7 +237,10 @@ void* RunNetwork(void *Data) {
             printf("A client disconnected.\n");
           }
           else {
-            ByteRingBufferWrite(&Client->InBuffer, ReceiveBuffer.Addr, Result);
+            buffer Input;
+            Input.Addr = ReceiveBuffer.Addr;
+            Input.Length = Result;
+            ByteRingBufferWrite(&Client->InBuffer, Input);
             printf("Got something\n");
           }
         }
