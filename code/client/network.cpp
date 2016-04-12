@@ -7,6 +7,7 @@
 #include "lib/min_max.h"
 #include "lib/assert.h"
 #include "lib/chunk_ring_buffer.h"
+#include "lib/byte_ring_buffer.h"
 #include "common/network.h"
 #include "network.h"
 #include "network_events.h"
@@ -52,6 +53,8 @@ static void *EventBufferAddr;
 static chunk_ring_buffer EventRing;
 static void *CommandBufferAddr;
 static chunk_ring_buffer CommandRing;
+static void *IncomingBufferAddr;
+static byte_ring_buffer IncomingRing;
 
 static void RequestWake() {
   ui8 X = 1;
@@ -74,23 +77,33 @@ void InitNetwork() {
   FDMax = MaxInt(WakeReadFD, SocketFD);
 
   {
-    memsize EventBufferLength = 1024*100;
-    EventBufferAddr = malloc(EventBufferLength);
-    buffer EventBuffer = {
+    memsize Length = 1024*100;
+    EventBufferAddr = malloc(Length);
+    buffer Buffer = {
       .Addr = EventBufferAddr,
-      .Length = EventBufferLength
+      .Length = Length
     };
-    InitChunkRingBuffer(&EventRing, 50, EventBuffer);
+    InitChunkRingBuffer(&EventRing, 50, Buffer);
   }
 
   {
-    memsize CommandBufferLength = 1024*100;
-    CommandBufferAddr = malloc(CommandBufferLength);
-    buffer CommandBuffer = {
+    memsize Length = 1024*100;
+    CommandBufferAddr = malloc(Length);
+    buffer Buffer = {
       .Addr = CommandBufferAddr,
-      .Length = CommandBufferLength
+      .Length = Length
     };
-    InitChunkRingBuffer(&CommandRing, 50, CommandBuffer);
+    InitChunkRingBuffer(&CommandRing, 50, Buffer);
+  }
+
+  {
+    memsize Length = 1024*100;
+    IncomingBufferAddr = malloc(Length);
+    buffer Buffer = {
+      .Addr = IncomingBufferAddr,
+      .Length = Length
+    };
+    InitByteRingBuffer(&IncomingRing, Buffer);
   }
 
   MainState = main_state_inactive;
@@ -200,6 +213,11 @@ void* RunNetwork(void *Data) {
           continue;
         }
         else if(MainState == main_state_connected) {
+          buffer Incoming = {
+            .Addr = ReceiveBuffer.Addr,
+            .Length = (memsize)ReceivedCount
+          };
+          ByteRingBufferWrite(&IncomingRing, Incoming);
           printf("Got something of length: %zd, as char %u\n", (int)ReceivedCount, *(ui8*)ReceiveBuffer.Addr);
         }
       }
@@ -237,6 +255,10 @@ void TerminateNetwork() {
   TerminateChunkRingBuffer(&CommandRing);
   free(CommandBufferAddr);
   CommandBufferAddr = NULL;
+
+  TerminateByteRingBuffer(&IncomingRing);
+  free(IncomingBufferAddr);
+  IncomingBufferAddr = NULL;
 
   MainState = main_state_inactive;
 }
