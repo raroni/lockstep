@@ -9,6 +9,7 @@
 #include "lib/chunk_ring_buffer.h"
 #include "lib/byte_ring_buffer.h"
 #include "common/network.h"
+#include "common/network_messages.h"
 #include "network.h"
 #include "network_events.h"
 #include "network_commands.h"
@@ -147,6 +148,41 @@ void ProcessCommands(main_state *MainState) {
   }
 }
 
+void ProcessIncoming() {
+  static ui8 IncomingBlock[MAX_MESSAGE_LENGTH];
+  buffer Incoming = { .Addr = &IncomingBlock, .Length = sizeof(IncomingBlock) };
+  Incoming.Length = ByteRingBufferPeek(&IncomingRing, Incoming);
+
+  for(;;) {
+    network_message_type Type;
+    bool Result = UnserializeNetworkMessageType(Incoming, &Type);
+    if(!Result) {
+      break;
+    }
+
+    memsize ConsumedBytesCount = 0;
+    switch(Type) {
+      case network_message_type_start: {
+        memsize Length = SerializeStartNetworkEvent(EventSerializationBuffer);
+        buffer Event = {
+          .Addr = EventSerializationBuffer.Addr,
+          .Length = Length
+        };
+        ChunkRingBufferWrite(&EventRing, Event);
+        ConsumedBytesCount = StartNetworkMesageSize;
+        break;
+      }
+    }
+
+    if(ConsumedBytesCount == 0) {
+      break;
+    }
+    else {
+      Incoming.Addr = (ui8*)Incoming.Addr + ConsumedBytesCount;
+    }
+  }
+}
+
 void* RunNetwork(void *Data) {
   Connect();
 
@@ -202,6 +238,8 @@ void* RunNetwork(void *Data) {
         if(ReceivedCount == 0) {
           printf("Disconnected.\n");
 
+          // Todo: Flush in-buffer (no more good will come anyway)
+
           memsize Length = SerializeConnectionLostNetworkEvent(EventSerializationBuffer);
           buffer Event = {
             .Addr = EventSerializationBuffer.Addr,
@@ -219,6 +257,7 @@ void* RunNetwork(void *Data) {
           };
           ByteRingBufferWrite(&IncomingRing, Incoming);
           printf("Got something of length: %zd, as char %u\n", (int)ReceivedCount, *(ui8*)ReceiveBuffer.Addr);
+          ProcessIncoming();
         }
       }
     }

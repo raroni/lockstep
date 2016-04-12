@@ -38,3 +38,9 @@ network_event_type UnserializeNetworkEventType(buffer Input) {
   serializer S = CreateSerializer(Input);
   return ReadType(&S);
 }
+
+memsize SerializeStartNetworkEvent(buffer Out) {
+  serializer S = CreateSerializer(Out);
+  WriteType(&S, network_event_type_start);
+  return S.Position;
+}

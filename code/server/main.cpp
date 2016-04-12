@@ -3,7 +3,7 @@
 #include <stdint.h>
 #include <pthread.h>
 #include "lib/assert.h"
-#include "common/messages.h"
+#include "common/network_messages.h"
 #include "network_events.h"
 #include "network.h"
 
@@ -145,7 +145,7 @@ int main() {
     }
     else {
       if(MainState.GameState == game_state_waiting_for_clients && MainState.PlayerSet.Count == PLAYERS_MAX) {
-        memsize Length = SerializeStartMessage(MessageOutBuffer);
+        memsize Length = SerializeStartNetworkMessage(MessageOutBuffer);
         buffer MessageBuffer = {
           .Addr = MessageOutBuffer.Addr,
           .Length = Length

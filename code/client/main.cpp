@@ -65,6 +65,9 @@ int main() {
           printf("Game got connection failed!\n");
           MainState.Running = false;
           break;
+        case network_event_type_start:
+          printf("Game got start event!\n");
+          break;
         default:
           InvalidCodePath;
       }
