@@ -238,7 +238,7 @@ void* RunNetwork(void *Data) {
         if(ReceivedCount == 0) {
           printf("Disconnected.\n");
 
-          // Todo: Flush in-buffer (no more good will come anyway)
+          ByteRingBufferReset(&IncomingRing);
 
           memsize Length = SerializeConnectionLostNetworkEvent(EventSerializationBuffer);
           buffer Event = {
