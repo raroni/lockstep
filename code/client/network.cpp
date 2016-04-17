@@ -165,9 +165,11 @@ void ProcessCommands(main_state *MainState) {
 
 void ProcessIncoming() {
   static ui8 IncomingBlock[MAX_MESSAGE_LENGTH];
-  buffer Incoming = { .Addr = &IncomingBlock, .Length = sizeof(IncomingBlock) };
+  buffer Incoming;
+  Incoming.Addr = &IncomingBlock;
 
   for(;;) {
+    Incoming.Length = sizeof(IncomingBlock);
     Incoming.Length = ByteRingBufferPeek(&IncomingRing, Incoming);
     network_message_type Type;
     bool Result = UnserializeNetworkMessageType(Incoming, &Type);
