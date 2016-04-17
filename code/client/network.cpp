@@ -166,9 +166,9 @@ void ProcessCommands(main_state *MainState) {
 void ProcessIncoming() {
   static ui8 IncomingBlock[MAX_MESSAGE_LENGTH];
   buffer Incoming = { .Addr = &IncomingBlock, .Length = sizeof(IncomingBlock) };
-  Incoming.Length = ByteRingBufferPeek(&IncomingRing, Incoming);
 
   for(;;) {
+    Incoming.Length = ByteRingBufferPeek(&IncomingRing, Incoming);
     network_message_type Type;
     bool Result = UnserializeNetworkMessageType(Incoming, &Type);
     if(!Result) {
@@ -193,7 +193,7 @@ void ProcessIncoming() {
       break;
     }
     else {
-      Incoming.Addr = (ui8*)Incoming.Addr + ConsumedBytesCount;
+      ByteRingBufferReadAdvance(&IncomingRing, ConsumedBytesCount);
     }
   }
 }
