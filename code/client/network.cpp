@@ -187,6 +187,8 @@ void ProcessIncoming() {
         ConsumedBytesCount = StartNetworkMesageSize;
         break;
       }
+      default:
+        InvalidCodePath;
     }
 
     if(ConsumedBytesCount == 0) {
