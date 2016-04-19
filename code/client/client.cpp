@@ -82,7 +82,14 @@ void UpdateClient(chunk_list *NetEvents, chunk_list *NetCmds, client_state *Stat
 
   if(State->DisconnectRequested) {
     printf("Requesting network shutdown...\n");
-    ShutdownNetwork(State->TEMP_NETWORK_CONTEXT);
+
+    Length = SerializeShutdownNetworkCommand(State->CommandSerializationBuffer);
+    buffer Command = {
+      .Addr = State->CommandSerializationBuffer.Addr,
+      .Length = Length
+    };
+    ChunkListWrite(NetCmds, Command);
+
     State->Running = false;
   }
 }
