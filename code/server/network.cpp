@@ -31,7 +31,7 @@ static buffer EventOutBuffer = {
   .Addr = &EventOutBufferBlock,
   .Length = sizeof(EventOutBufferBlock)
 };
-static ui8 CommandSerializationBufferBlock[COMMAND_MAX_LENGTH];
+static ui8 CommandSerializationBufferBlock[NETWORK_COMMAND_MAX_LENGTH];
 static buffer CommandSerializationBuffer = {
   .Addr = &CommandSerializationBufferBlock,
   .Length = sizeof(CommandSerializationBufferBlock)
@@ -148,8 +148,8 @@ void ShutdownNetwork() {
 
 static void ProcessCommands(main_state *MainState) {
   memsize Length;
-  static ui8 BufferStorage[COMMAND_MAX_LENGTH];
-  static buffer Buffer = { .Addr = BufferStorage, .Length = COMMAND_MAX_LENGTH };
+  static ui8 BufferStorage[NETWORK_COMMAND_MAX_LENGTH];
+  static buffer Buffer = { .Addr = BufferStorage, .Length = NETWORK_COMMAND_MAX_LENGTH };
   while((Length = ChunkRingBufferRead(&CommandRing, Buffer))) {
     network_command_type Type = UnserializeNetworkCommandType(Buffer);
     switch(Type) {
@@ -172,10 +172,8 @@ static void ProcessCommands(main_state *MainState) {
             Assert(Result != -1);
           }
         }
-
         break;
       }
-      break;
       default:
         InvalidCodePath;
     }

@@ -1,6 +1,6 @@
 #pragma once
 
-#define COMMAND_MAX_LENGTH 512
+#define NETWORK_COMMAND_MAX_LENGTH 512
 
 enum network_command_type {
   network_command_type_shutdown,
@@ -10,7 +10,6 @@ enum network_command_type {
 struct send_network_command {
   buffer Message;
 };
-
 
 memsize SerializeShutdownNetworkCommand(buffer Buffer);
 memsize SerializeSendNetworkCommand(buffer Output, buffer Message);

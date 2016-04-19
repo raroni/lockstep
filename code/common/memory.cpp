@@ -7,7 +7,7 @@ void InitLinearAllocator(linear_allocator *A, void *Base, memsize Capacity) {
   A->Capacity = Capacity;
 }
 
-void* LinearAllocate(linear_allocator *A, void *Base, memsize Size) {
+void* LinearAllocate(linear_allocator *A, memsize Size) {
   void *Result = A->Base;
   A->Length += Size;
   return Result;
