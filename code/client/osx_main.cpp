@@ -91,7 +91,6 @@ int main() {
     Assert(Result == 0);
   }
 
-  State.ClientState.TEMP_NETWORK_CONTEXT = &State.NetworkContext;
   InitClient(&State.ClientState);
 
   signal(SIGINT, HandleSigint);
