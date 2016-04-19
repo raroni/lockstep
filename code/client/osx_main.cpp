@@ -17,6 +17,7 @@ struct osx_state {
   linear_allocator Allocator;
   client_state ClientState;
   chunk_list NetworkCommandList;
+  chunk_list NetworkEventList;
   pthread_t NetworkThread;
   posix_network_context NetworkContext;
 };
@@ -77,6 +78,13 @@ int main() {
     InitChunkList(&State.NetworkCommandList, Buffer);
   }
 
+  {
+    buffer Buffer;
+    Buffer.Length = NETWORK_EVENT_MAX_LENGTH*100;
+    Buffer.Addr = LinearAllocate(&State.Allocator, Buffer.Length);
+    InitChunkList(&State.NetworkEventList, Buffer);
+  }
+
   InitNetwork(&State.NetworkContext);
   {
     int Result = pthread_create(&State.NetworkThread, 0, RunNetwork, &State.NetworkContext);
@@ -89,8 +97,23 @@ int main() {
   signal(SIGINT, HandleSigint);
   while(State.ClientState.Running) {
     // Gather input
+
+    static ui8 ReadBufferBlock[NETWORK_EVENT_MAX_LENGTH];
+    static buffer ReadBuffer = {
+      .Addr = &ReadBufferBlock,
+      .Length = sizeof(ReadBufferBlock)
+    };
+    memsize Length;
+    while((Length = ReadNetworkEvent(&State.NetworkContext, ReadBuffer))) {
+      buffer Event = {
+        .Addr = ReadBuffer.Addr,
+        .Length = Length
+      };
+      ChunkListWrite(&State.NetworkEventList, Event);
+    }
+
     State.ClientState.DisconnectRequested = DisconnectRequested;
-    UpdateClient(&State.NetworkCommandList, &State.ClientState);
+    UpdateClient(&State.NetworkEventList, &State.NetworkCommandList, &State.ClientState);
     FlushNetworkCommands(&State.NetworkContext, &State.NetworkCommandList);
     // Render();
   }
@@ -101,6 +124,7 @@ int main() {
     Assert(Result == 0);
   }
 
+  TerminateChunkList(&State.NetworkEventList);
   TerminateChunkList(&State.NetworkCommandList);
   TerminateClient(&State.ClientState);
   TerminateNetwork(&State.NetworkContext);

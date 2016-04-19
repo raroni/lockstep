@@ -31,14 +31,14 @@ void InitClient(client_state *State) {
   State->CommandSerializationBuffer = CreateBuffer(NETWORK_COMMAND_MAX_LENGTH);
 }
 
-void UpdateClient(chunk_list *NetCmds, client_state *State) {
+void UpdateClient(chunk_list *NetEvents, chunk_list *NetCmds, client_state *State) {
   memsize Length;
   static ui8 ReadBufferBlock[NETWORK_EVENT_MAX_LENGTH];
   static buffer ReadBuffer = {
     .Addr = &ReadBufferBlock,
     .Length = sizeof(ReadBufferBlock)
   };
-  while((Length = ReadNetworkEvent(State->TEMP_NETWORK_CONTEXT, ReadBuffer))) {
+  while((Length = ChunkListRead(NetEvents, ReadBuffer))) {
     network_event_type Type = UnserializeNetworkEventType(ReadBuffer);
     switch(Type) {
       case network_event_type_connection_established:

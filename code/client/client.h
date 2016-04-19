@@ -13,5 +13,5 @@ struct client_state {
 };
 
 void InitClient(client_state *State);
-void UpdateClient(chunk_list *NetCmds, client_state *State);
+void UpdateClient(chunk_list *NetEvents, chunk_list *NetCmds, client_state *State);
 void TerminateClient(client_state *State);
