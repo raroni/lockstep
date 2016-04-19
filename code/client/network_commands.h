@@ -1,7 +1,5 @@
 #pragma once
 
-#include "network.h"
-
 #define COMMAND_MAX_LENGTH 512
 
 enum network_command_type {

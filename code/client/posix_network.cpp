@@ -10,9 +10,9 @@
 #include "lib/byte_ring_buffer.h"
 #include "common/network.h"
 #include "common/network_messages.h"
-#include "network.h"
 #include "network_events.h"
 #include "network_commands.h"
+#include "posix_network.h"
 
 enum errno_code {
   errno_code_interrupted_system_call = 4,
