@@ -74,7 +74,7 @@ int main() {
             .Addr = TempBufferBlock,
             .Length = sizeof(TempBufferBlock)
           };
-          memsize Length = SerializeStartNetworkMessage(TempBuffer);
+          memsize Length = SerializeReplyNetworkMessage(TempBuffer);
           buffer Message = {
             .Addr = TempBuffer.Addr,
             .Length = Length

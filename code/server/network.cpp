@@ -8,6 +8,7 @@
 #include "lib/min_max.h"
 #include "lib/chunk_ring_buffer.h"
 #include "common/network.h"
+#include "common/network_messages.h"
 #include "client_set.h"
 #include "network_events.h"
 #include "network_commands.h"
@@ -200,6 +201,45 @@ void NetworkBroadcast(client_id *IDs, memsize IDCount, buffer Message) {
   RequestWake();
 }
 
+void ProcessIncoming(client *Client) {
+  static ui8 IncomingBlock[MAX_MESSAGE_LENGTH];
+  buffer Incoming;
+  Incoming.Addr = &IncomingBlock;
+
+  for(;;) {
+    Incoming.Length = sizeof(IncomingBlock);
+    Incoming.Length = ByteRingBufferPeek(&Client->InBuffer, Incoming);
+    network_message_type Type;
+    bool Result = UnserializeNetworkMessageType(Incoming, &Type);
+    if(!Result) {
+      break;
+    }
+
+    memsize ConsumedBytesCount = 0;
+    switch(Type) {
+      case network_message_type_reply: {
+        memsize Length = SerializeReplyNetworkEvent(Client->ID, EventOutBuffer);
+        buffer Event = {
+          .Addr = EventOutBuffer.Addr,
+          .Length = Length
+        };
+        ChunkRingBufferWrite(&EventRing, Event);
+        ConsumedBytesCount = ReplyNetworkMesageSize;
+        break;
+      }
+      default:
+        InvalidCodePath;
+    }
+
+    if(ConsumedBytesCount == 0) {
+      break;
+    }
+    else {
+      ByteRingBufferReadAdvance(&Client->InBuffer, ConsumedBytesCount);
+    }
+  }
+}
+
 void* RunNetwork(void *Data) {
   MainState = main_state_running;
 
@@ -242,6 +282,7 @@ void* RunNetwork(void *Data) {
             Input.Length = Result;
             printf("Write to %p\n", &Client->InBuffer);
             ByteRingBufferWrite(&Client->InBuffer, Input);
+            ProcessIncoming(Client);
           }
         }
         RecalcReadFDMax();

@@ -44,6 +44,13 @@ memsize SerializeConnectNetworkEvent(client_id ID, buffer Out) {
   return S.Position;
 }
 
+memsize SerializeReplyNetworkEvent(client_id ID, buffer Out) {
+  serializer S = CreateSerializer(Out);
+  WriteType(&S, network_event_type_reply);
+  WriteClientID(&S, ID);
+  return S.Position;
+}
+
 network_event_type UnserializeNetworkEventType(buffer Input) {
   serializer S = CreateSerializer(Input);
   return ReadType(&S);
@@ -65,6 +72,16 @@ disconnect_network_event UnserializeDisconnectNetworkEvent(buffer Input) {
   serializer S = CreateSerializer(Input);
   network_event_type Type = ReadType(&S);
   Assert(Type == network_event_type_disconnect);
+  Event.ClientID = ReadClientID(&S);
+  return Event;
+}
+
+reply_network_event UnserializeReplyNetworkEvent(buffer Input) {
+  Assert(Input.Length == ClientIDLength + TypeLength);
+  reply_network_event Event;
+  serializer S = CreateSerializer(Input);
+  network_event_type Type = ReadType(&S);
+  Assert(Type == network_event_type_reply);
   Event.ClientID = ReadClientID(&S);
   return Event;
 }

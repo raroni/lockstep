@@ -126,6 +126,11 @@ int main() {
             }
             break;
           }
+          case network_event_type_reply: {
+            reply_network_event Event = UnserializeReplyNetworkEvent(EventBuffer);
+            printf("Got reply from %zu.\n", Event.ClientID);
+            break;
+          }
           default:
             InvalidCodePath;
         }
