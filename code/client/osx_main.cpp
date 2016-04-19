@@ -12,10 +12,11 @@
 static bool DisconnectRequested;
 
 struct osx_state {
-  pthread_t NetworkThread;
   void *Memory;
   linear_allocator Allocator;
   client_state ClientState;
+  pthread_t NetworkThread;
+  posix_network_context NetworkContext;
 };
 
 static void HandleSigint(int signum) {
@@ -38,11 +39,12 @@ int main() {
   osx_state State;
 
   InitClient(&State.ClientState);
+  State.ClientState.TEMP_NETWORK_CONTEXT = &State.NetworkContext;
   InitMemory(&State);
 
-  InitNetwork();
+  InitNetwork(&State.NetworkContext);
   {
-    int Result = pthread_create(&State.NetworkThread, 0, RunNetwork, 0);
+    int Result = pthread_create(&State.NetworkThread, 0, RunNetwork, &State.NetworkContext);
     Assert(Result == 0);
   }
 
@@ -60,7 +62,7 @@ int main() {
     Assert(Result == 0);
   }
 
-  TerminateNetwork();
+  TerminateNetwork(&State.NetworkContext);
   TerminateMemory(&State);
   printf("Gracefully terminated.\n");
   return 0;

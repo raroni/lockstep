@@ -18,7 +18,7 @@ void UpdateClient(client_state *State) {
     .Addr = &ReadBufferBlock,
     .Length = sizeof(ReadBufferBlock)
   };
-  while((Length = ReadNetworkEvent(ReadBuffer))) {
+  while((Length = ReadNetworkEvent(State->TEMP_NETWORK_CONTEXT, ReadBuffer))) {
     network_event_type Type = UnserializeNetworkEventType(ReadBuffer);
     switch(Type) {
       case network_event_type_connection_established:
@@ -46,7 +46,7 @@ void UpdateClient(client_state *State) {
           .Length = Length
         };
         printf("Starting game and replying...\n");
-        NetworkSend(Message);
+        NetworkSend(State->TEMP_NETWORK_CONTEXT, Message);
         break;
       }
       default:
@@ -56,7 +56,7 @@ void UpdateClient(client_state *State) {
 
   if(State->DisconnectRequested) {
     printf("Requesting network shutdown...\n");
-    ShutdownNetwork();
+    ShutdownNetwork(State->TEMP_NETWORK_CONTEXT);
     State->Running = false;
   }
 }
