@@ -122,7 +122,7 @@ static NSOpenGLContext* CreateOGLContext() {
   NSOpenGLPixelFormatAttribute Attributes[] = {
     NSOpenGLPFADoubleBuffer,
     NSOpenGLPFAOpenGLProfile,
-    NSOpenGLProfileVersion3_2Core,
+    NSOpenGLProfileVersionLegacy,
     0
   };
   NSOpenGLPixelFormat *PixelFormat = [[NSOpenGLPixelFormat alloc] initWithAttributes:Attributes];
