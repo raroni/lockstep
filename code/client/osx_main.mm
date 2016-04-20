@@ -116,6 +116,11 @@ static void SetupOSXMenu() {
   [Bar addItem:BarItem];
 
   [NSApp setMainMenu:Bar];
+
+  [Menu release];
+  [QuitItem release];
+  [BarItem release];
+  [Bar release];
 }
 
 static NSOpenGLContext* CreateOGLContext() {
@@ -153,7 +158,8 @@ static NSWindow* CreateOSXWindow(ui16 Width, ui16 Height) {
     return NULL;
   }
 
-  Window.delegate = [[ClientWindowDelegate alloc] init];
+  ClientWindowDelegate *Delegate = [[ClientWindowDelegate alloc] init];
+  Window.delegate = Delegate;
   Window.title = [NSString stringWithUTF8String:"Lockstep Client"];
 
   [Window center];
@@ -250,6 +256,19 @@ int main() {
     int Result = pthread_join(State.NetworkThread, 0);
     Assert(Result == 0);
   }
+
+  {
+    ClientAppDelegate *D = App.delegate;
+    App.delegate = nil;
+    [D release];
+  }
+  {
+    ClientWindowDelegate *D = State.Window.delegate;
+    State.Window.delegate = nil;
+    [D release];
+  }
+  [State.Window release];
+  [State.OGLContext release];
 
   TerminateChunkList(&State.NetworkEventList);
   TerminateChunkList(&State.NetworkCommandList);
