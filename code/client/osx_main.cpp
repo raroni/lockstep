@@ -63,6 +63,22 @@ void FlushNetworkCommands(posix_network_context *Context, chunk_list *Cmds) {
   ResetChunkList(Cmds);
 }
 
+void ReadNetwork(posix_network_context *Context, chunk_list *Events) {
+  static ui8 ReadBufferBlock[NETWORK_EVENT_MAX_LENGTH];
+  static buffer ReadBuffer = {
+    .Addr = &ReadBufferBlock,
+    .Length = sizeof(ReadBufferBlock)
+  };
+  memsize Length;
+  while((Length = ReadNetworkEvent(Context, ReadBuffer))) {
+    buffer Event = {
+      .Addr = ReadBuffer.Addr,
+      .Length = Length
+    };
+    ChunkListWrite(Events, Event);
+  }
+}
+
 int main() {
   osx_state State;
 
@@ -99,20 +115,7 @@ int main() {
   State.Running = true;
   while(State.Running) {
     // Gather input
-
-    static ui8 ReadBufferBlock[NETWORK_EVENT_MAX_LENGTH];
-    static buffer ReadBuffer = {
-      .Addr = &ReadBufferBlock,
-      .Length = sizeof(ReadBufferBlock)
-    };
-    memsize Length;
-    while((Length = ReadNetworkEvent(&State.NetworkContext, ReadBuffer))) {
-      buffer Event = {
-        .Addr = ReadBuffer.Addr,
-        .Length = Length
-      };
-      ChunkListWrite(&State.NetworkEventList, Event);
-    }
+    ReadNetwork(&State.NetworkContext, &State.NetworkEventList);
 
     UpdateClient(
       TerminationRequested,
