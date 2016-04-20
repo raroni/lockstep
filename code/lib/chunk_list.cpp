@@ -27,6 +27,15 @@ void ChunkListWrite(chunk_list *List, buffer Chunk) {
   List->WritePos += S.Position;
 }
 
+void* ChunkListAllocate(chunk_list *List, memsize Length) {
+  buffer WriteBuffer = GetSubBuffer(List, List->WritePos);
+  serializer S = CreateSerializer(WriteBuffer);
+  SerializerWriteMemsize(&S, Length);
+  void *Result = (ui8*)List->Buffer.Addr + List->WritePos + Length;
+  List->WritePos += S.Position + Length;
+  return Result;
+}
+
 buffer ChunkListRead(chunk_list *List) {
   buffer Result;
   if(List->ReadPos != List->WritePos) {
