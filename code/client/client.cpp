@@ -1,37 +1,38 @@
 #include <stdio.h>
 #include "lib/def.h"
 #include "lib/assert.h"
+#include "common/memory.h"
 #include "common/network_messages.h"
 #include "network_events.h"
 #include "network_commands.h"
 #include "client.h"
 
-// TODO: Should not use stdlib (use linear_allocator instead).
-#include <stdlib.h>
+struct client_state {
+  linear_allocator Allocator;
+  buffer CommandSerializationBuffer;
+};
 
-static buffer CommandSerializationBuffer;
+void InitClient(client_memory *Memory) {
+  Memory->Running = true;
+  Memory->DisconnectRequested = false;
+  client_state *State = (client_state*)Memory->MemoryPool.Addr;
+  {
+    void *Base = (ui8*)Memory->MemoryPool.Addr + sizeof(client_state);
+    memsize Length = Memory->MemoryPool.Length - sizeof(client_state);
+    InitLinearAllocator(&State->Allocator, Base, Length);
+  }
 
-static buffer CreateBuffer(memsize Length) {
-  buffer B;
-  B.Addr = malloc(Length);
-  Assert(B.Addr != NULL);
-  B.Length = Length;
-  return B;
+  {
+    buffer *B = &State->CommandSerializationBuffer;
+    B->Addr = LinearAllocate(&State->Allocator, NETWORK_COMMAND_MAX_LENGTH);
+    B->Length = NETWORK_COMMAND_MAX_LENGTH;
+  }
+
 }
 
-static void DestroyBuffer(buffer *B) {
-  free(B->Addr);
-  B->Addr = NULL;
-  B->Length = 0;
-}
+void UpdateClient(chunk_list *NetEvents, chunk_list *NetCmds, client_memory *Memory) {
+  client_state *State = (client_state*)Memory->MemoryPool.Addr;
 
-void InitClient(client_state *State) {
-  State->Running = true;
-  State->DisconnectRequested = false;
-  State->CommandSerializationBuffer = CreateBuffer(NETWORK_COMMAND_MAX_LENGTH);
-}
-
-void UpdateClient(chunk_list *NetEvents, chunk_list *NetCmds, client_state *State) {
   for(;;) {
     buffer Event = ChunkListRead(NetEvents);
     if(Event.Length == 0) {
@@ -44,11 +45,11 @@ void UpdateClient(chunk_list *NetEvents, chunk_list *NetCmds, client_state *Stat
         break;
       case network_event_type_connection_lost:
         printf("Game got connection lost!\n");
-        State->Running = false;
+        Memory->Running = false;
         break;
       case network_event_type_connection_failed:
         printf("Game got connection failed!\n");
-        State->Running = false;
+        Memory->Running = false;
         break;
       case network_event_type_start: {
         printf("Game got start event!\n");
@@ -78,7 +79,7 @@ void UpdateClient(chunk_list *NetEvents, chunk_list *NetCmds, client_state *Stat
     }
   }
 
-  if(State->DisconnectRequested) {
+  if(Memory->DisconnectRequested) {
     printf("Requesting network shutdown...\n");
 
     memsize Length = SerializeShutdownNetworkCommand(State->CommandSerializationBuffer);
@@ -88,10 +89,6 @@ void UpdateClient(chunk_list *NetEvents, chunk_list *NetCmds, client_state *Stat
     };
     ChunkListWrite(NetCmds, Command);
 
-    State->Running = false;
+    Memory->Running = false;
   }
-}
-
-void TerminateClient(client_state *State) {
-  DestroyBuffer(&State->CommandSerializationBuffer);
 }
