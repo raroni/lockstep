@@ -12,13 +12,11 @@ struct client_state {
   buffer CommandSerializationBuffer;
 };
 
-void InitClient(client_memory *Memory) {
-  Memory->Running = true;
-  Memory->DisconnectRequested = false;
-  client_state *State = (client_state*)Memory->MemoryPool.Addr;
+void InitClient(buffer Memory) {
+  client_state *State = (client_state*)Memory.Addr;
   {
-    void *Base = (ui8*)Memory->MemoryPool.Addr + sizeof(client_state);
-    memsize Length = Memory->MemoryPool.Length - sizeof(client_state);
+    void *Base = (ui8*)Memory.Addr + sizeof(client_state);
+    memsize Length = Memory.Length - sizeof(client_state);
     InitLinearAllocator(&State->Allocator, Base, Length);
   }
 
@@ -30,8 +28,8 @@ void InitClient(client_memory *Memory) {
 
 }
 
-void UpdateClient(chunk_list *NetEvents, chunk_list *NetCmds, client_memory *Memory) {
-  client_state *State = (client_state*)Memory->MemoryPool.Addr;
+void UpdateClient(bool TerminationRequested, chunk_list *NetEvents, chunk_list *NetCmds, bool *Running, buffer Memory) {
+  client_state *State = (client_state*)Memory.Addr;
 
   for(;;) {
     buffer Event = ChunkListRead(NetEvents);
@@ -45,11 +43,11 @@ void UpdateClient(chunk_list *NetEvents, chunk_list *NetCmds, client_memory *Mem
         break;
       case network_event_type_connection_lost:
         printf("Game got connection lost!\n");
-        Memory->Running = false;
+        *Running = false;
         break;
       case network_event_type_connection_failed:
         printf("Game got connection failed!\n");
-        Memory->Running = false;
+        *Running = false;
         break;
       case network_event_type_start: {
         printf("Game got start event!\n");
@@ -79,7 +77,7 @@ void UpdateClient(chunk_list *NetEvents, chunk_list *NetCmds, client_memory *Mem
     }
   }
 
-  if(Memory->DisconnectRequested) {
+  if(TerminationRequested) {
     printf("Requesting network shutdown...\n");
 
     memsize Length = SerializeShutdownNetworkCommand(State->CommandSerializationBuffer);
@@ -89,6 +87,6 @@ void UpdateClient(chunk_list *NetEvents, chunk_list *NetCmds, client_memory *Mem
     };
     ChunkListWrite(NetCmds, Command);
 
-    Memory->Running = false;
+    *Running = false;
   }
 }

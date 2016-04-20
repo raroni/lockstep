@@ -10,12 +10,13 @@
 #include "client.h"
 #include "posix_network.h"
 
-static bool DisconnectRequested;
+static bool TerminationRequested;
 
 struct osx_state {
+  bool Running;
   void *Memory;
   linear_allocator Allocator;
-  client_memory ClientMemory;
+  buffer ClientMemory;
   chunk_list NetworkCommandList;
   chunk_list NetworkEventList;
   pthread_t NetworkThread;
@@ -23,7 +24,7 @@ struct osx_state {
 };
 
 static void HandleSigint(int signum) {
-  DisconnectRequested = true;
+  TerminationRequested = true;
 }
 
 void InitMemory(osx_state *State) {
@@ -88,15 +89,15 @@ int main() {
   }
 
   {
-    buffer MemoryPool;
-    MemoryPool.Length = 1024*512;
-    MemoryPool.Addr = LinearAllocate(&State.Allocator, MemoryPool.Length);
-    State.ClientMemory.MemoryPool = MemoryPool;
+    buffer *B = &State.ClientMemory;
+    B->Length = 1024*512;
+    B->Addr = LinearAllocate(&State.Allocator, B->Length);
   }
-  InitClient(&State.ClientMemory);
+  InitClient(State.ClientMemory);
 
   signal(SIGINT, HandleSigint);
-  while(State.ClientMemory.Running) {
+  State.Running = true;
+  while(State.Running) {
     // Gather input
 
     static ui8 ReadBufferBlock[NETWORK_EVENT_MAX_LENGTH];
@@ -113,8 +114,13 @@ int main() {
       ChunkListWrite(&State.NetworkEventList, Event);
     }
 
-    State.ClientMemory.DisconnectRequested = DisconnectRequested;
-    UpdateClient(&State.NetworkEventList, &State.NetworkCommandList, &State.ClientMemory);
+    UpdateClient(
+      TerminationRequested,
+      &State.NetworkEventList,
+      &State.NetworkCommandList,
+      &State.Running,
+      State.ClientMemory
+    );
     FlushNetworkCommands(&State.NetworkContext, &State.NetworkCommandList);
     // Render();
   }
