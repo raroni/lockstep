@@ -234,6 +234,7 @@ int main() {
 #endif
 
   signal(SIGINT, HandleSigint);
+  InitOpenGL();
   State.Running = true;
   while(State.Running) {
     ProcessOSXMessages();

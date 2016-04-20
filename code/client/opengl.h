@@ -1,1 +1,2 @@
+void InitOpenGL();
 void DisplayOpenGL();
