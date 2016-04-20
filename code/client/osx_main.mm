@@ -11,6 +11,7 @@
 #include "network_events.h"
 #include "client.h"
 #include "posix_network.h"
+#include "opengl.h"
 
 static bool TerminationRequested;
 
@@ -18,6 +19,7 @@ struct osx_state {
   bool Running;
   void *Memory;
   NSWindow *Window;
+  NSOpenGLContext *OGLContext;
   linear_allocator Allocator;
   buffer ClientMemory;
   chunk_list NetworkCommandList;
@@ -116,6 +118,28 @@ static void SetupOSXMenu() {
   [NSApp setMainMenu:Bar];
 }
 
+static NSOpenGLContext* CreateOGLContext() {
+  NSOpenGLPixelFormatAttribute Attributes[] = {
+    NSOpenGLPFADoubleBuffer,
+    NSOpenGLPFAOpenGLProfile,
+    NSOpenGLProfileVersion3_2Core,
+    0
+  };
+  NSOpenGLPixelFormat *PixelFormat = [[NSOpenGLPixelFormat alloc] initWithAttributes:Attributes];
+  if(PixelFormat == nil) {
+    return NULL;
+  }
+
+  NSOpenGLContext *Context = [[NSOpenGLContext alloc] initWithFormat:PixelFormat shareContext:nil];
+
+  GLint Sync = 1;
+  [Context setValues:&Sync forParameter:NSOpenGLCPSwapInterval];
+
+  [PixelFormat release];
+
+  return Context;
+}
+
 static NSWindow* CreateOSXWindow(ui16 Width, ui16 Height) {
   int StyleMask = NSTitledWindowMask | NSClosableWindowMask | NSMiniaturizableWindowMask;
 
@@ -194,6 +218,11 @@ int main() {
   State.Window = CreateOSXWindow(800, 600);
   Assert(State.Window != NULL);
 
+  State.OGLContext = CreateOGLContext();
+  Assert(State.OGLContext != NULL);
+  [State.OGLContext makeCurrentContext];
+  [State.OGLContext setView:State.Window.contentView];
+
 #ifdef DEBUG
   [NSApp activateIgnoringOtherApps:YES];
 #endif
@@ -212,7 +241,8 @@ int main() {
       State.ClientMemory
     );
     FlushNetworkCommands(&State.NetworkContext, &State.NetworkCommandList);
-    // Render();
+    DisplayOpenGL();
+    [State.OGLContext flushBuffer];
   }
 
   {

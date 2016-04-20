@@ -19,14 +19,14 @@ SERVER_SOURCES = $(COMMON_SOURCES) $(CODE_ROOT)/server/main.cpp $(CODE_ROOT)/ser
 SERVER_OBJS = $(patsubst %.cpp, $(OBJECTS_DIR)/%.o, $(SERVER_SOURCES))
 SERVER_DEPS = $(sort $(patsubst %, %.deps, $(SERVER_OBJS)))
 
-CLIENT_OSX_FRAMEWORKS = CoreFoundation AppKit
+CLIENT_OSX_FRAMEWORKS = CoreFoundation AppKit OpenGL
 CLIENT_OSX_FRAMEWORKS_FLAGS = $(addprefix -framework , $(CLIENT_OSX_FRAMEWORKS))
 
 CLIENT_INFO_PLIST = client_info.plist
 CLIENT_PRODUCT_DIR = $(PRODUCT_DIR)/LockstepClient.app
 CLIENT_CONTENTS_DIR = $(SERVER_PRODUCT_DIR)/Contents
 CLIENT_BINARY = $(CLIENT_CONTENTS_DIR)/MacOS/LockstepClient
-CLIENT_CPP_SOURCES = $(COMMON_SOURCES) $(CODE_ROOT)/client/posix_network.cpp $(CODE_ROOT)/lib/chunk_ring_buffer.cpp $(CODE_ROOT)/lib/chunk_list.cpp $(CODE_ROOT)/lib/byte_ring_buffer.cpp $(CODE_ROOT)/client/network_events.cpp $(CODE_ROOT)/client/network_commands.cpp $(CODE_ROOT)/client/client.cpp
+CLIENT_CPP_SOURCES = $(COMMON_SOURCES) $(CODE_ROOT)/client/posix_network.cpp $(CODE_ROOT)/lib/chunk_ring_buffer.cpp $(CODE_ROOT)/lib/chunk_list.cpp $(CODE_ROOT)/lib/byte_ring_buffer.cpp $(CODE_ROOT)/client/network_events.cpp $(CODE_ROOT)/client/network_commands.cpp $(CODE_ROOT)/client/client.cpp $(CODE_ROOT)/client/opengl.cpp
 CLIENT_OBJ_CPP_SOURCES = $(CODE_ROOT)/client/osx_main.mm
 CLIENT_CPP_OBJS = $(patsubst %.cpp, $(OBJECTS_DIR)/%.o, $(CLIENT_CPP_SOURCES))
 CLIENT_CPP_CPP_OBJS = $(patsubst %.mm, $(OBJECTS_DIR)/%.o, $(CLIENT_OBJ_CPP_SOURCES))
