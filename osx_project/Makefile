@@ -8,7 +8,7 @@ COMMON_FLAGS += -DDEBUG
 PRODUCT_DIR = $(BUILD_DIR)/products
 OBJECTS_DIR = $(BUILD_DIR)/objects
 
-ROOT = ./..
+ROOT = $(realpath ./..)
 CODE_ROOT = $(ROOT)/code
 
 COMMON_SOURCES = code/common/memory.cpp code/common/network.cpp code/common/serialization.cpp code/lib/assert.cpp code/common/network_messages.cpp code/common/conversion.cpp
