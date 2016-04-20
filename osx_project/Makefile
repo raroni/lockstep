@@ -10,12 +10,12 @@ OBJECTS_DIR = $(BUILD_DIR)/objects
 
 CODE_ROOT = ../code
 
-COMMON_SOURCES = $(CODE_ROOT)/common/memory.cpp $(CODE_ROOT)/common/network.cpp $(CODE_ROOT)/common/serialization.cpp $(CODE_ROOT)/lib/assert.cpp $(CODE_ROOT)/common/network_messages.cpp $(CODE_ROOT)/common/conversion.cpp
+COMMON_SOURCES = common/memory.cpp common/network.cpp common/serialization.cpp lib/assert.cpp common/network_messages.cpp common/conversion.cpp
 COMMON_HEADER_INCLUDES = -iquote $(CODE_ROOT)
 
 SERVER_PRODUCT_DIR = $(PRODUCT_DIR)/LockstepServer.app
 SERVER_BINARY = $(SERVER_PRODUCT_DIR)/Contents/MacOS/LockstepServer
-SERVER_SOURCES = $(COMMON_SOURCES) $(CODE_ROOT)/server/main.cpp $(CODE_ROOT)/server/network.cpp $(CODE_ROOT)/server/client_set.cpp $(CODE_ROOT)/server/network_events.cpp $(CODE_ROOT)/server/network_commands.cpp $(CODE_ROOT)/lib/chunk_ring_buffer.cpp $(CODE_ROOT)/lib/byte_ring_buffer.cpp
+SERVER_SOURCES = $(COMMON_SOURCES) server/main.cpp server/network.cpp server/client_set.cpp server/network_events.cpp server/network_commands.cpp lib/chunk_ring_buffer.cpp lib/byte_ring_buffer.cpp
 SERVER_OBJS = $(patsubst %.cpp, $(OBJECTS_DIR)/%.o, $(SERVER_SOURCES))
 SERVER_DEPS = $(sort $(patsubst %, %.deps, $(SERVER_OBJS)))
 
@@ -26,8 +26,8 @@ CLIENT_INFO_PLIST = client_info.plist
 CLIENT_PRODUCT_DIR = $(PRODUCT_DIR)/LockstepClient.app
 CLIENT_CONTENTS_DIR = $(SERVER_PRODUCT_DIR)/Contents
 CLIENT_BINARY = $(CLIENT_CONTENTS_DIR)/MacOS/LockstepClient
-CLIENT_CPP_SOURCES = $(COMMON_SOURCES) $(CODE_ROOT)/client/posix_network.cpp $(CODE_ROOT)/lib/chunk_ring_buffer.cpp $(CODE_ROOT)/lib/chunk_list.cpp $(CODE_ROOT)/lib/byte_ring_buffer.cpp $(CODE_ROOT)/client/network_events.cpp $(CODE_ROOT)/client/network_commands.cpp $(CODE_ROOT)/client/client.cpp $(CODE_ROOT)/client/opengl.cpp
-CLIENT_OBJ_CPP_SOURCES = $(CODE_ROOT)/client/osx_main.mm
+CLIENT_CPP_SOURCES = $(COMMON_SOURCES) client/posix_network.cpp lib/chunk_ring_buffer.cpp lib/chunk_list.cpp lib/byte_ring_buffer.cpp client/network_events.cpp client/network_commands.cpp client/client.cpp client/opengl.cpp
+CLIENT_OBJ_CPP_SOURCES = client/osx_main.mm
 CLIENT_CPP_OBJS = $(patsubst %.cpp, $(OBJECTS_DIR)/%.o, $(CLIENT_CPP_SOURCES))
 CLIENT_CPP_CPP_OBJS = $(patsubst %.mm, $(OBJECTS_DIR)/%.o, $(CLIENT_OBJ_CPP_SOURCES))
 CLIENT_OBJS = $(CLIENT_CPP_OBJS) $(CLIENT_CPP_CPP_OBJS)
@@ -55,11 +55,11 @@ TEST_DEPS = $(sort $(patsubst %, %.deps, $(TEST_OBJS)))
 -include $(CLIENT_DEPS)
 -include $(TEST_DEPS)
 
-$(OBJECTS_DIR)/%.o: ./%.cpp
+$(OBJECTS_DIR)/%.o: $(CODE_ROOT)/%.cpp
 	mkdir -p $(dir $@)
 	$(CC) $(COMMON_FLAGS) $(COMMON_HEADER_INCLUDES) -c $< -o $@ -MMD -MF $@.deps
 
-$(OBJECTS_DIR)/%.o: ./%.mm
+$(OBJECTS_DIR)/%.o: $(CODE_ROOT)/%.mm
 	mkdir -p $(dir $@)
 	$(CC) $(COMMON_FLAGS) $(COMMON_HEADER_INCLUDES) -fno-objc-arc -c $< -o $@ -MMD -MF $@.deps
 
