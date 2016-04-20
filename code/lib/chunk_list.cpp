@@ -1,5 +1,5 @@
 #include "lib/assert.h"
-#include "common/serialization.h"
+#include "lib/serialization.h"
 #include "chunk_list.h"
 
 buffer GetSubBuffer(chunk_list *List, memsize Pos) {

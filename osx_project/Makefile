@@ -11,7 +11,7 @@ OBJECTS_DIR = $(BUILD_DIR)/objects
 ROOT = $(realpath ./..)
 CODE_ROOT = $(ROOT)/code
 
-COMMON_SOURCES = code/common/memory.cpp code/common/network.cpp code/common/serialization.cpp code/lib/assert.cpp code/common/network_messages.cpp code/common/conversion.cpp
+COMMON_SOURCES = code/common/memory.cpp code/common/network.cpp code/lib/serialization.cpp code/lib/assert.cpp code/common/network_messages.cpp code/common/conversion.cpp
 COMMON_HEADER_INCLUDES = -iquote $(CODE_ROOT)
 
 SERVER_PRODUCT_DIR = $(PRODUCT_DIR)/LockstepServer.app
@@ -47,7 +47,7 @@ TEST_SOURCES =\
 	code/lib/byte_ring_buffer.cpp\
 	code/lib/chunk_list.cpp\
 	code/lib/chunk_ring_buffer.cpp\
-	code/common/serialization.cpp\
+	code/lib/serialization.cpp\
 	code/server/client_set.cpp
 TEST_OBJS = $(patsubst %.cpp, $(OBJECTS_DIR)/%.o, $(TEST_SOURCES))
 TEST_DEPS = $(sort $(patsubst %, %.deps, $(TEST_OBJS)))

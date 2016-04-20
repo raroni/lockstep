@@ -1,6 +1,6 @@
 #include "lib/assert.h"
+#include "lib/serialization.h"
 #include "common/conversion.h"
-#include "serialization.h"
 #include "network_messages.h"
 
 const memsize StartNetworkMesageSize = 1;

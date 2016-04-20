@@ -1,5 +1,5 @@
 #include "lib/assert.h"
-#include "common/serialization.h"
+#include "lib/serialization.h"
 #include "network_events.h"
 
 static memsize ClientIDLength = sizeof(ui8);
