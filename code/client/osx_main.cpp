@@ -39,20 +39,16 @@ void TerminateMemory(osx_state *State) {
 }
 
 void FlushNetworkCommands(posix_network_context *Context, chunk_list *Cmds) {
-  static ui8 ReadBufferBlock[NETWORK_COMMAND_MAX_LENGTH];
-  static buffer ReadBuffer = {
-    .Addr = ReadBufferBlock,
-    .Length = sizeof(ReadBufferBlock)
-  };
-
-  // TODO: Unnecessary to actually copy data
-  while(memsize Length = ChunkListRead(Cmds, ReadBuffer)) {
-    network_command_type Type = UnserializeNetworkCommandType(ReadBuffer);
-    buffer Data = { .Addr = ReadBufferBlock, .Length = Length };
+  for(;;) {
+    buffer Command = ChunkListRead(Cmds);
+    if(Command.Length == 0) {
+      break;
+    }
+    network_command_type Type = UnserializeNetworkCommandType(Command);
     switch(Type) {
       case network_command_type_send: {
-        send_network_command Command = UnserializeSendNetworkCommand(Data);
-        NetworkSend(Context, Command.Message);
+        send_network_command SendCommand = UnserializeSendNetworkCommand(Command);
+        NetworkSend(Context, SendCommand.Message);
         break;
       }
       case network_command_type_shutdown: {

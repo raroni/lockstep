@@ -1,4 +1,3 @@
-#include <string.h>
 #include "lib/assert.h"
 #include "common/serialization.h"
 #include "chunk_list.h"
@@ -28,20 +27,24 @@ void ChunkListWrite(chunk_list *List, buffer Chunk) {
   List->WritePos += S.Position;
 }
 
-memsize ChunkListRead(chunk_list *List, buffer Chunk) {
-  if(List->ReadPos == List->WritePos) {
-    return 0;
+buffer ChunkListRead(chunk_list *List) {
+  buffer Result;
+  if(List->ReadPos != List->WritePos) {
+    buffer ReadBuffer = GetSubBuffer(List, List->ReadPos);
+    serializer S = CreateSerializer(ReadBuffer);
+    memsize Length = SerializerReadMemsize(&S);
+
+    Result.Addr = (ui8*)ReadBuffer.Addr + S.Position;
+    Result.Length = Length;
+
+    List->ReadPos += S.Position + Length;
   }
-  buffer WriteBuffer = GetSubBuffer(List, List->ReadPos);
-  serializer S = CreateSerializer(WriteBuffer);
-  memsize Length = SerializerReadMemsize(&S);
-  Assert(Length <= Chunk.Length);
-  void *Source = SerializerRead(&S, Length);
-  memcpy(Chunk.Addr, Source, Length);
+  else {
+    Result.Addr = NULL;
+    Result.Length = 0;
+  }
 
-  List->ReadPos += S.Position;
-
-  return Length;
+  return Result;
 }
 
 void TerminateChunkList(chunk_list *List) {

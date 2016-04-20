@@ -11,5 +11,5 @@ struct chunk_list {
 void InitChunkList(chunk_list *List, buffer Data);
 void ResetChunkList(chunk_list *List);
 void ChunkListWrite(chunk_list *List, buffer Chunk);
-memsize ChunkListRead(chunk_list *List, buffer Chunk);
+buffer ChunkListRead(chunk_list *List);
 void TerminateChunkList(chunk_list *List);

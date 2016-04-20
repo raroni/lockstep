@@ -29,25 +29,21 @@ static void TestBasicWriteRead(ow_test_context Context) {
   ChunkListWrite(&List, Message1);
   ChunkListWrite(&List, Message2);
 
-  memsize Length;
-  ui8 ReadBufferBlock[16];
-  buffer ReadBuffer = { .Addr = &ReadBufferBlock, .Length = sizeof(ReadBufferBlock) };
+  buffer Chunk = ChunkListRead(&List);
+  OW_AssertEqualInt(3, Chunk.Length);
+  OW_AssertEqualInt(3, ((ui8*)Chunk.Addr)[0]);
+  OW_AssertEqualInt(2, ((ui8*)Chunk.Addr)[1]);
+  OW_AssertEqualInt(1, ((ui8*)Chunk.Addr)[2]);
 
-  Length = ChunkListRead(&List, ReadBuffer);
-  OW_AssertEqualInt(3, Length);
-  OW_AssertEqualInt(3, ReadBufferBlock[0]);
-  OW_AssertEqualInt(2, ReadBufferBlock[1]);
-  OW_AssertEqualInt(1, ReadBufferBlock[2]);
+  Chunk = ChunkListRead(&List);
+  OW_AssertEqualInt(4, Chunk.Length);
+  OW_AssertEqualInt(4, ((ui8*)Chunk.Addr)[0]);
+  OW_AssertEqualInt(5, ((ui8*)Chunk.Addr)[1]);
+  OW_AssertEqualInt(6, ((ui8*)Chunk.Addr)[2]);
+  OW_AssertEqualInt(7, ((ui8*)Chunk.Addr)[3]);
 
-  Length = ChunkListRead(&List, ReadBuffer);
-  OW_AssertEqualInt(4, Length);
-  OW_AssertEqualInt(4, ReadBufferBlock[0]);
-  OW_AssertEqualInt(5, ReadBufferBlock[1]);
-  OW_AssertEqualInt(6, ReadBufferBlock[2]);
-  OW_AssertEqualInt(7, ReadBufferBlock[3]);
-
-  Length = ChunkListRead(&List, ReadBuffer);
-  OW_AssertEqualInt(0, Length);
+  Chunk = ChunkListRead(&List);
+  OW_AssertEqualInt(0, Chunk.Length);
 
   TerminateChunkList(&List);
   DestroyTestBuffer(&BackBuffer);
@@ -63,8 +59,8 @@ static void TestReset(ow_test_context Context) {
 
   ResetChunkList(&List);
 
-  memsize Length = ChunkListRead(&List, IOBuffer);
-  OW_AssertEqualInt(0, Length);
+  buffer Chunk = ChunkListRead(&List);
+  OW_AssertEqualInt(0, Chunk.Length);
 
   DestroyTestBuffer(&IOBuffer);
   TerminateChunkList(&List);

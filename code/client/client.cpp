@@ -32,14 +32,12 @@ void InitClient(client_state *State) {
 }
 
 void UpdateClient(chunk_list *NetEvents, chunk_list *NetCmds, client_state *State) {
-  memsize Length;
-  static ui8 ReadBufferBlock[NETWORK_EVENT_MAX_LENGTH];
-  static buffer ReadBuffer = {
-    .Addr = &ReadBufferBlock,
-    .Length = sizeof(ReadBufferBlock)
-  };
-  while((Length = ChunkListRead(NetEvents, ReadBuffer))) {
-    network_event_type Type = UnserializeNetworkEventType(ReadBuffer);
+  for(;;) {
+    buffer Event = ChunkListRead(NetEvents);
+    if(Event.Length == 0) {
+      break;
+    }
+    network_event_type Type = UnserializeNetworkEventType(Event);
     switch(Type) {
       case network_event_type_connection_established:
         printf("Game got connection established!\n");
@@ -83,7 +81,7 @@ void UpdateClient(chunk_list *NetEvents, chunk_list *NetCmds, client_state *Stat
   if(State->DisconnectRequested) {
     printf("Requesting network shutdown...\n");
 
-    Length = SerializeShutdownNetworkCommand(State->CommandSerializationBuffer);
+    memsize Length = SerializeShutdownNetworkCommand(State->CommandSerializationBuffer);
     buffer Command = {
       .Addr = State->CommandSerializationBuffer.Addr,
       .Length = Length
