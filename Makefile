@@ -3,7 +3,8 @@ include MakefileSettings
 all: server client
 
 CC = clang++
-CPP_FLAGS = -Wall -g -std=gnu++11 -stdlib=libc++ -ferror-limit=1 -fno-exceptions -fno-rtti
+COMMON_FLAGS = -Wall -g -std=gnu++11 -stdlib=libc++ -ferror-limit=1 -fno-exceptions -fno-rtti
+COMMON_FLAGS += -DDEBUG
 PRODUCT_DIR = $(BUILD_DIR)/products
 OBJECTS_DIR = $(BUILD_DIR)/objects
 
@@ -16,10 +17,16 @@ SERVER_SOURCES = $(COMMON_SOURCES) code/server/main.cpp code/server/network.cpp 
 SERVER_OBJS = $(patsubst %.cpp, $(OBJECTS_DIR)/%.o, $(SERVER_SOURCES))
 SERVER_DEPS = $(sort $(patsubst %, %.deps, $(SERVER_OBJS)))
 
+CLIENT_OSX_FRAMEWORKS = CoreFoundation AppKit
+CLIENT_OSX_FRAMEWORKS_FLAGS = $(addprefix -framework , $(CLIENT_OSX_FRAMEWORKS))
+
 CLIENT_PRODUCT_DIR = $(PRODUCT_DIR)/LockstepClient.app
 CLIENT_BINARY = $(SERVER_PRODUCT_DIR)/Contents/MacOS/LockstepClient
-CLIENT_SOURCES = $(COMMON_SOURCES) code/client/osx_main.cpp code/client/posix_network.cpp code/lib/chunk_ring_buffer.cpp code/lib/chunk_list.cpp code/lib/byte_ring_buffer.cpp code/client/network_events.cpp code/client/network_commands.cpp code/client/client.cpp
-CLIENT_OBJS = $(patsubst %.cpp, $(OBJECTS_DIR)/%.o, $(CLIENT_SOURCES))
+CLIENT_CPP_SOURCES = $(COMMON_SOURCES) code/client/posix_network.cpp code/lib/chunk_ring_buffer.cpp code/lib/chunk_list.cpp code/lib/byte_ring_buffer.cpp code/client/network_events.cpp code/client/network_commands.cpp code/client/client.cpp
+CLIENT_OBJ_CPP_SOURCES = code/client/osx_main.mm
+CLIENT_CPP_OBJS = $(patsubst %.cpp, $(OBJECTS_DIR)/%.o, $(CLIENT_CPP_SOURCES))
+CLIENT_CPP_CPP_OBJS = $(patsubst %.mm, $(OBJECTS_DIR)/%.o, $(CLIENT_OBJ_CPP_SOURCES))
+CLIENT_OBJS = $(CLIENT_CPP_OBJS) $(CLIENT_CPP_CPP_OBJS)
 CLIENT_DEPS = $(sort $(patsubst %, %.deps, $(CLIENT_OBJS)))
 
 TEST_PRODUCT_DIR = $(PRODUCT_DIR)/test
@@ -46,19 +53,23 @@ TEST_DEPS = $(sort $(patsubst %, %.deps, $(TEST_OBJS)))
 
 $(OBJECTS_DIR)/%.o: ./%.cpp
 	mkdir -p $(dir $@)
-	$(CC) $(CPP_FLAGS) $(COMMON_HEADER_INCLUDES) -c $< -o $@ -MMD -MF $@.deps
+	$(CC) $(COMMON_FLAGS) $(COMMON_HEADER_INCLUDES) -c $< -o $@ -MMD -MF $@.deps
+
+$(OBJECTS_DIR)/%.o: ./%.mm
+	mkdir -p $(dir $@)
+	$(CC) $(COMMON_FLAGS) $(COMMON_HEADER_INCLUDES) -fno-objc-arc -c $< -o $@ -MMD -MF $@.deps
 
 $(SERVER_BINARY): $(SERVER_OBJS)
 	mkdir -p $(dir $@)
-	$(CC) $(CPP_FLAGS) $^ -o $@
+	$(CC) $(COMMON_FLAGS) $^ -o $@
 
 $(CLIENT_BINARY): $(CLIENT_OBJS)
 	mkdir -p $(dir $@)
-	$(CC) $(CPP_FLAGS) $^ -o $@
+	$(CC) $(COMMON_FLAGS) $(CLIENT_OSX_FRAMEWORKS_FLAGS) $^ -o $@
 
 $(TEST_BINARY): $(TEST_OBJS)
 	mkdir -p $(dir $@)
-	$(CC) $(CPP_FLAGS) $^ -o $@
+	$(CC) $(COMMON_FLAGS) $^ -o $@
 
 server: $(SERVER_BINARY)
 

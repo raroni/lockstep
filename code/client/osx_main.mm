@@ -2,6 +2,8 @@
 #include <signal.h>
 #include <sys/time.h>
 #include <pthread.h>
+#include <Foundation/Foundation.h>
+#include <AppKit/AppKit.h>
 #include "lib/assert.h"
 #include "common/network_messages.h"
 #include "common/memory.h"
@@ -15,6 +17,7 @@ static bool TerminationRequested;
 struct osx_state {
   bool Running;
   void *Memory;
+  NSWindow *Window;
   linear_allocator Allocator;
   buffer ClientMemory;
   chunk_list NetworkCommandList;
@@ -22,6 +25,26 @@ struct osx_state {
   pthread_t NetworkThread;
   posix_network_context NetworkContext;
 };
+
+@interface ClientAppDelegate : NSObject <NSApplicationDelegate>
+@end
+
+@implementation ClientAppDelegate
+- (NSApplicationTerminateReply)applicationShouldTerminate:(NSApplication*)sender {
+  TerminationRequested = true;
+  return NSTerminateCancel;
+}
+@end
+
+@interface ClientWindowDelegate : NSObject <NSWindowDelegate>
+@end
+
+@implementation ClientWindowDelegate
+- (BOOL)windowShouldClose:(id)sender {
+    TerminationRequested = true;
+    return NO;
+}
+@end
 
 static void HandleSigint(int signum) {
   TerminationRequested = true;
@@ -79,6 +102,57 @@ void ReadNetwork(posix_network_context *Context, chunk_list *Events) {
   }
 }
 
+static void SetupOSXMenu() {
+  NSMenu *Menu = [[NSMenu alloc] init];
+  NSMenuItem *QuitItem = [[NSMenuItem alloc] initWithTitle:@"Quit" action:@selector(terminate:) keyEquivalent:@"q"];
+  [Menu addItem:QuitItem];
+
+  NSMenuItem *BarItem = [[NSMenuItem alloc] init];
+  [BarItem setSubmenu:Menu];
+
+  NSMenu *Bar = [[NSMenu alloc] init];
+  [Bar addItem:BarItem];
+
+  [NSApp setMainMenu:Bar];
+}
+
+static NSWindow* CreateOSXWindow(ui16 Width, ui16 Height) {
+  int StyleMask = NSTitledWindowMask | NSClosableWindowMask | NSMiniaturizableWindowMask;
+
+  CGRect Rect = NSMakeRect(0, 0, Width, Height);
+  NSWindow *Window = [[NSWindow alloc] initWithContentRect:Rect
+                                          styleMask:StyleMask
+                                            backing:NSBackingStoreBuffered
+                                              defer:NO
+                                              screen:[NSScreen mainScreen]];
+  if(Window == nil) {
+    return NULL;
+  }
+
+  Window.delegate = [[ClientWindowDelegate alloc] init];
+  Window.title = [NSString stringWithUTF8String:"Lockstep Client"];
+
+  [Window center];
+  [Window makeKeyAndOrderFront:nil];
+
+  return Window;
+}
+
+static void ProcessOSXMessages() {
+  while(true) {
+    NSEvent *Event = [NSApp nextEventMatchingMask:NSAnyEventMask
+                                        untilDate:[NSDate distantPast]
+                                           inMode:NSDefaultRunLoopMode
+                                          dequeue:YES];
+    if(Event == nil) {
+      return;
+    }
+    else {
+      [NSApp sendEvent:Event];
+    }
+  }
+}
+
 int main() {
   osx_state State;
 
@@ -111,10 +185,23 @@ int main() {
   }
   InitClient(State.ClientMemory);
 
+  NSApplication *App = [NSApplication sharedApplication];
+  App.delegate = [[ClientAppDelegate alloc] init];
+  App.activationPolicy = NSApplicationActivationPolicyRegular;
+  SetupOSXMenu();
+  [App finishLaunching];
+
+  State.Window = CreateOSXWindow(800, 600);
+  Assert(State.Window != NULL);
+
+#ifdef DEBUG
+  [NSApp activateIgnoringOtherApps:YES];
+#endif
+
   signal(SIGINT, HandleSigint);
   State.Running = true;
   while(State.Running) {
-    // Gather input
+    ProcessOSXMessages();
     ReadNetwork(&State.NetworkContext, &State.NetworkEventList);
 
     UpdateClient(
