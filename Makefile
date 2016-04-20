@@ -20,8 +20,10 @@ SERVER_DEPS = $(sort $(patsubst %, %.deps, $(SERVER_OBJS)))
 CLIENT_OSX_FRAMEWORKS = CoreFoundation AppKit
 CLIENT_OSX_FRAMEWORKS_FLAGS = $(addprefix -framework , $(CLIENT_OSX_FRAMEWORKS))
 
+CLIENT_INFO_PLIST = client_info.plist
 CLIENT_PRODUCT_DIR = $(PRODUCT_DIR)/LockstepClient.app
-CLIENT_BINARY = $(SERVER_PRODUCT_DIR)/Contents/MacOS/LockstepClient
+CLIENT_CONTENTS_DIR = $(SERVER_PRODUCT_DIR)/Contents
+CLIENT_BINARY = $(CLIENT_CONTENTS_DIR)/MacOS/LockstepClient
 CLIENT_CPP_SOURCES = $(COMMON_SOURCES) code/client/posix_network.cpp code/lib/chunk_ring_buffer.cpp code/lib/chunk_list.cpp code/lib/byte_ring_buffer.cpp code/client/network_events.cpp code/client/network_commands.cpp code/client/client.cpp
 CLIENT_OBJ_CPP_SOURCES = code/client/osx_main.mm
 CLIENT_CPP_OBJS = $(patsubst %.cpp, $(OBJECTS_DIR)/%.o, $(CLIENT_CPP_SOURCES))
@@ -63,9 +65,10 @@ $(SERVER_BINARY): $(SERVER_OBJS)
 	mkdir -p $(dir $@)
 	$(CC) $(COMMON_FLAGS) $^ -o $@
 
-$(CLIENT_BINARY): $(CLIENT_OBJS)
+$(CLIENT_BINARY): $(CLIENT_OBJS) $(CLIENT_INFO_PLIST)
 	mkdir -p $(dir $@)
-	$(CC) $(COMMON_FLAGS) $(CLIENT_OSX_FRAMEWORKS_FLAGS) $^ -o $@
+	cp -r $(CLIENT_INFO_PLIST) $(CLIENT_CONTENTS_DIR)/Info.plist
+	$(CC) $(COMMON_FLAGS) $(CLIENT_OSX_FRAMEWORKS_FLAGS) $(CLIENT_OBJS) -o $@
 
 $(TEST_BINARY): $(TEST_OBJS)
 	mkdir -p $(dir $@)
