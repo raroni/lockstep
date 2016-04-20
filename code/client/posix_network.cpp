@@ -22,7 +22,7 @@ static void RequestWake(posix_network_context *Context) {
   write(Context->WakeWriteFD, &X, 1);
 }
 
-buffer CreateBuffer(memsize Length) {
+static buffer CreateBuffer(memsize Length) {
   buffer B;
   B.Addr = malloc(Length);
   Assert(B.Addr != NULL);
@@ -30,7 +30,7 @@ buffer CreateBuffer(memsize Length) {
   return B;
 }
 
-void DestroyBuffer(buffer *B) {
+static void DestroyBuffer(buffer *B) {
   free(B->Addr);
   B->Addr = NULL;
   B->Length = 0;
@@ -88,8 +88,8 @@ void InitNetwork(posix_network_context *Context) {
     InitByteRingBuffer(&Context->IncomingRing, Buffer);
   }
 
-  Context->CommandSerializationBuffer = CreateBuffer(COMMAND_MAX_LENGTH);
-  Context->CommandReadBuffer = CreateBuffer(COMMAND_MAX_LENGTH);
+  Context->CommandSerializationBuffer = CreateBuffer(NETWORK_COMMAND_MAX_LENGTH);
+  Context->CommandReadBuffer = CreateBuffer(NETWORK_COMMAND_MAX_LENGTH);
   Context->ReceiveBuffer = CreateBuffer(1024*10);
   Context->EventSerializationBuffer = CreateBuffer(NETWORK_EVENT_MAX_LENGTH);
   Context->IncomingReadBuffer = CreateBuffer(MAX_MESSAGE_LENGTH);

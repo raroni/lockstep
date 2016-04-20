@@ -2,7 +2,7 @@
 
 #include "network.h"
 
-#define COMMAND_MAX_LENGTH 512
+#define NETWORK_COMMAND_MAX_LENGTH 512
 
 enum network_command_type {
   network_command_type_shutdown,

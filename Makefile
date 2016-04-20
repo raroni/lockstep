@@ -18,7 +18,7 @@ SERVER_DEPS = $(sort $(patsubst %, %.deps, $(SERVER_OBJS)))
 
 CLIENT_PRODUCT_DIR = $(PRODUCT_DIR)/LockstepClient.app
 CLIENT_BINARY = $(SERVER_PRODUCT_DIR)/Contents/MacOS/LockstepClient
-CLIENT_SOURCES = $(COMMON_SOURCES) code/client/osx_main.cpp code/client/posix_network.cpp code/lib/chunk_ring_buffer.cpp code/lib/byte_ring_buffer.cpp code/client/network_events.cpp code/client/network_commands.cpp code/client/client.cpp
+CLIENT_SOURCES = $(COMMON_SOURCES) code/client/osx_main.cpp code/client/posix_network.cpp code/lib/chunk_ring_buffer.cpp code/lib/chunk_list.cpp code/lib/byte_ring_buffer.cpp code/client/network_events.cpp code/client/network_commands.cpp code/client/client.cpp
 CLIENT_OBJS = $(patsubst %.cpp, $(OBJECTS_DIR)/%.o, $(CLIENT_SOURCES))
 CLIENT_DEPS = $(sort $(patsubst %, %.deps, $(CLIENT_OBJS)))
 
@@ -30,9 +30,12 @@ TEST_SOURCES =\
 	test/byte_ring_buffer_test.cpp\
 	test/chunk_ring_buffer_test.cpp\
 	test/client_set_iterator_test.cpp\
+	test/chunk_list_test.cpp\
 	code/lib/assert.cpp\
 	code/lib/byte_ring_buffer.cpp\
+	code/lib/chunk_list.cpp\
 	code/lib/chunk_ring_buffer.cpp\
+	code/common/serialization.cpp\
 	code/server/client_set.cpp
 TEST_OBJS = $(patsubst %.cpp, $(OBJECTS_DIR)/%.o, $(TEST_SOURCES))
 TEST_DEPS = $(sort $(patsubst %, %.deps, $(TEST_OBJS)))

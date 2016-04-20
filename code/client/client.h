@@ -1,13 +1,12 @@
 #pragma once
 
-// TODO: Remove this include
-#include "posix_network.h"
+#include "lib/chunk_list.h"
 
-struct client_state {
-  posix_network_context *TEMP_NETWORK_CONTEXT;
-  bool Running;
-  bool DisconnectRequested;
-};
-
-void InitClient(client_state *State);
-void UpdateClient(client_state *State);
+void InitClient(buffer Memory);
+void UpdateClient(
+  bool TerminationRequested,
+  chunk_list *NetEvents,
+  chunk_list *NetCmds,
+  bool *Running,
+  buffer Memory
+);

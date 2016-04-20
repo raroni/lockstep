@@ -3,7 +3,7 @@
 #include "orwell.h"
 #include "lib/byte_ring_buffer.h"
 
-buffer CreateTestBuffer(memsize Length) {
+static buffer CreateTestBuffer(memsize Length) {
   void *Addr = malloc(Length);
   buffer Buffer;
   Buffer.Addr = Addr;
@@ -11,7 +11,7 @@ buffer CreateTestBuffer(memsize Length) {
   return Buffer;
 }
 
-void DestroyTestBuffer(buffer Buffer) {
+static void DestroyTestBuffer(buffer Buffer) {
   free(Buffer.Addr);
 }
 
