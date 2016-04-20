@@ -2,6 +2,7 @@
 
 void InitOpenGL() {
   glClearColor(1.0, 0.0, 0.0, 1.0);
+  glDisable(GL_DEPTH_TEST);
 }
 
 void DisplayOpenGL() {
