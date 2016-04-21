@@ -8,7 +8,7 @@
 #include "common/network_messages.h"
 #include "network_commands.h"
 #include "network_events.h"
-#include "server.h"
+#include "game.h"
 #include "posix_network.h"
 
 static bool TerminationRequested;
@@ -105,7 +105,7 @@ int main() {
     B->Length = 1024*1024;
     B->Addr = LinearAllocate(&State.Allocator, B->Length);
   }
-  InitServer(State.ServerMemory);
+  InitGame(State.ServerMemory);
 
   InitNetwork(&State.NetworkContext);
   {
@@ -119,7 +119,7 @@ int main() {
   printf("Listening...\n");
   while(State.Running) {
     ReadNetwork(&State.NetworkContext, &State.NetEventList);
-    UpdateServer(
+    UpdateGame(
       TerminationRequested,
       &State.NetEventList,
       &State.NetCommandList,

@@ -5,7 +5,7 @@
 #include "network_events.h"
 #include "network_commands.h"
 #include "network.h"
-#include "server.h"
+#include "game.h"
 
 #define MESSAGE_OUT_BUFFER_LENGTH 1024*10
 static ui8 MessageOutBufferBlock[MESSAGE_OUT_BUFFER_LENGTH];
@@ -24,15 +24,15 @@ struct player_set {
   memsize Count;
 };
 
-enum server_mode {
-  server_mode_waiting_for_clients,
-  server_mode_active,
-  server_mode_disconnecting,
-  server_mode_stopped
+enum game_mode {
+  game_mode_waiting_for_clients,
+  game_mode_active,
+  game_mode_disconnecting,
+  game_mode_stopped
 };
 
-struct server_state {
-  server_mode Mode;
+struct game_state {
+  game_mode Mode;
   linear_allocator Allocator;
   player_set PlayerSet;
 };
@@ -81,26 +81,26 @@ static void RemovePlayer(player_set *Set, memsize Index) {
   Set->Count--;
 }
 
-void InitServer(buffer Memory) {
-  server_state *State = (server_state*)Memory.Addr;
+void InitGame(buffer Memory) {
+  game_state *State = (game_state*)Memory.Addr;
 
   {
-    void *Base = (ui8*)Memory.Addr + sizeof(server_state);
-    memsize Length = Memory.Length - sizeof(server_state);
+    void *Base = (ui8*)Memory.Addr + sizeof(game_state);
+    memsize Length = Memory.Length - sizeof(game_state);
     InitLinearAllocator(&State->Allocator, Base, Length);
   }
 
   InitPlayerSet(&State->PlayerSet);
 }
 
-void UpdateServer(
+void UpdateGame(
   bool TerminationRequested,
   chunk_list *Events,
   chunk_list *Commands,
   bool *Running,
   buffer Memory
 ) {
-  server_state *State = (server_state*)Memory.Addr;
+  game_state *State = (game_state*)Memory.Addr;
 
   static ui8 TempWorkBufferBlock[1024*1024*5];
   buffer TempWorkBuffer = {
@@ -143,8 +143,8 @@ void UpdateServer(
     }
   }
 
-  if(State->Mode != server_mode_disconnecting && TerminationRequested) {
-    State->Mode = server_mode_disconnecting;
+  if(State->Mode != game_mode_disconnecting && TerminationRequested) {
+    State->Mode = game_mode_disconnecting;
     memsize Length = SerializeShutdownNetworkCommand(TempWorkBuffer);
     buffer Command = {
       .Addr = TempWorkBuffer.Addr,
@@ -152,9 +152,9 @@ void UpdateServer(
     };
     ChunkListWrite(Commands, Command);
   }
-  else if(State->Mode != server_mode_waiting_for_clients && State->PlayerSet.Count == 0) {
+  else if(State->Mode != game_mode_waiting_for_clients && State->PlayerSet.Count == 0) {
     printf("All players has left. Stopping game.\n");
-    if(State->Mode != server_mode_disconnecting) {
+    if(State->Mode != game_mode_disconnecting) {
       memsize Length = SerializeShutdownNetworkCommand(TempWorkBuffer);
       buffer Command = {
         .Addr = TempWorkBuffer.Addr,
@@ -163,10 +163,10 @@ void UpdateServer(
       ChunkListWrite(Commands, Command);
     }
     *Running = false;
-    State->Mode = server_mode_stopped;
+    State->Mode = game_mode_stopped;
   }
   else {
-    if(State->Mode == server_mode_waiting_for_clients && State->PlayerSet.Count == PLAYERS_MAX) {
+    if(State->Mode == game_mode_waiting_for_clients && State->PlayerSet.Count == PLAYERS_MAX) {
       memsize Length = SerializeStartNetworkMessage(MessageOutBuffer);
       buffer MessageBuffer = {
         .Addr = MessageOutBuffer.Addr,
@@ -174,11 +174,11 @@ void UpdateServer(
       };
       Broadcast(&State->PlayerSet, MessageBuffer, Commands);
       printf("Starting game...\n");
-      State->Mode = server_mode_active;
+      State->Mode = game_mode_active;
     }
-    else if(State->Mode == server_mode_active) {
+    else if(State->Mode == game_mode_active) {
     }
-    else if(State->Mode == server_mode_disconnecting) {
+    else if(State->Mode == game_mode_disconnecting) {
       // TODO: If players doesn't perform clean disconnect
       // we should just continue after a timeout.
     }

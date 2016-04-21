@@ -1,7 +1,7 @@
 #include "lib/chunk_list.h"
 
-void InitServer(buffer Memory);
-void UpdateServer(
+void InitGame(buffer Memory);
+void UpdateGame(
   bool TerminationRequested,
   chunk_list *NetEvents,
   chunk_list *NetCmds,
