@@ -3,6 +3,7 @@
 #include "lib/assert.h"
 #include "common/memory.h"
 #include "common/network_messages.h"
+#include "common/simulation.h"
 #include "network_events.h"
 #include "network_commands.h"
 #include "render_commands.h"
@@ -14,6 +15,7 @@ static const ui32 Blue = 0x00FF0000;
 struct client_state {
   linear_allocator Allocator;
   buffer CommandSerializationBuffer;
+  simulation Sim;
 };
 
 void InitClient(buffer Memory) {
@@ -29,6 +31,8 @@ void InitClient(buffer Memory) {
     B->Addr = LinearAllocate(&State->Allocator, NETWORK_COMMAND_MAX_LENGTH);
     B->Length = NETWORK_COMMAND_MAX_LENGTH;
   }
+
+  InitSimulation(&State->Sim);
 }
 
 #define AddRenderCommand(List, Type) (Type##_render_command*)_AddRenderCommand(List, render_command_type_##Type, sizeof(Type##_render_command))
@@ -102,6 +106,9 @@ void UpdateClient(bool TerminationRequested, chunk_list *NetEvents, chunk_list *
         InvalidCodePath;
     }
   }
+
+  // Check if simulation update
+  // Interpolation
 
   Render(RenderCmds);
 
