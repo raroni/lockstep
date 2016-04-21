@@ -59,19 +59,19 @@ static void HandleSigint(int signum) {
   TerminationRequested = true;
 }
 
-void InitMemory(osx_state *State) {
+static void InitMemory(osx_state *State) {
   memsize MemorySize = 1024*1024;
   State->Memory = malloc(MemorySize);
   InitLinearAllocator(&State->Allocator, State->Memory, MemorySize);
 }
 
-void TerminateMemory(osx_state *State) {
+static void TerminateMemory(osx_state *State) {
   TerminateLinearAllocator(&State->Allocator);
   free(State->Memory);
   State->Memory = NULL;
 }
 
-void ExecuteNetworkCommands(posix_network_context *Context, chunk_list *Cmds) {
+static void ExecuteNetworkCommands(posix_network_context *Context, chunk_list *Cmds) {
   for(;;) {
     buffer Command = ChunkListRead(Cmds);
     if(Command.Length == 0) {
@@ -95,12 +95,12 @@ void ExecuteNetworkCommands(posix_network_context *Context, chunk_list *Cmds) {
   ResetChunkList(Cmds);
 }
 
-void ExecuteRenderCommands(chunk_list *Commands) {
+static void ExecuteRenderCommands(chunk_list *Commands) {
   DisplayOpenGL(Commands);
   ResetChunkList(Commands);
 }
 
-void ReadNetwork(posix_network_context *Context, chunk_list *Events) {
+static void ReadNetwork(posix_network_context *Context, chunk_list *Events) {
   static ui8 ReadBufferBlock[NETWORK_EVENT_MAX_LENGTH];
   static buffer ReadBuffer = {
     .Addr = &ReadBufferBlock,

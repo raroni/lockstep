@@ -11,12 +11,12 @@ OBJECTS_DIR = $(BUILD_DIR)/objects
 ROOT = $(realpath ./..)
 CODE_ROOT = $(ROOT)/code
 
-COMMON_SOURCES = code/common/memory.cpp code/common/network.cpp code/lib/serialization.cpp code/lib/assert.cpp code/common/network_messages.cpp code/common/conversion.cpp
+COMMON_SOURCES = code/common/memory.cpp code/common/network.cpp code/lib/serialization.cpp code/lib/assert.cpp code/common/network_messages.cpp code/common/conversion.cpp code/lib/chunk_list.cpp
 COMMON_HEADER_INCLUDES = -iquote $(CODE_ROOT)
 
 SERVER_PRODUCT_DIR = $(PRODUCT_DIR)/LockstepServer.app
 SERVER_BINARY = $(SERVER_PRODUCT_DIR)/Contents/MacOS/LockstepServer
-SERVER_SOURCES = $(COMMON_SOURCES) code/server/main.cpp code/server/network.cpp code/server/client_set.cpp code/server/network_events.cpp code/server/network_commands.cpp code/lib/chunk_ring_buffer.cpp code/lib/byte_ring_buffer.cpp
+SERVER_SOURCES = $(COMMON_SOURCES) code/server/osx_main.cpp code/server/network.cpp code/server/client_set.cpp code/server/network_events.cpp code/server/network_commands.cpp code/lib/chunk_ring_buffer.cpp code/lib/byte_ring_buffer.cpp code/server/server.cpp
 SERVER_OBJS = $(patsubst %.cpp, $(OBJECTS_DIR)/%.o, $(SERVER_SOURCES))
 SERVER_DEPS = $(sort $(patsubst %, %.deps, $(SERVER_OBJS)))
 
@@ -27,7 +27,7 @@ CLIENT_INFO_PLIST = client_info.plist
 CLIENT_PRODUCT_DIR = $(PRODUCT_DIR)/LockstepClient.app
 CLIENT_CONTENTS_DIR = $(CLIENT_PRODUCT_DIR)/Contents
 CLIENT_BINARY = $(CLIENT_CONTENTS_DIR)/MacOS/LockstepClient
-CLIENT_CPP_SOURCES = $(COMMON_SOURCES) code/client/posix_network.cpp code/lib/chunk_ring_buffer.cpp code/lib/chunk_list.cpp code/lib/byte_ring_buffer.cpp code/client/network_events.cpp code/client/network_commands.cpp code/client/client.cpp code/client/opengl.cpp code/common/simulation.cpp
+CLIENT_CPP_SOURCES = $(COMMON_SOURCES) code/client/posix_network.cpp code/lib/chunk_ring_buffer.cpp code/lib/byte_ring_buffer.cpp code/client/network_events.cpp code/client/network_commands.cpp code/client/client.cpp code/client/opengl.cpp code/common/simulation.cpp
 CLIENT_OBJ_CPP_SOURCES = code/client/osx_main.mm
 CLIENT_CPP_OBJS = $(patsubst %.cpp, $(OBJECTS_DIR)/%.o, $(CLIENT_CPP_SOURCES))
 CLIENT_CPP_CPP_OBJS = $(patsubst %.mm, $(OBJECTS_DIR)/%.o, $(CLIENT_OBJ_CPP_SOURCES))
