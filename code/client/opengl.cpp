@@ -4,7 +4,7 @@
 #include "opengl.h"
 
 static const r32 Zoom = 1.0 / 1000.0;
-static const r32 SquareHalfSize = 100.0f / 2.0f;
+static const ui32 SquareHalfSize = 100 / 2;
 
 void InitOpenGL(r32 AspectRatio) {
   glClearColor(0.0f, 1.0f, 0.0f, 1.0f);
@@ -27,11 +27,9 @@ void DrawSquare(si16 X, si16 Y, ui32 Color) {
   ui8 G = (Color & 0x0000FF00) >> 8;
   ui8 B = Color & 0x000000FF;
   glColor3ub(R, G, B);
-  r32 RX = (r32)X;
-  r32 RY = (r32)Y;
-  glRectf(
-    RX - SquareHalfSize, RY - SquareHalfSize,
-    RX + SquareHalfSize, RY + SquareHalfSize
+  glRecti(
+    X - SquareHalfSize, Y - SquareHalfSize,
+    X + SquareHalfSize, Y + SquareHalfSize
   );
 }
 
