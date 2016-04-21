@@ -7,22 +7,22 @@
 #include "network_events.h"
 #include "network_commands.h"
 #include "render_commands.h"
-#include "client.h"
+#include "game.h"
 
 static const ui32 Red = 0x000000FF;
 static const ui32 Blue = 0x00FF0000;
 
-struct client_state {
+struct game_state {
   linear_allocator Allocator;
   buffer CommandSerializationBuffer;
   simulation Sim;
 };
 
-void InitClient(buffer Memory) {
-  client_state *State = (client_state*)Memory.Addr;
+void InitGame(buffer Memory) {
+  game_state *State = (game_state*)Memory.Addr;
   {
-    void *Base = (ui8*)Memory.Addr + sizeof(client_state);
-    memsize Length = Memory.Length - sizeof(client_state);
+    void *Base = (ui8*)Memory.Addr + sizeof(game_state);
+    memsize Length = Memory.Length - sizeof(game_state);
     InitLinearAllocator(&State->Allocator, Base, Length);
   }
 
@@ -58,8 +58,8 @@ void Render(chunk_list *Commands) {
   Command2->Color = Blue;
 }
 
-void UpdateClient(bool TerminationRequested, chunk_list *NetEvents, chunk_list *NetCmds, chunk_list *RenderCmds, bool *Running, buffer Memory) {
-  client_state *State = (client_state*)Memory.Addr;
+void UpdateGame(bool TerminationRequested, chunk_list *NetEvents, chunk_list *NetCmds, chunk_list *RenderCmds, bool *Running, buffer Memory) {
+  game_state *State = (game_state*)Memory.Addr;
 
   for(;;) {
     buffer Event = ChunkListRead(NetEvents);

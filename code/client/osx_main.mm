@@ -9,7 +9,7 @@
 #include "common/memory.h"
 #include "network_commands.h"
 #include "network_events.h"
-#include "client.h"
+#include "game.h"
 #include "posix_network.h"
 #include "opengl.h"
 
@@ -238,7 +238,7 @@ int main() {
     B->Length = 1024*512;
     B->Addr = LinearAllocate(&State.Allocator, B->Length);
   }
-  InitClient(State.ClientMemory);
+  InitGame(State.ClientMemory);
 
   NSApplication *App = [NSApplication sharedApplication];
   App.delegate = [[ClientAppDelegate alloc] init];
@@ -265,7 +265,7 @@ int main() {
     ProcessOSXMessages();
     ReadNetwork(&State.NetworkContext, &State.NetworkEventList);
 
-    UpdateClient(
+    UpdateGame(
       TerminationRequested,
       &State.NetworkEventList,
       &State.NetworkCommandList,
