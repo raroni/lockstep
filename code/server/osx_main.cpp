@@ -14,6 +14,7 @@
 static bool TerminationRequested;
 
 struct osx_state {
+  network_context NetworkContext;
   pthread_t NetworkThread;
   chunk_list NetCommandList;
   chunk_list NetEventList;
@@ -40,14 +41,14 @@ static void TerminateMemory(osx_state *State) {
 
 }
 
-static void ReadNetwork(chunk_list *Events) {
+static void ReadNetwork(network_context *Context, chunk_list *Events) {
   memsize Length;
   static ui8 ReadBufferBlock[NETWORK_EVENT_MAX_LENGTH];
   static buffer ReadBuffer = {
     .Addr = &ReadBufferBlock,
     .Length = sizeof(ReadBufferBlock)
   };
-  while((Length = ReadNetworkEvent(ReadBuffer))) {
+  while((Length = ReadNetworkEvent(Context, ReadBuffer))) {
     buffer Event = {
       .Addr = ReadBuffer.Addr,
       .Length = Length
@@ -56,7 +57,7 @@ static void ReadNetwork(chunk_list *Events) {
   }
 }
 
-void ExecuteNetCommands(chunk_list *Commands) {
+void ExecuteNetCommands(network_context *Context, chunk_list *Commands) {
   for(;;) {
     buffer Command = ChunkListRead(Commands);
     if(Command.Length == 0) {
@@ -66,11 +67,11 @@ void ExecuteNetCommands(chunk_list *Commands) {
     switch(Type) {
       case network_command_type_broadcast: {
         broadcast_network_command BroadcastCommand = UnserializeBroadcastNetworkCommand(Command);
-        NetworkBroadcast(BroadcastCommand.ClientIDs, BroadcastCommand.ClientIDCount, BroadcastCommand.Message);
+        NetworkBroadcast(Context, BroadcastCommand.ClientIDs, BroadcastCommand.ClientIDCount, BroadcastCommand.Message);
         break;
       }
       case network_command_type_shutdown: {
-        ShutdownNetwork();
+        ShutdownNetwork(Context);
         break;
       }
       default:
@@ -106,9 +107,9 @@ int main() {
   }
   InitServer(State.ServerMemory);
 
-  InitNetwork();
+  InitNetwork(&State.NetworkContext);
   {
-    int Result = pthread_create(&State.NetworkThread, 0, RunNetwork, 0);
+    int Result = pthread_create(&State.NetworkThread, 0, RunNetwork, &State.NetworkContext);
     Assert(Result == 0);
   }
 
@@ -117,7 +118,7 @@ int main() {
   State.Running = true;
   printf("Listening...\n");
   while(State.Running) {
-    ReadNetwork(&State.NetEventList);
+    ReadNetwork(&State.NetworkContext, &State.NetEventList);
     UpdateServer(
       TerminationRequested,
       &State.NetEventList,
@@ -125,7 +126,7 @@ int main() {
       &State.Running,
       State.ServerMemory
     );
-    ExecuteNetCommands(&State.NetCommandList);
+    ExecuteNetCommands(&State.NetworkContext, &State.NetCommandList);
     ResetChunkList(&State.NetEventList);
   }
 
@@ -136,7 +137,7 @@ int main() {
 
   TerminateChunkList(&State.NetEventList);
   TerminateChunkList(&State.NetCommandList);
-  TerminateNetwork();
+  TerminateNetwork(&State.NetworkContext);
   TerminateMemory(&State);
   printf("Gracefully terminated.\n");
   return 0;

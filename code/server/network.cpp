@@ -9,98 +9,86 @@
 #include "lib/chunk_ring_buffer.h"
 #include "common/network.h"
 #include "common/network_messages.h"
-#include "client_set.h"
 #include "network_events.h"
 #include "network_commands.h"
 #include "network.h"
 
-enum main_state {
-  main_state_running,
-  main_state_disconnecting,
-  main_state_stopped
-};
+static buffer CreateBuffer(memsize Length) {
+  buffer B;
+  B.Addr = malloc(Length);
+  Assert(B.Addr != NULL);
+  B.Length = Length;
+  return B;
+}
 
-static ui8 ReceiveBufferBlock[1024*10];
-static buffer ReceiveBuffer = {
-  .Addr = &ReceiveBufferBlock,
-  .Length = sizeof(ReceiveBufferBlock)
-};
+static void DestroyBuffer(buffer *B) {
+  free(B->Addr);
+  B->Addr = NULL;
+  B->Length = 0;
+}
 
-static ui8 EventOutBufferBlock[NETWORK_EVENT_MAX_LENGTH];
-static buffer EventOutBuffer = {
-  .Addr = &EventOutBufferBlock,
-  .Length = sizeof(EventOutBufferBlock)
-};
-static ui8 CommandSerializationBufferBlock[NETWORK_COMMAND_MAX_LENGTH];
-static buffer CommandSerializationBuffer = {
-  .Addr = &CommandSerializationBufferBlock,
-  .Length = sizeof(CommandSerializationBufferBlock)
-};
-static int WakeReadFD;
-static int WakeWriteFD;
-static int HostFD;
-static int ReadFDMax;
-static client_set ClientSet;
-static void *CommandBufferAddr;
-static void *EventBufferAddr;
-static main_state MainState;
-static chunk_ring_buffer CommandRing;
-static chunk_ring_buffer EventRing;
-
-static void RequestWake() {
+static void RequestWake(network_context *Context) {
   ui8 X = 1;
-  write(WakeWriteFD, &X, 1);
+  write(Context->WakeWriteFD, &X, 1);
 }
 
-static void CheckNewReadFD(int NewFD) {
-  ReadFDMax = MaxInt(ReadFDMax, NewFD);
+static void CheckNewReadFD(network_context *Context, int NewFD) {
+  Context->ReadFDMax = MaxInt(Context->ReadFDMax, NewFD);
 }
 
-static void RecalcReadFDMax() {
-  ReadFDMax = 0;
-  client_set_iterator Iterator = CreateClientSetIterator(&ClientSet);
+static void RecalcReadFDMax(network_context *Context) {
+  Context->ReadFDMax = 0;
+  client_set_iterator Iterator = CreateClientSetIterator(&Context->ClientSet);
   while(AdvanceClientSetIterator(&Iterator)) {
-    CheckNewReadFD(Iterator.Client->FD);
+    CheckNewReadFD(Context, Iterator.Client->FD);
   }
-  CheckNewReadFD(WakeReadFD);
-  CheckNewReadFD(HostFD);
+  CheckNewReadFD(Context, Context->WakeReadFD);
+  CheckNewReadFD(Context, Context->HostFD);
 }
 
-void InitNetwork() {
-  ReadFDMax = 0;
+void InitNetwork(network_context *Context) {
+  Context->ReadFDMax = 0;
 
-  int FDs[2];
-  pipe(FDs);
-  WakeReadFD = FDs[0];
-  WakeWriteFD = FDs[1];
-  CheckNewReadFD(WakeReadFD);
+  {
+    int FDs[2];
+    pipe(FDs);
+    Context->WakeReadFD = FDs[0];
+    Context->WakeWriteFD = FDs[1];
+    CheckNewReadFD(Context, Context->WakeReadFD);
+  }
 
   {
     memsize CommandBufferLength = 1024*100;
-    CommandBufferAddr = malloc(CommandBufferLength);
+    Context->CommandBufferAddr = malloc(CommandBufferLength);
     buffer CommandBuffer = {
-      .Addr = CommandBufferAddr,
+      .Addr = Context->CommandBufferAddr,
       .Length = CommandBufferLength
     };
-    InitChunkRingBuffer(&CommandRing, 50, CommandBuffer);
+    InitChunkRingBuffer(&Context->CommandRing, 50, CommandBuffer);
   }
 
   {
     memsize EventBufferLength = 1024*100;
-    EventBufferAddr = malloc(EventBufferLength);
+    Context->EventBufferAddr = malloc(EventBufferLength);
     buffer EventBuffer = {
-      .Addr = EventBufferAddr,
+      .Addr = Context->EventBufferAddr,
       .Length = EventBufferLength
     };
-    InitChunkRingBuffer(&EventRing, 50, EventBuffer);
+    InitChunkRingBuffer(&Context->EventRing, 50, EventBuffer);
   }
 
-  InitClientSet(&ClientSet);
+  Context->ReceiveBuffer = CreateBuffer(1024*10);
+  Context->EventOutBuffer = CreateBuffer(NETWORK_EVENT_MAX_LENGTH);
+  Context->CommandSerializationBuffer = CreateBuffer(NETWORK_COMMAND_MAX_LENGTH);
+  Context->CommandReadBuffer = CreateBuffer(NETWORK_COMMAND_MAX_LENGTH);
+  Context->IncomingReadBuffer = CreateBuffer(MAX_MESSAGE_LENGTH);
 
-  HostFD = socket(PF_INET, SOCK_STREAM, 0);
-  Assert(HostFD != -1);
-  CheckNewReadFD(HostFD);
-  fcntl(HostFD, F_SETFL, O_NONBLOCK);
+  InitClientSet(&Context->ClientSet);
+
+  Context->HostFD = socket(PF_INET, SOCK_STREAM, 0);
+  Assert(Context->HostFD != -1);
+  CheckNewReadFD(Context, Context->HostFD);
+  fcntl(Context->HostFD, F_SETFL, O_NONBLOCK);
 
   struct sockaddr_in Address;
   memset(&Address, 0, sizeof(Address));
@@ -109,66 +97,74 @@ void InitNetwork() {
   Address.sin_port = htons(4321);
   Address.sin_addr.s_addr = INADDR_ANY;
 
-  int BindResult = bind(HostFD, (struct sockaddr *)&Address, sizeof(Address));
+  int BindResult = bind(Context->HostFD, (struct sockaddr *)&Address, sizeof(Address));
   Assert(BindResult != -1);
 
-  int ListenResult = listen(HostFD, 5);
+  int ListenResult = listen(Context->HostFD, 5);
   Assert(ListenResult == 0);
 }
 
-void TerminateNetwork() {
-  int Result = close(WakeReadFD);
+void TerminateNetwork(network_context *Context) {
+  int Result = close(Context->WakeReadFD);
   Assert(Result == 0);
-  Result = close(WakeWriteFD);
-  Assert(Result == 0);
-
-  Result = close(HostFD);
+  Result = close(Context->WakeWriteFD);
   Assert(Result == 0);
 
-  TerminateClientSet(&ClientSet);
+  Result = close(Context->HostFD);
+  Assert(Result == 0);
 
-  TerminateChunkRingBuffer(&CommandRing);
-  free(CommandBufferAddr);
-  CommandBufferAddr = NULL;
+  DestroyBuffer(&Context->IncomingReadBuffer);
+  DestroyBuffer(&Context->CommandReadBuffer);
+  DestroyBuffer(&Context->CommandSerializationBuffer);
+  DestroyBuffer(&Context->ReceiveBuffer);
+  DestroyBuffer(&Context->EventOutBuffer);
 
-  TerminateChunkRingBuffer(&EventRing);
-  free(EventBufferAddr);
-  EventBufferAddr = NULL;
+  TerminateClientSet(&Context->ClientSet);
+
+  TerminateChunkRingBuffer(&Context->CommandRing);
+  free(Context->CommandBufferAddr);
+  Context->CommandBufferAddr = NULL;
+
+  TerminateChunkRingBuffer(&Context->EventRing);
+  free(Context->EventBufferAddr);
+  Context->EventBufferAddr = NULL;
 }
 
-void ShutdownNetwork() {
-  memsize Length = SerializeShutdownNetworkCommand(CommandSerializationBuffer);
+void ShutdownNetwork(network_context *Context) {
+  memsize Length = SerializeShutdownNetworkCommand(Context->CommandSerializationBuffer);
   buffer Command = {
-    .Addr = CommandSerializationBuffer.Addr,
+    .Addr = Context->CommandSerializationBuffer.Addr,
     .Length = Length
   };
-  ChunkRingBufferWrite(&CommandRing, Command);
-  RequestWake();
+  ChunkRingBufferWrite(&Context->CommandRing, Command);
+  RequestWake(Context);
 }
 
-static void ProcessCommands(main_state *MainState) {
+static void ProcessCommands(network_context *Context) {
   memsize Length;
-  static ui8 BufferStorage[NETWORK_COMMAND_MAX_LENGTH];
-  static buffer Buffer = { .Addr = BufferStorage, .Length = NETWORK_COMMAND_MAX_LENGTH };
-  while((Length = ChunkRingBufferRead(&CommandRing, Buffer))) {
-    network_command_type Type = UnserializeNetworkCommandType(Buffer);
+  while((Length = ChunkRingBufferRead(&Context->CommandRing, Context->CommandReadBuffer))) {
+    network_command_type Type = UnserializeNetworkCommandType(Context->CommandReadBuffer);
+    buffer Command = {
+      .Addr = Context->CommandReadBuffer.Addr,
+      .Length = Length
+    };
     switch(Type) {
       case network_command_type_shutdown: {
-        client_set_iterator Iterator = CreateClientSetIterator(&ClientSet);
+        client_set_iterator Iterator = CreateClientSetIterator(&Context->ClientSet);
         while(AdvanceClientSetIterator(&Iterator)) {
           int Result = shutdown(Iterator.Client->FD, SHUT_RDWR);
           Assert(Result == 0);
         }
-        *MainState = main_state_disconnecting;
+        Context->Mode = network_mode_disconnecting;
         break;
       }
       case network_command_type_broadcast: {
-        broadcast_network_command Command = UnserializeBroadcastNetworkCommand(Buffer);
-        for(memsize I=0; I<Command.ClientIDCount; ++I) {
-          client *Client = FindClientByID(&ClientSet, Command.ClientIDs[I]);
+        broadcast_network_command BroadcastCommand = UnserializeBroadcastNetworkCommand(Command);
+        for(memsize I=0; I<BroadcastCommand.ClientIDCount; ++I) {
+          client *Client = FindClientByID(&Context->ClientSet, BroadcastCommand.ClientIDs[I]);
           if(Client) {
-            printf("Broadcasted to client id %zu\n", Command.ClientIDs[I]);
-            ssize_t Result = NetworkSend(Client->FD, Command.Message);
+            printf("Broadcasted to client id %zu\n", BroadcastCommand.ClientIDs[I]);
+            ssize_t Result = NetworkSend(Client->FD, BroadcastCommand.Message);
             Assert(Result != -1);
           }
         }
@@ -180,32 +176,28 @@ static void ProcessCommands(main_state *MainState) {
   }
 }
 
-memsize ReadNetworkEvent(buffer Buffer) {
-  return ChunkRingBufferRead(&EventRing, Buffer);
+memsize ReadNetworkEvent(network_context *Context, buffer Buffer) {
+  return ChunkRingBufferRead(&Context->EventRing, Buffer);
 }
 
-void NetworkBroadcast(client_id *IDs, memsize IDCount, buffer Message) {
+void NetworkBroadcast(network_context *Context, client_id *IDs, memsize IDCount, buffer Message) {
   memsize Length = SerializeBroadcastNetworkCommand(
     IDs,
     IDCount,
     Message,
-    CommandSerializationBuffer
+    Context->CommandSerializationBuffer
   );
   buffer Command = {
-    .Addr = CommandSerializationBuffer.Addr,
+    .Addr = Context->CommandSerializationBuffer.Addr,
     .Length = Length
   };
-  ChunkRingBufferWrite(&CommandRing, Command);
-  RequestWake();
+  ChunkRingBufferWrite(&Context->CommandRing, Command);
+  RequestWake(Context);
 }
 
-void ProcessIncoming(client *Client) {
-  static ui8 IncomingBlock[MAX_MESSAGE_LENGTH];
-  buffer Incoming;
-  Incoming.Addr = &IncomingBlock;
-
+void ProcessIncoming(network_context *Context, client *Client) {
   for(;;) {
-    Incoming.Length = sizeof(IncomingBlock);
+    buffer Incoming = Context->IncomingReadBuffer;
     Incoming.Length = ByteRingBufferPeek(&Client->InBuffer, Incoming);
     network_message_type Type;
     bool Result = UnserializeNetworkMessageType(Incoming, &Type);
@@ -216,12 +208,12 @@ void ProcessIncoming(client *Client) {
     memsize ConsumedBytesCount = 0;
     switch(Type) {
       case network_message_type_reply: {
-        memsize Length = SerializeReplyNetworkEvent(Client->ID, EventOutBuffer);
+        memsize Length = SerializeReplyNetworkEvent(Client->ID, Context->EventOutBuffer);
         buffer Event = {
-          .Addr = EventOutBuffer.Addr,
+          .Addr = Context->EventOutBuffer.Addr,
           .Length = Length
         };
-        ChunkRingBufferWrite(&EventRing, Event);
+        ChunkRingBufferWrite(&Context->EventRing, Event);
         ConsumedBytesCount = ReplyNetworkMesageSize;
         break;
       }
@@ -239,82 +231,83 @@ void ProcessIncoming(client *Client) {
 }
 
 void* RunNetwork(void *Data) {
-  MainState = main_state_running;
+  network_context *Context = (network_context*)Data;
+  Context->Mode = network_mode_running;
 
-  while(MainState != main_state_stopped) {
+  while(Context->Mode != network_mode_stopped) {
     fd_set FDSet;
     FD_ZERO(&FDSet);
     {
-      client_set_iterator Iterator = CreateClientSetIterator(&ClientSet);
+      client_set_iterator Iterator = CreateClientSetIterator(&Context->ClientSet);
       while(AdvanceClientSetIterator(&Iterator)) {
         FD_SET(Iterator.Client->FD, &FDSet);
       }
     }
-    FD_SET(HostFD, &FDSet);
-    FD_SET(WakeReadFD, &FDSet);
+    FD_SET(Context->HostFD, &FDSet);
+    FD_SET(Context->WakeReadFD, &FDSet);
 
-    int SelectResult = select(ReadFDMax+1, &FDSet, NULL, NULL, NULL);
+    int SelectResult = select(Context->ReadFDMax+1, &FDSet, NULL, NULL, NULL);
     Assert(SelectResult != -1);
 
     {
-      client_set_iterator Iterator = CreateClientSetIterator(&ClientSet);
+      client_set_iterator Iterator = CreateClientSetIterator(&Context->ClientSet);
       while(AdvanceClientSetIterator(&Iterator)) {
         client *Client = Iterator.Client;
         if(FD_ISSET(Client->FD, &FDSet)) {
-          ssize_t Result = NetworkReceive(Client->FD, ReceiveBuffer);
+          ssize_t Result = NetworkReceive(Client->FD, Context->ReceiveBuffer);
           if(Result == 0) {
             int Result = close(Client->FD);
             Assert(Result != -1);
             DestroyClient(&Iterator);
-            memsize Length = SerializeDisconnectNetworkEvent(Client->ID, EventOutBuffer);
+            memsize Length = SerializeDisconnectNetworkEvent(Client->ID, Context->EventOutBuffer);
             buffer Event = {
-              .Addr = EventOutBuffer.Addr,
+              .Addr = Context->EventOutBuffer.Addr,
               .Length = Length
             };
-            ChunkRingBufferWrite(&EventRing, Event);
+            ChunkRingBufferWrite(&Context->EventRing, Event);
             printf("A client disconnected.\n");
           }
           else {
             buffer Input;
-            Input.Addr = ReceiveBuffer.Addr;
+            Input.Addr = Context->ReceiveBuffer.Addr;
             Input.Length = Result;
             printf("Write to %p\n", &Client->InBuffer);
             ByteRingBufferWrite(&Client->InBuffer, Input);
-            ProcessIncoming(Client);
+            ProcessIncoming(Context, Client);
           }
         }
-        RecalcReadFDMax();
+        RecalcReadFDMax(Context);
       }
     }
 
-    if(FD_ISSET(WakeReadFD, &FDSet)) {
+    if(FD_ISSET(Context->WakeReadFD, &FDSet)) {
       ui8 X;
-      int Result = read(WakeReadFD, &X, 1);
+      int Result = read(Context->WakeReadFD, &X, 1);
       Assert(Result != -1);
-      ProcessCommands(&MainState);
+      ProcessCommands(Context);
     }
 
     if(
-      FD_ISSET(HostFD, &FDSet) &&
-      ClientSet.Count != CLIENT_SET_MAX &&
-      MainState == main_state_running
+      FD_ISSET(Context->HostFD, &FDSet) &&
+      Context->ClientSet.Count != CLIENT_SET_MAX &&
+      Context->Mode == network_mode_running
     ) {
-      int ClientFD = accept(HostFD, NULL, NULL);
+      int ClientFD = accept(Context->HostFD, NULL, NULL);
       Assert(ClientFD != -1);
-      client *Client = CreateClient(&ClientSet, ClientFD);
-      CheckNewReadFD(ClientFD);
-      memsize Length = SerializeConnectNetworkEvent(Client->ID, EventOutBuffer);
+      client *Client = CreateClient(&Context->ClientSet, ClientFD);
+      CheckNewReadFD(Context, ClientFD);
+      memsize Length = SerializeConnectNetworkEvent(Client->ID, Context->EventOutBuffer);
       buffer Event = {
-        .Addr = EventOutBuffer.Addr,
+        .Addr = Context->EventOutBuffer.Addr,
         .Length = Length
       };
-      ChunkRingBufferWrite(&EventRing, Event);
+      ChunkRingBufferWrite(&Context->EventRing, Event);
     }
 
-    if(MainState == main_state_disconnecting) {
-      if(ClientSet.Count == 0) {
+    if(Context->Mode == network_mode_disconnecting) {
+      if(Context->ClientSet.Count == 0) {
         printf("No more clients. Stopping.\n");
-        MainState = main_state_stopped;
+        Context->Mode = network_mode_stopped;
       }
     }
   }
