@@ -2,27 +2,27 @@
 #include "lib/def.h"
 #include "lib/assert.h"
 #include "common/memory.h"
-#include "common/network_messages.h"
+#include "common/net_messages.h"
 #include "common/simulation.h"
-#include "network_events.h"
-#include "network_commands.h"
+#include "net_events.h"
+#include "net_commands.h"
 #include "render_commands.h"
-#include "client.h"
+#include "game.h"
 
 static const ui32 Red = 0x000000FF;
 static const ui32 Blue = 0x00FF0000;
 
-struct client_state {
+struct game_state {
   linear_allocator Allocator;
   buffer CommandSerializationBuffer;
   simulation Sim;
 };
 
-void InitClient(buffer Memory) {
-  client_state *State = (client_state*)Memory.Addr;
+void InitGame(buffer Memory) {
+  game_state *State = (game_state*)Memory.Addr;
   {
-    void *Base = (ui8*)Memory.Addr + sizeof(client_state);
-    memsize Length = Memory.Length - sizeof(client_state);
+    void *Base = (ui8*)Memory.Addr + sizeof(game_state);
+    memsize Length = Memory.Length - sizeof(game_state);
     InitLinearAllocator(&State->Allocator, Base, Length);
   }
 
@@ -58,28 +58,28 @@ void Render(chunk_list *Commands) {
   Command2->Color = Blue;
 }
 
-void UpdateClient(bool TerminationRequested, chunk_list *NetEvents, chunk_list *NetCmds, chunk_list *RenderCmds, bool *Running, buffer Memory) {
-  client_state *State = (client_state*)Memory.Addr;
+void UpdateGame(bool TerminationRequested, chunk_list *NetEvents, chunk_list *NetCmds, chunk_list *RenderCmds, bool *Running, buffer Memory) {
+  game_state *State = (game_state*)Memory.Addr;
 
   for(;;) {
     buffer Event = ChunkListRead(NetEvents);
     if(Event.Length == 0) {
       break;
     }
-    network_event_type Type = UnserializeNetworkEventType(Event);
+    net_event_type Type = UnserializeNetEventType(Event);
     switch(Type) {
-      case network_event_type_connection_established:
+      case net_event_type_connection_established:
         printf("Game got connection established!\n");
         break;
-      case network_event_type_connection_lost:
+      case net_event_type_connection_lost:
         printf("Game got connection lost!\n");
         *Running = false;
         break;
-      case network_event_type_connection_failed:
+      case net_event_type_connection_failed:
         printf("Game got connection failed!\n");
         *Running = false;
         break;
-      case network_event_type_start: {
+      case net_event_type_start: {
         printf("Game got start event!\n");
 
         static ui8 TempBufferBlock[MAX_MESSAGE_LENGTH];
@@ -87,14 +87,14 @@ void UpdateClient(bool TerminationRequested, chunk_list *NetEvents, chunk_list *
           .Addr = TempBufferBlock,
           .Length = sizeof(TempBufferBlock)
         };
-        memsize Length = SerializeReplyNetworkMessage(TempBuffer);
+        memsize Length = SerializeReplyNetMessage(TempBuffer);
         buffer Message = {
           .Addr = TempBuffer.Addr,
           .Length = Length
         };
         printf("Starting game and replying...\n");
 
-        Length = SerializeSendNetworkCommand(State->CommandSerializationBuffer, Message);
+        Length = SerializeSendNetCommand(State->CommandSerializationBuffer, Message);
         buffer Command = {
           .Addr = State->CommandSerializationBuffer.Addr,
           .Length = Length
@@ -113,9 +113,9 @@ void UpdateClient(bool TerminationRequested, chunk_list *NetEvents, chunk_list *
   Render(RenderCmds);
 
   if(TerminationRequested) {
-    printf("Requesting network shutdown...\n");
+    printf("Requesting net shutdown...\n");
 
-    memsize Length = SerializeShutdownNetworkCommand(State->CommandSerializationBuffer);
+    memsize Length = SerializeShutdownNetCommand(State->CommandSerializationBuffer);
     buffer Command = {
       .Addr = State->CommandSerializationBuffer.Addr,
       .Length = Length

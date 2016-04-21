@@ -1,22 +1,22 @@
 #include "lib/assert.h"
 #include "lib/serialization.h"
-#include "network_commands.h"
+#include "net_commands.h"
 
-memsize SerializeShutdownNetworkCommand(buffer Buffer) {
-  network_command_type Type = network_command_type_shutdown;
+memsize SerializeShutdownNetCommand(buffer Buffer) {
+  net_command_type Type = net_command_type_shutdown;
   serializer S = CreateSerializer(Buffer);
   SerializerWrite(&S, &Type, sizeof(Type));
   return sizeof(Type);
 }
 
-network_command_type UnserializeNetworkCommandType(buffer Buffer) {
-  Assert(Buffer.Length >= sizeof(network_command_type));
-  return *(network_command_type*)Buffer.Addr;
+net_command_type UnserializeNetCommandType(buffer Buffer) {
+  Assert(Buffer.Length >= sizeof(net_command_type));
+  return *(net_command_type*)Buffer.Addr;
 }
 
-memsize SerializeBroadcastNetworkCommand(const client_id *IDs, memsize IDCount, const buffer Message, buffer Out) {
+memsize SerializeBroadcastNetCommand(const client_id *IDs, memsize IDCount, const buffer Message, buffer Out) {
   serializer S = CreateSerializer(Out);
-  network_command_type Type = network_command_type_broadcast;
+  net_command_type Type = net_command_type_broadcast;
   SerializerWrite(&S, &Type, sizeof(Type));
   SerializerWriteMemsize(&S, IDCount);
   SerializerWriteMemsize(&S, Message.Length);
@@ -25,12 +25,12 @@ memsize SerializeBroadcastNetworkCommand(const client_id *IDs, memsize IDCount, 
   return S.Position;
 }
 
-broadcast_network_command UnserializeBroadcastNetworkCommand(buffer Buffer) {
+broadcast_net_command UnserializeBroadcastNetCommand(buffer Buffer) {
   serializer S = CreateSerializer(Buffer);
-  network_command_type Type = *(network_command_type*)SerializerRead(&S, sizeof(network_command_type));
-  Assert(Type == network_command_type_broadcast);
+  net_command_type Type = *(net_command_type*)SerializerRead(&S, sizeof(net_command_type));
+  Assert(Type == net_command_type_broadcast);
 
-  broadcast_network_command Cmd;
+  broadcast_net_command Cmd;
   Cmd.ClientIDCount = SerializerReadMemsize(&S);
   Cmd.Message.Length = SerializerReadMemsize(&S);
   Cmd.ClientIDs = (client_id*)SerializerRead(&S, sizeof(client_id)*Cmd.ClientIDCount);

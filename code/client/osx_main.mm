@@ -5,12 +5,12 @@
 #include <Foundation/Foundation.h>
 #include <AppKit/AppKit.h>
 #include "lib/assert.h"
-#include "common/network_messages.h"
+#include "common/net_messages.h"
 #include "common/memory.h"
-#include "network_commands.h"
-#include "network_events.h"
-#include "client.h"
-#include "posix_network.h"
+#include "net_commands.h"
+#include "net_events.h"
+#include "game.h"
+#include "posix_net.h"
 #include "opengl.h"
 
 static bool TerminationRequested;
@@ -27,12 +27,12 @@ struct osx_state {
   NSOpenGLContext *OGLContext;
   linear_allocator Allocator;
   buffer ClientMemory;
-  chunk_list NetworkCommandList;
-  chunk_list NetworkEventList;
+  chunk_list NetCommandList;
+  chunk_list NetEventList;
   chunk_list RenderCommandList;
   resolution Resolution;
-  pthread_t NetworkThread;
-  posix_network_context NetworkContext;
+  pthread_t NetThread;
+  posix_net_context NetContext;
 };
 
 @interface ClientAppDelegate : NSObject <NSApplicationDelegate>
@@ -59,33 +59,33 @@ static void HandleSigint(int signum) {
   TerminationRequested = true;
 }
 
-void InitMemory(osx_state *State) {
+static void InitMemory(osx_state *State) {
   memsize MemorySize = 1024*1024;
   State->Memory = malloc(MemorySize);
   InitLinearAllocator(&State->Allocator, State->Memory, MemorySize);
 }
 
-void TerminateMemory(osx_state *State) {
+static void TerminateMemory(osx_state *State) {
   TerminateLinearAllocator(&State->Allocator);
   free(State->Memory);
   State->Memory = NULL;
 }
 
-void ExecuteNetworkCommands(posix_network_context *Context, chunk_list *Cmds) {
+static void ExecuteNetCommands(posix_net_context *Context, chunk_list *Cmds) {
   for(;;) {
     buffer Command = ChunkListRead(Cmds);
     if(Command.Length == 0) {
       break;
     }
-    network_command_type Type = UnserializeNetworkCommandType(Command);
+    net_command_type Type = UnserializeNetCommandType(Command);
     switch(Type) {
-      case network_command_type_send: {
-        send_network_command SendCommand = UnserializeSendNetworkCommand(Command);
-        NetworkSend(Context, SendCommand.Message);
+      case net_command_type_send: {
+        send_net_command SendCommand = UnserializeSendNetCommand(Command);
+        PosixNetSend(Context, SendCommand.Message);
         break;
       }
-      case network_command_type_shutdown: {
-        ShutdownNetwork(Context);
+      case net_command_type_shutdown: {
+        ShutdownPosixNet(Context);
         break;
       }
       default:
@@ -95,19 +95,19 @@ void ExecuteNetworkCommands(posix_network_context *Context, chunk_list *Cmds) {
   ResetChunkList(Cmds);
 }
 
-void ExecuteRenderCommands(chunk_list *Commands) {
+static void ExecuteRenderCommands(chunk_list *Commands) {
   DisplayOpenGL(Commands);
   ResetChunkList(Commands);
 }
 
-void ReadNetwork(posix_network_context *Context, chunk_list *Events) {
+static void ReadNet(posix_net_context *Context, chunk_list *Events) {
   static ui8 ReadBufferBlock[NETWORK_EVENT_MAX_LENGTH];
   static buffer ReadBuffer = {
     .Addr = &ReadBufferBlock,
     .Length = sizeof(ReadBufferBlock)
   };
   memsize Length;
-  while((Length = ReadNetworkEvent(Context, ReadBuffer))) {
+  while((Length = ReadPosixNetEvent(Context, ReadBuffer))) {
     buffer Event = {
       .Addr = ReadBuffer.Addr,
       .Length = Length
@@ -210,14 +210,14 @@ int main() {
     buffer Buffer;
     Buffer.Length = NETWORK_COMMAND_MAX_LENGTH*100;
     Buffer.Addr = LinearAllocate(&State.Allocator, Buffer.Length);
-    InitChunkList(&State.NetworkCommandList, Buffer);
+    InitChunkList(&State.NetCommandList, Buffer);
   }
 
   {
     buffer Buffer;
     Buffer.Length = NETWORK_EVENT_MAX_LENGTH*100;
     Buffer.Addr = LinearAllocate(&State.Allocator, Buffer.Length);
-    InitChunkList(&State.NetworkEventList, Buffer);
+    InitChunkList(&State.NetEventList, Buffer);
   }
 
   {
@@ -227,9 +227,9 @@ int main() {
     InitChunkList(&State.RenderCommandList, Buffer);
   }
 
-  InitNetwork(&State.NetworkContext);
+  InitPosixNet(&State.NetContext);
   {
-    int Result = pthread_create(&State.NetworkThread, 0, RunNetwork, &State.NetworkContext);
+    int Result = pthread_create(&State.NetThread, 0, RunPosixNet, &State.NetContext);
     Assert(Result == 0);
   }
 
@@ -238,7 +238,7 @@ int main() {
     B->Length = 1024*512;
     B->Addr = LinearAllocate(&State.Allocator, B->Length);
   }
-  InitClient(State.ClientMemory);
+  InitGame(State.ClientMemory);
 
   NSApplication *App = [NSApplication sharedApplication];
   App.delegate = [[ClientAppDelegate alloc] init];
@@ -263,24 +263,24 @@ int main() {
   State.Running = true;
   while(State.Running) {
     ProcessOSXMessages();
-    ReadNetwork(&State.NetworkContext, &State.NetworkEventList);
+    ReadNet(&State.NetContext, &State.NetEventList);
 
-    UpdateClient(
+    UpdateGame(
       TerminationRequested,
-      &State.NetworkEventList,
-      &State.NetworkCommandList,
+      &State.NetEventList,
+      &State.NetCommandList,
       &State.RenderCommandList,
       &State.Running,
       State.ClientMemory
     );
-    ExecuteNetworkCommands(&State.NetworkContext, &State.NetworkCommandList);
+    ExecuteNetCommands(&State.NetContext, &State.NetCommandList);
     ExecuteRenderCommands(&State.RenderCommandList);
     [State.OGLContext flushBuffer];
   }
 
   {
     printf("Waiting for thread join...\n");
-    int Result = pthread_join(State.NetworkThread, 0);
+    int Result = pthread_join(State.NetThread, 0);
     Assert(Result == 0);
   }
 
@@ -298,9 +298,9 @@ int main() {
   [State.OGLContext release];
 
   TerminateChunkList(&State.RenderCommandList);
-  TerminateChunkList(&State.NetworkEventList);
-  TerminateChunkList(&State.NetworkCommandList);
-  TerminateNetwork(&State.NetworkContext);
+  TerminateChunkList(&State.NetEventList);
+  TerminateChunkList(&State.NetCommandList);
+  TerminatePosixNet(&State.NetContext);
   TerminateMemory(&State);
   printf("Gracefully terminated.\n");
   return 0;

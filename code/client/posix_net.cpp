@@ -6,18 +6,18 @@
 #include "lib/def.h"
 #include "lib/min_max.h"
 #include "lib/assert.h"
-#include "common/network.h"
-#include "common/network_messages.h"
-#include "network_events.h"
-#include "network_commands.h"
-#include "posix_network.h"
+#include "common/posix_net.h"
+#include "common/net_messages.h"
+#include "net_events.h"
+#include "net_commands.h"
+#include "posix_net.h"
 
 enum errno_code {
   errno_code_interrupted_system_call = 4,
   errno_code_in_progress = 36
 };
 
-static void RequestWake(posix_network_context *Context) {
+static void RequestWake(posix_net_context *Context) {
   ui8 X = 1;
   write(Context->WakeWriteFD, &X, 1);
 }
@@ -36,7 +36,7 @@ static void DestroyBuffer(buffer *B) {
   B->Length = 0;
 }
 
-void InitNetwork(posix_network_context *Context) {
+void InitPosixNet(posix_net_context *Context) {
   {
     int SocketFD = socket(PF_INET, SOCK_STREAM, 0);
     Assert(SocketFD != -1);
@@ -94,10 +94,10 @@ void InitNetwork(posix_network_context *Context) {
   Context->EventSerializationBuffer = CreateBuffer(NETWORK_EVENT_MAX_LENGTH);
   Context->IncomingReadBuffer = CreateBuffer(MAX_MESSAGE_LENGTH);
 
-  Context->State = posix_network_state_inactive;
+  Context->State = posix_net_state_inactive;
 }
 
-void Connect(posix_network_context *Context) {
+void Connect(posix_net_context *Context) {
   struct sockaddr_in Address;
   memset(&Address, 0, sizeof(Address));
   Address.sin_len = sizeof(Address);
@@ -110,37 +110,37 @@ void Connect(posix_network_context *Context) {
 
   printf("Connecting...\n");
 
-  Context->State = posix_network_state_connecting;
+  Context->State = posix_net_state_connecting;
 }
 
-memsize ReadNetworkEvent(posix_network_context *Context, buffer Buffer) {
+memsize ReadPosixNetEvent(posix_net_context *Context, buffer Buffer) {
   return ChunkRingBufferRead(&Context->EventRing, Buffer);
 }
 
-void ProcessCommands(posix_network_context *Context) {
+void ProcessCommands(posix_net_context *Context) {
   memsize Length;
   while((Length = ChunkRingBufferRead(&Context->CommandRing, Context->CommandReadBuffer))) {
-    network_command_type Type = UnserializeNetworkCommandType(Context->CommandReadBuffer);
+    net_command_type Type = UnserializeNetCommandType(Context->CommandReadBuffer);
     buffer Command = {
       .Addr = Context->CommandReadBuffer.Addr,
       .Length = Length
     };
     switch(Type) {
-      case network_command_type_shutdown: {
-        if(Context->State != posix_network_state_shutting_down) {
+      case net_command_type_shutdown: {
+        if(Context->State != posix_net_state_shutting_down) {
           printf("Shutting down...\n");
           int Result = shutdown(Context->SocketFD, SHUT_RDWR);
           Assert(Result == 0);
-          Context->State = posix_network_state_shutting_down;
+          Context->State = posix_net_state_shutting_down;
         }
         break;
       }
-      case network_command_type_send: {
-        if(Context->State == posix_network_state_connected) {
-          send_network_command SendCommand = UnserializeSendNetworkCommand(Command);
+      case net_command_type_send: {
+        if(Context->State == posix_net_state_connected) {
+          send_net_command SendCommand = UnserializeSendNetCommand(Command);
           buffer Message = SendCommand.Message;
           printf("Sending message of size %zu!\n", Message.Length);
-          NetworkSend(Context->SocketFD, Message);
+          PosixNetSend(Context->SocketFD, Message);
         }
         break;
       }
@@ -148,26 +148,26 @@ void ProcessCommands(posix_network_context *Context) {
   }
 }
 
-void ProcessIncoming(posix_network_context *Context) {
+void ProcessIncoming(posix_net_context *Context) {
   for(;;) {
     buffer Incoming = Context->IncomingReadBuffer;
     Incoming.Length = ByteRingBufferPeek(&Context->IncomingRing, Incoming);
-    network_message_type Type;
-    bool Result = UnserializeNetworkMessageType(Incoming, &Type);
+    net_message_type Type;
+    bool Result = UnserializeNetMessageType(Incoming, &Type);
     if(!Result) {
       break;
     }
 
     memsize ConsumedBytesCount = 0;
     switch(Type) {
-      case network_message_type_start: {
-        memsize Length = SerializeStartNetworkEvent(Context->EventSerializationBuffer);
+      case net_message_type_start: {
+        memsize Length = SerializeStartNetEvent(Context->EventSerializationBuffer);
         buffer Event = {
           .Addr = Context->EventSerializationBuffer.Addr,
           .Length = Length
         };
         ChunkRingBufferWrite(&Context->EventRing, Event);
-        ConsumedBytesCount = StartNetworkMesageSize;
+        ConsumedBytesCount = StartNetMesageSize;
         break;
       }
       default:
@@ -183,11 +183,11 @@ void ProcessIncoming(posix_network_context *Context) {
   }
 }
 
-void* RunNetwork(void *VoidContext) {
-  posix_network_context *Context = (posix_network_context*)VoidContext;
+void* RunPosixNet(void *VoidContext) {
+  posix_net_context *Context = (posix_net_context*)VoidContext;
   Connect(Context);
 
-  while(Context->State != posix_network_state_stopped) {
+  while(Context->State != posix_net_state_stopped) {
     fd_set FDSet;
     FD_ZERO(&FDSet);
     FD_SET(Context->SocketFD, &FDSet);
@@ -204,15 +204,15 @@ void* RunNetwork(void *VoidContext) {
     }
 
     if(FD_ISSET(Context->SocketFD, &FDSet)) {
-      if(Context->State == posix_network_state_connecting) {
+      if(Context->State == posix_net_state_connecting) {
         int OptionValue;
         socklen_t OptionLength = sizeof(OptionValue);
         int Result = getsockopt(Context->SocketFD, SOL_SOCKET, SO_ERROR, &OptionValue, &OptionLength);
         Assert(Result == 0);
         if(OptionValue == 0) {
-          Context->State = posix_network_state_connected;
+          Context->State = posix_net_state_connected;
 
-          memsize Length = SerializeConnectionEstablishedNetworkEvent(Context->EventSerializationBuffer);
+          memsize Length = SerializeConnectionEstablishedNetEvent(Context->EventSerializationBuffer);
           buffer Event = {
             .Addr = Context->EventSerializationBuffer.Addr,
             .Length = Length
@@ -224,34 +224,34 @@ void* RunNetwork(void *VoidContext) {
         else {
           printf("Connection failed.\n");
 
-          memsize Length = SerializeConnectionFailedNetworkEvent(Context->EventSerializationBuffer);
+          memsize Length = SerializeConnectionFailedNetEvent(Context->EventSerializationBuffer);
           buffer Event = {
             .Addr = Context->EventSerializationBuffer.Addr,
             .Length = Length
           };
           ChunkRingBufferWrite(&Context->EventRing, Event);
 
-          Context->State = posix_network_state_stopped;
+          Context->State = posix_net_state_stopped;
         }
       }
       else {
-        ssize_t ReceivedCount = NetworkReceive(Context->SocketFD, Context->ReceiveBuffer);
+        ssize_t ReceivedCount = PosixNetReceive(Context->SocketFD, Context->ReceiveBuffer);
         if(ReceivedCount == 0) {
           printf("Disconnected.\n");
 
           ByteRingBufferReset(&Context->IncomingRing);
 
-          memsize Length = SerializeConnectionLostNetworkEvent(Context->EventSerializationBuffer);
+          memsize Length = SerializeConnectionLostNetEvent(Context->EventSerializationBuffer);
           buffer Event = {
             .Addr = Context->EventSerializationBuffer.Addr,
             .Length = Length
           };
           ChunkRingBufferWrite(&Context->EventRing, Event);
 
-          Context->State = posix_network_state_stopped;
+          Context->State = posix_net_state_stopped;
           continue;
         }
-        else if(Context->State == posix_network_state_connected) {
+        else if(Context->State == posix_net_state_connected) {
           buffer Incoming = {
             .Addr = Context->ReceiveBuffer.Addr,
             .Length = (memsize)ReceivedCount
@@ -264,13 +264,13 @@ void* RunNetwork(void *VoidContext) {
     }
   }
 
-  printf("Network thread done.\n");
+  printf("Net thread done.\n");
 
   return NULL;
 }
 
-void ShutdownNetwork(posix_network_context *Context) {
-  memsize Length = SerializeShutdownNetworkCommand(Context->CommandSerializationBuffer);
+void ShutdownPosixNet(posix_net_context *Context) {
+  memsize Length = SerializeShutdownNetCommand(Context->CommandSerializationBuffer);
   buffer Command = {
     .Addr = Context->CommandSerializationBuffer.Addr,
     .Length = Length
@@ -279,8 +279,8 @@ void ShutdownNetwork(posix_network_context *Context) {
   RequestWake(Context);
 }
 
-void NetworkSend(posix_network_context *Context, buffer Message) {
-  memsize Length = SerializeSendNetworkCommand(Context->CommandSerializationBuffer, Message);
+void PosixNetSend(posix_net_context *Context, buffer Message) {
+  memsize Length = SerializeSendNetCommand(Context->CommandSerializationBuffer, Message);
   buffer Command = {
     .Addr = Context->CommandSerializationBuffer.Addr,
     .Length = Length
@@ -289,7 +289,7 @@ void NetworkSend(posix_network_context *Context, buffer Message) {
   RequestWake(Context);
 }
 
-void TerminateNetwork(posix_network_context *Context) {
+void TerminatePosixNet(posix_net_context *Context) {
   int Result = close(Context->SocketFD);
   Assert(Result == 0);
 
@@ -316,5 +316,5 @@ void TerminateNetwork(posix_network_context *Context) {
   free(Context->IncomingBufferAddr);
   Context->IncomingBufferAddr = NULL;
 
-  Context->State = posix_network_state_inactive;
+  Context->State = posix_net_state_inactive;
 }
