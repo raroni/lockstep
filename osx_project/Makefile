@@ -81,6 +81,9 @@ server: $(SERVER_BINARY)
 client: $(CLIENT_BINARY)
 test: $(TEST_BINARY)
 
+clean:
+	rm -rf $(BUILD_DIR)
+
 run_server: server
 	$(SERVER_BINARY)
 
@@ -90,5 +93,6 @@ run_client: client
 run_test: test
 	$(TEST_BINARY)
 
-clean:
-	rm -rf $(BUILD_DIR)
+rs: run_server
+rc: run_client
+rt: run_test
