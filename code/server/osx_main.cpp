@@ -9,12 +9,12 @@
 #include "network_commands.h"
 #include "network_events.h"
 #include "game.h"
-#include "posix_network.h"
+#include "posix_net.h"
 
 static bool TerminationRequested;
 
 struct osx_state {
-  network_context NetworkContext;
+  posix_net_context NetContext;
   pthread_t NetworkThread;
   chunk_list NetCommandList;
   chunk_list NetEventList;
@@ -41,14 +41,14 @@ static void TerminateMemory(osx_state *State) {
 
 }
 
-static void ReadNetwork(network_context *Context, chunk_list *Events) {
+static void ReadNetwork(posix_net_context *Context, chunk_list *Events) {
   memsize Length;
   static ui8 ReadBufferBlock[NETWORK_EVENT_MAX_LENGTH];
   static buffer ReadBuffer = {
     .Addr = &ReadBufferBlock,
     .Length = sizeof(ReadBufferBlock)
   };
-  while((Length = ReadNetworkEvent(Context, ReadBuffer))) {
+  while((Length = ReadPosixNetEvent(Context, ReadBuffer))) {
     buffer Event = {
       .Addr = ReadBuffer.Addr,
       .Length = Length
@@ -57,7 +57,7 @@ static void ReadNetwork(network_context *Context, chunk_list *Events) {
   }
 }
 
-void ExecuteNetCommands(network_context *Context, chunk_list *Commands) {
+void ExecuteNetCommands(posix_net_context *Context, chunk_list *Commands) {
   for(;;) {
     buffer Command = ChunkListRead(Commands);
     if(Command.Length == 0) {
@@ -67,11 +67,11 @@ void ExecuteNetCommands(network_context *Context, chunk_list *Commands) {
     switch(Type) {
       case network_command_type_broadcast: {
         broadcast_network_command BroadcastCommand = UnserializeBroadcastNetworkCommand(Command);
-        NetworkBroadcast(Context, BroadcastCommand.ClientIDs, BroadcastCommand.ClientIDCount, BroadcastCommand.Message);
+        PosixNetBroadcast(Context, BroadcastCommand.ClientIDs, BroadcastCommand.ClientIDCount, BroadcastCommand.Message);
         break;
       }
       case network_command_type_shutdown: {
-        ShutdownNetwork(Context);
+        ShutdownPosixNet(Context);
         break;
       }
       default:
@@ -107,9 +107,9 @@ int main() {
   }
   InitGame(State.ServerMemory);
 
-  InitNetwork(&State.NetworkContext);
+  InitPosixNet(&State.NetContext);
   {
-    int Result = pthread_create(&State.NetworkThread, 0, RunNetwork, &State.NetworkContext);
+    int Result = pthread_create(&State.NetworkThread, 0, RunPosixNet, &State.NetContext);
     Assert(Result == 0);
   }
 
@@ -118,7 +118,7 @@ int main() {
   State.Running = true;
   printf("Listening...\n");
   while(State.Running) {
-    ReadNetwork(&State.NetworkContext, &State.NetEventList);
+    ReadNetwork(&State.NetContext, &State.NetEventList);
     UpdateGame(
       TerminationRequested,
       &State.NetEventList,
@@ -126,7 +126,7 @@ int main() {
       &State.Running,
       State.ServerMemory
     );
-    ExecuteNetCommands(&State.NetworkContext, &State.NetCommandList);
+    ExecuteNetCommands(&State.NetContext, &State.NetCommandList);
     ResetChunkList(&State.NetEventList);
   }
 
@@ -137,7 +137,7 @@ int main() {
 
   TerminateChunkList(&State.NetEventList);
   TerminateChunkList(&State.NetCommandList);
-  TerminateNetwork(&State.NetworkContext);
+  TerminatePosixNet(&State.NetContext);
   TerminateMemory(&State);
   printf("Gracefully terminated.\n");
   return 0;

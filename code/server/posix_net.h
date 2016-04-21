@@ -4,13 +4,13 @@
 #include "lib/chunk_ring_buffer.h"
 #include "client_set.h"
 
-enum network_mode {
+enum posix_net_mode {
   network_mode_running,
   network_mode_disconnecting,
   network_mode_stopped
 };
 
-struct network_context {
+struct posix_net_context {
   int HostFD;
   int WakeReadFD;
   int WakeWriteFD;
@@ -20,7 +20,7 @@ struct network_context {
   chunk_ring_buffer EventRing;
   void *EventBufferAddr;
   client_set ClientSet;
-  network_mode Mode;
+  posix_net_mode Mode;
   buffer ReceiveBuffer;
   buffer EventOutBuffer;
   buffer CommandSerializationBuffer;
@@ -28,9 +28,9 @@ struct network_context {
   buffer IncomingReadBuffer;
 };
 
-void InitNetwork(network_context *Context);
-void* RunNetwork(void *Data);
-void ShutdownNetwork(network_context *Context);
-void TerminateNetwork(network_context *Context);
-void NetworkBroadcast(network_context *Context, client_id *IDs, memsize Count, buffer Message);
-memsize ReadNetworkEvent(network_context *Context, buffer Output);
+void InitPosixNet(posix_net_context *Context);
+void* RunPosixNet(void *Data);
+void ShutdownPosixNet(posix_net_context *Context);
+void TerminatePosixNet(posix_net_context *Context);
+void PosixNetBroadcast(posix_net_context *Context, client_id *IDs, memsize Count, buffer Message);
+memsize ReadPosixNetEvent(posix_net_context *Context, buffer Output);

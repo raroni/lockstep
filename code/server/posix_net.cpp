@@ -7,11 +7,11 @@
 #include "lib/assert.h"
 #include "lib/min_max.h"
 #include "lib/chunk_ring_buffer.h"
-#include "common/network.h"
+#include "common/posix_net.h"
 #include "common/network_messages.h"
 #include "network_events.h"
 #include "network_commands.h"
-#include "posix_network.h"
+#include "posix_net.h"
 
 static buffer CreateBuffer(memsize Length) {
   buffer B;
@@ -27,16 +27,16 @@ static void DestroyBuffer(buffer *B) {
   B->Length = 0;
 }
 
-static void RequestWake(network_context *Context) {
+static void RequestWake(posix_net_context *Context) {
   ui8 X = 1;
   write(Context->WakeWriteFD, &X, 1);
 }
 
-static void CheckNewReadFD(network_context *Context, int NewFD) {
+static void CheckNewReadFD(posix_net_context *Context, int NewFD) {
   Context->ReadFDMax = MaxInt(Context->ReadFDMax, NewFD);
 }
 
-static void RecalcReadFDMax(network_context *Context) {
+static void RecalcReadFDMax(posix_net_context *Context) {
   Context->ReadFDMax = 0;
   client_set_iterator Iterator = CreateClientSetIterator(&Context->ClientSet);
   while(AdvanceClientSetIterator(&Iterator)) {
@@ -46,7 +46,7 @@ static void RecalcReadFDMax(network_context *Context) {
   CheckNewReadFD(Context, Context->HostFD);
 }
 
-void InitNetwork(network_context *Context) {
+void InitPosixNet(posix_net_context *Context) {
   Context->ReadFDMax = 0;
 
   {
@@ -104,7 +104,7 @@ void InitNetwork(network_context *Context) {
   Assert(ListenResult == 0);
 }
 
-void TerminateNetwork(network_context *Context) {
+void TerminatePosixNet(posix_net_context *Context) {
   int Result = close(Context->WakeReadFD);
   Assert(Result == 0);
   Result = close(Context->WakeWriteFD);
@@ -130,7 +130,7 @@ void TerminateNetwork(network_context *Context) {
   Context->EventBufferAddr = NULL;
 }
 
-void ShutdownNetwork(network_context *Context) {
+void ShutdownPosixNet(posix_net_context *Context) {
   memsize Length = SerializeShutdownNetworkCommand(Context->CommandSerializationBuffer);
   buffer Command = {
     .Addr = Context->CommandSerializationBuffer.Addr,
@@ -140,7 +140,7 @@ void ShutdownNetwork(network_context *Context) {
   RequestWake(Context);
 }
 
-static void ProcessCommands(network_context *Context) {
+static void ProcessCommands(posix_net_context *Context) {
   memsize Length;
   while((Length = ChunkRingBufferRead(&Context->CommandRing, Context->CommandReadBuffer))) {
     network_command_type Type = UnserializeNetworkCommandType(Context->CommandReadBuffer);
@@ -164,7 +164,7 @@ static void ProcessCommands(network_context *Context) {
           client *Client = FindClientByID(&Context->ClientSet, BroadcastCommand.ClientIDs[I]);
           if(Client) {
             printf("Broadcasted to client id %zu\n", BroadcastCommand.ClientIDs[I]);
-            ssize_t Result = NetworkSend(Client->FD, BroadcastCommand.Message);
+            ssize_t Result = PosixNetSend(Client->FD, BroadcastCommand.Message);
             Assert(Result != -1);
           }
         }
@@ -176,11 +176,11 @@ static void ProcessCommands(network_context *Context) {
   }
 }
 
-memsize ReadNetworkEvent(network_context *Context, buffer Buffer) {
+memsize ReadPosixNetEvent(posix_net_context *Context, buffer Buffer) {
   return ChunkRingBufferRead(&Context->EventRing, Buffer);
 }
 
-void NetworkBroadcast(network_context *Context, client_id *IDs, memsize IDCount, buffer Message) {
+void PosixNetBroadcast(posix_net_context *Context, client_id *IDs, memsize IDCount, buffer Message) {
   memsize Length = SerializeBroadcastNetworkCommand(
     IDs,
     IDCount,
@@ -195,7 +195,7 @@ void NetworkBroadcast(network_context *Context, client_id *IDs, memsize IDCount,
   RequestWake(Context);
 }
 
-void ProcessIncoming(network_context *Context, client *Client) {
+void ProcessIncoming(posix_net_context *Context, client *Client) {
   for(;;) {
     buffer Incoming = Context->IncomingReadBuffer;
     Incoming.Length = ByteRingBufferPeek(&Client->InBuffer, Incoming);
@@ -230,8 +230,8 @@ void ProcessIncoming(network_context *Context, client *Client) {
   }
 }
 
-void* RunNetwork(void *Data) {
-  network_context *Context = (network_context*)Data;
+void* RunPosixNet(void *Data) {
+  posix_net_context *Context = (posix_net_context*)Data;
   Context->Mode = network_mode_running;
 
   while(Context->Mode != network_mode_stopped) {
@@ -254,7 +254,7 @@ void* RunNetwork(void *Data) {
       while(AdvanceClientSetIterator(&Iterator)) {
         client *Client = Iterator.Client;
         if(FD_ISSET(Client->FD, &FDSet)) {
-          ssize_t Result = NetworkReceive(Client->FD, Context->ReceiveBuffer);
+          ssize_t Result = PosixNetReceive(Client->FD, Context->ReceiveBuffer);
           if(Result == 0) {
             int Result = close(Client->FD);
             Assert(Result != -1);
