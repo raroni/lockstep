@@ -7,7 +7,7 @@ static const r32 Zoom = 1.0 / 1000.0;
 static const r32 SquareHalfSize = 100.0f / 2.0f;
 
 void InitOpenGL(r32 AspectRatio) {
-  glClearColor(1.0f, 0.0f, 0.0f, 1.0f);
+  glClearColor(0.0f, 1.0f, 0.0f, 1.0f);
   glDisable(GL_DEPTH_TEST);
 
   glMatrixMode(GL_PROJECTION);
@@ -22,8 +22,11 @@ void InitOpenGL(r32 AspectRatio) {
   glLoadMatrixf(Proj);
 }
 
-void DrawSquare(si16 X, si16 Y) {
-  glColor3f(0.0f, 1.0f, 0.0f);
+void DrawSquare(si16 X, si16 Y, ui32 Color) {
+  ui8 R = Color >> 16;
+  ui8 G = (Color & 0x0000FF00) >> 8;
+  ui8 B = Color & 0x000000FF;
+  glColor3ub(R, G, B);
   r32 RX = (r32)X;
   r32 RY = (r32)Y;
   glRectf(
@@ -45,7 +48,7 @@ void DisplayOpenGL(chunk_list *Commands) {
     switch(Type) {
       case render_command_type_draw_square: {
         draw_square_render_command *DrawCommand = (draw_square_render_command*)Body;
-        DrawSquare(DrawCommand->X, DrawCommand->Y);
+        DrawSquare(DrawCommand->X, DrawCommand->Y, DrawCommand->Color);
         break;
       }
       default:

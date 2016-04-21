@@ -8,6 +8,9 @@
 #include "render_commands.h"
 #include "client.h"
 
+static const ui32 Red = 0x000000FF;
+static const ui32 Blue = 0x00FF0000;
+
 struct client_state {
   linear_allocator Allocator;
   buffer CommandSerializationBuffer;
@@ -43,10 +46,12 @@ void Render(chunk_list *Commands) {
   draw_square_render_command *Command1 = AddRenderCommand(Commands, draw_square);
   Command1->X = 100;
   Command1->Y = 100;
+  Command1->Color = Red;
 
   draw_square_render_command *Command2 = AddRenderCommand(Commands, draw_square);
   Command2->X = -100;
   Command2->Y = -100;
+  Command2->Color = Blue;
 }
 
 void UpdateClient(bool TerminationRequested, chunk_list *NetEvents, chunk_list *NetCmds, chunk_list *RenderCmds, bool *Running, buffer Memory) {
