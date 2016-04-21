@@ -5,9 +5,9 @@
 #include "client_set.h"
 
 enum posix_net_mode {
-  network_mode_running,
-  network_mode_disconnecting,
-  network_mode_stopped
+  net_mode_running,
+  net_mode_disconnecting,
+  net_mode_stopped
 };
 
 struct posix_net_context {

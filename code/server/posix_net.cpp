@@ -8,9 +8,9 @@
 #include "lib/min_max.h"
 #include "lib/chunk_ring_buffer.h"
 #include "common/posix_net.h"
-#include "common/network_messages.h"
-#include "network_events.h"
-#include "network_commands.h"
+#include "common/net_messages.h"
+#include "net_events.h"
+#include "net_commands.h"
 #include "posix_net.h"
 
 static buffer CreateBuffer(memsize Length) {
@@ -131,7 +131,7 @@ void TerminatePosixNet(posix_net_context *Context) {
 }
 
 void ShutdownPosixNet(posix_net_context *Context) {
-  memsize Length = SerializeShutdownNetworkCommand(Context->CommandSerializationBuffer);
+  memsize Length = SerializeShutdownNetCommand(Context->CommandSerializationBuffer);
   buffer Command = {
     .Addr = Context->CommandSerializationBuffer.Addr,
     .Length = Length
@@ -143,23 +143,23 @@ void ShutdownPosixNet(posix_net_context *Context) {
 static void ProcessCommands(posix_net_context *Context) {
   memsize Length;
   while((Length = ChunkRingBufferRead(&Context->CommandRing, Context->CommandReadBuffer))) {
-    network_command_type Type = UnserializeNetworkCommandType(Context->CommandReadBuffer);
+    net_command_type Type = UnserializeNetCommandType(Context->CommandReadBuffer);
     buffer Command = {
       .Addr = Context->CommandReadBuffer.Addr,
       .Length = Length
     };
     switch(Type) {
-      case network_command_type_shutdown: {
+      case net_command_type_shutdown: {
         client_set_iterator Iterator = CreateClientSetIterator(&Context->ClientSet);
         while(AdvanceClientSetIterator(&Iterator)) {
           int Result = shutdown(Iterator.Client->FD, SHUT_RDWR);
           Assert(Result == 0);
         }
-        Context->Mode = network_mode_disconnecting;
+        Context->Mode = net_mode_disconnecting;
         break;
       }
-      case network_command_type_broadcast: {
-        broadcast_network_command BroadcastCommand = UnserializeBroadcastNetworkCommand(Command);
+      case net_command_type_broadcast: {
+        broadcast_net_command BroadcastCommand = UnserializeBroadcastNetCommand(Command);
         for(memsize I=0; I<BroadcastCommand.ClientIDCount; ++I) {
           client *Client = FindClientByID(&Context->ClientSet, BroadcastCommand.ClientIDs[I]);
           if(Client) {
@@ -181,7 +181,7 @@ memsize ReadPosixNetEvent(posix_net_context *Context, buffer Buffer) {
 }
 
 void PosixNetBroadcast(posix_net_context *Context, client_id *IDs, memsize IDCount, buffer Message) {
-  memsize Length = SerializeBroadcastNetworkCommand(
+  memsize Length = SerializeBroadcastNetCommand(
     IDs,
     IDCount,
     Message,
@@ -199,22 +199,22 @@ void ProcessIncoming(posix_net_context *Context, client *Client) {
   for(;;) {
     buffer Incoming = Context->IncomingReadBuffer;
     Incoming.Length = ByteRingBufferPeek(&Client->InBuffer, Incoming);
-    network_message_type Type;
-    bool Result = UnserializeNetworkMessageType(Incoming, &Type);
+    net_message_type Type;
+    bool Result = UnserializeNetMessageType(Incoming, &Type);
     if(!Result) {
       break;
     }
 
     memsize ConsumedBytesCount = 0;
     switch(Type) {
-      case network_message_type_reply: {
-        memsize Length = SerializeReplyNetworkEvent(Client->ID, Context->EventOutBuffer);
+      case net_message_type_reply: {
+        memsize Length = SerializeReplyNetEvent(Client->ID, Context->EventOutBuffer);
         buffer Event = {
           .Addr = Context->EventOutBuffer.Addr,
           .Length = Length
         };
         ChunkRingBufferWrite(&Context->EventRing, Event);
-        ConsumedBytesCount = ReplyNetworkMesageSize;
+        ConsumedBytesCount = ReplyNetMesageSize;
         break;
       }
       default:
@@ -232,9 +232,9 @@ void ProcessIncoming(posix_net_context *Context, client *Client) {
 
 void* RunPosixNet(void *Data) {
   posix_net_context *Context = (posix_net_context*)Data;
-  Context->Mode = network_mode_running;
+  Context->Mode = net_mode_running;
 
-  while(Context->Mode != network_mode_stopped) {
+  while(Context->Mode != net_mode_stopped) {
     fd_set FDSet;
     FD_ZERO(&FDSet);
     {
@@ -259,7 +259,7 @@ void* RunPosixNet(void *Data) {
             int Result = close(Client->FD);
             Assert(Result != -1);
             DestroyClient(&Iterator);
-            memsize Length = SerializeDisconnectNetworkEvent(Client->ID, Context->EventOutBuffer);
+            memsize Length = SerializeDisconnectNetEvent(Client->ID, Context->EventOutBuffer);
             buffer Event = {
               .Addr = Context->EventOutBuffer.Addr,
               .Length = Length
@@ -290,13 +290,13 @@ void* RunPosixNet(void *Data) {
     if(
       FD_ISSET(Context->HostFD, &FDSet) &&
       Context->ClientSet.Count != CLIENT_SET_MAX &&
-      Context->Mode == network_mode_running
+      Context->Mode == net_mode_running
     ) {
       int ClientFD = accept(Context->HostFD, NULL, NULL);
       Assert(ClientFD != -1);
       client *Client = CreateClient(&Context->ClientSet, ClientFD);
       CheckNewReadFD(Context, ClientFD);
-      memsize Length = SerializeConnectNetworkEvent(Client->ID, Context->EventOutBuffer);
+      memsize Length = SerializeConnectNetEvent(Client->ID, Context->EventOutBuffer);
       buffer Event = {
         .Addr = Context->EventOutBuffer.Addr,
         .Length = Length
@@ -304,10 +304,10 @@ void* RunPosixNet(void *Data) {
       ChunkRingBufferWrite(&Context->EventRing, Event);
     }
 
-    if(Context->Mode == network_mode_disconnecting) {
+    if(Context->Mode == net_mode_disconnecting) {
       if(Context->ClientSet.Count == 0) {
         printf("No more clients. Stopping.\n");
-        Context->Mode = network_mode_stopped;
+        Context->Mode = net_mode_stopped;
       }
     }
   }

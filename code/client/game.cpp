@@ -2,10 +2,10 @@
 #include "lib/def.h"
 #include "lib/assert.h"
 #include "common/memory.h"
-#include "common/network_messages.h"
+#include "common/net_messages.h"
 #include "common/simulation.h"
-#include "network_events.h"
-#include "network_commands.h"
+#include "net_events.h"
+#include "net_commands.h"
 #include "render_commands.h"
 #include "game.h"
 
@@ -66,20 +66,20 @@ void UpdateGame(bool TerminationRequested, chunk_list *NetEvents, chunk_list *Ne
     if(Event.Length == 0) {
       break;
     }
-    network_event_type Type = UnserializeNetworkEventType(Event);
+    net_event_type Type = UnserializeNetEventType(Event);
     switch(Type) {
-      case network_event_type_connection_established:
+      case net_event_type_connection_established:
         printf("Game got connection established!\n");
         break;
-      case network_event_type_connection_lost:
+      case net_event_type_connection_lost:
         printf("Game got connection lost!\n");
         *Running = false;
         break;
-      case network_event_type_connection_failed:
+      case net_event_type_connection_failed:
         printf("Game got connection failed!\n");
         *Running = false;
         break;
-      case network_event_type_start: {
+      case net_event_type_start: {
         printf("Game got start event!\n");
 
         static ui8 TempBufferBlock[MAX_MESSAGE_LENGTH];
@@ -87,14 +87,14 @@ void UpdateGame(bool TerminationRequested, chunk_list *NetEvents, chunk_list *Ne
           .Addr = TempBufferBlock,
           .Length = sizeof(TempBufferBlock)
         };
-        memsize Length = SerializeReplyNetworkMessage(TempBuffer);
+        memsize Length = SerializeReplyNetMessage(TempBuffer);
         buffer Message = {
           .Addr = TempBuffer.Addr,
           .Length = Length
         };
         printf("Starting game and replying...\n");
 
-        Length = SerializeSendNetworkCommand(State->CommandSerializationBuffer, Message);
+        Length = SerializeSendNetCommand(State->CommandSerializationBuffer, Message);
         buffer Command = {
           .Addr = State->CommandSerializationBuffer.Addr,
           .Length = Length
@@ -113,9 +113,9 @@ void UpdateGame(bool TerminationRequested, chunk_list *NetEvents, chunk_list *Ne
   Render(RenderCmds);
 
   if(TerminationRequested) {
-    printf("Requesting network shutdown...\n");
+    printf("Requesting net shutdown...\n");
 
-    memsize Length = SerializeShutdownNetworkCommand(State->CommandSerializationBuffer);
+    memsize Length = SerializeShutdownNetCommand(State->CommandSerializationBuffer);
     buffer Command = {
       .Addr = State->CommandSerializationBuffer.Addr,
       .Length = Length

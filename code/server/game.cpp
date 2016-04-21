@@ -1,10 +1,10 @@
 #include <stdio.h>
 #include "lib/assert.h"
 #include "common/memory.h"
-#include "common/network_messages.h"
-#include "network_events.h"
-#include "network_commands.h"
-#include "network.h"
+#include "common/net_messages.h"
+#include "net_events.h"
+#include "net_commands.h"
+#include "net.h"
 #include "game.h"
 
 #define MESSAGE_OUT_BUFFER_LENGTH 1024*10
@@ -69,7 +69,7 @@ static void Broadcast(const player_set *Set, const buffer Message, chunk_list *C
     .Length = sizeof(TempWorkBufferBlock)
   };
 
-  memsize Length = SerializeBroadcastNetworkCommand(IDs, Set->Count, Message, TempWorkBuffer);
+  memsize Length = SerializeBroadcastNetCommand(IDs, Set->Count, Message, TempWorkBuffer);
   buffer Command = {
     .Addr = TempWorkBuffer.Addr,
     .Length = Length
@@ -113,18 +113,18 @@ void UpdateGame(
     if(Event.Length == 0) {
       break;
     }
-    network_event_type Type = UnserializeNetworkEventType(Event);
+    net_event_type Type = UnserializeNetEventType(Event);
     switch(Type) {
-      case network_event_type_connect:
+      case net_event_type_connect:
         printf("Game got connection event!\n");
         if(State->PlayerSet.Count != PLAYERS_MAX) {
-          connect_network_event ConnectEvent = UnserializeConnectNetworkEvent(Event);
+          connect_net_event ConnectEvent = UnserializeConnectNetEvent(Event);
           AddPlayer(&State->PlayerSet, ConnectEvent.ClientID);
         }
         break;
-      case network_event_type_disconnect: {
+      case net_event_type_disconnect: {
         printf("Game got disconnect event!\n");
-        disconnect_network_event DisconnectEvent = UnserializeDisconnectNetworkEvent(Event);
+        disconnect_net_event DisconnectEvent = UnserializeDisconnectNetEvent(Event);
         memsize PlayerIndex;
         bool Result = FindPlayerByClientID(&State->PlayerSet, DisconnectEvent.ClientID, &PlayerIndex);
         if(Result) {
@@ -133,8 +133,8 @@ void UpdateGame(
         }
         break;
       }
-      case network_event_type_reply: {
-        reply_network_event ReplyEvent = UnserializeReplyNetworkEvent(Event);
+      case net_event_type_reply: {
+        reply_net_event ReplyEvent = UnserializeReplyNetEvent(Event);
         printf("Got reply from %zu.\n", ReplyEvent.ClientID);
         break;
       }
@@ -145,7 +145,7 @@ void UpdateGame(
 
   if(State->Mode != game_mode_disconnecting && TerminationRequested) {
     State->Mode = game_mode_disconnecting;
-    memsize Length = SerializeShutdownNetworkCommand(TempWorkBuffer);
+    memsize Length = SerializeShutdownNetCommand(TempWorkBuffer);
     buffer Command = {
       .Addr = TempWorkBuffer.Addr,
       .Length = Length
@@ -155,7 +155,7 @@ void UpdateGame(
   else if(State->Mode != game_mode_waiting_for_clients && State->PlayerSet.Count == 0) {
     printf("All players has left. Stopping game.\n");
     if(State->Mode != game_mode_disconnecting) {
-      memsize Length = SerializeShutdownNetworkCommand(TempWorkBuffer);
+      memsize Length = SerializeShutdownNetCommand(TempWorkBuffer);
       buffer Command = {
         .Addr = TempWorkBuffer.Addr,
         .Length = Length
@@ -167,7 +167,7 @@ void UpdateGame(
   }
   else {
     if(State->Mode == game_mode_waiting_for_clients && State->PlayerSet.Count == PLAYERS_MAX) {
-      memsize Length = SerializeStartNetworkMessage(MessageOutBuffer);
+      memsize Length = SerializeStartNetMessage(MessageOutBuffer);
       buffer MessageBuffer = {
         .Addr = MessageOutBuffer.Addr,
         .Length = Length
