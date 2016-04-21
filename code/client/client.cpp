@@ -5,6 +5,7 @@
 #include "common/network_messages.h"
 #include "network_events.h"
 #include "network_commands.h"
+#include "render_commands.h"
 #include "client.h"
 
 struct client_state {
@@ -25,10 +26,30 @@ void InitClient(buffer Memory) {
     B->Addr = LinearAllocate(&State->Allocator, NETWORK_COMMAND_MAX_LENGTH);
     B->Length = NETWORK_COMMAND_MAX_LENGTH;
   }
-
 }
 
-void UpdateClient(bool TerminationRequested, chunk_list *NetEvents, chunk_list *NetCmds, bool *Running, buffer Memory) {
+#define AddRenderCommand(List, Type) (Type##_render_command*)_AddRenderCommand(List, render_command_type_##Type, sizeof(Type##_render_command))
+
+void* _AddRenderCommand(chunk_list *List, render_command_type Type, memsize Length) {
+  Length += sizeof(Type);
+  void *Base = ChunkListAllocate(List, Length);
+  render_command_type *TypePtr = (render_command_type*)Base;
+  *TypePtr = Type;
+  ui8* Command = (ui8*)Base + sizeof(Type);
+  return (void*)Command;
+}
+
+void Render(chunk_list *Commands) {
+  draw_square_render_command *Command1 = AddRenderCommand(Commands, draw_square);
+  Command1->X = 100;
+  Command1->Y = 100;
+
+  draw_square_render_command *Command2 = AddRenderCommand(Commands, draw_square);
+  Command2->X = -100;
+  Command2->Y = -100;
+}
+
+void UpdateClient(bool TerminationRequested, chunk_list *NetEvents, chunk_list *NetCmds, chunk_list *RenderCmds, bool *Running, buffer Memory) {
   client_state *State = (client_state*)Memory.Addr;
 
   for(;;) {
@@ -76,6 +97,8 @@ void UpdateClient(bool TerminationRequested, chunk_list *NetEvents, chunk_list *
         InvalidCodePath;
     }
   }
+
+  Render(RenderCmds);
 
   if(TerminationRequested) {
     printf("Requesting network shutdown...\n");

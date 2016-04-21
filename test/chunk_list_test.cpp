@@ -67,8 +67,26 @@ static void TestReset(ow_test_context Context) {
   DestroyTestBuffer(&BackBuffer);
 }
 
+static void TestAllocate(ow_test_context Context) {
+  chunk_list List;
+  buffer BackBuffer = CreateTestBuffer(64);
+  InitChunkList(&List, BackBuffer);
+
+  ui64 *InputUI64 = (ui64*)ChunkListAllocate(&List, sizeof(ui64));
+  *InputUI64 = 12345;
+
+  buffer Chunk = ChunkListRead(&List);
+  OW_AssertEqualInt(8, Chunk.Length);
+  ui64 OutputUI64 = *(ui64*)Chunk.Addr;
+  OW_AssertEqualInt(12345, OutputUI64);
+
+  TerminateChunkList(&List);
+  DestroyTestBuffer(&BackBuffer);
+}
+
 void SetupChunkListGroup(ow_suite *S) {
   ow_group_index G = OW_CreateGroup(S);
   OW_AddTest(S, G, TestBasicWriteRead);
   OW_AddTest(S, G, TestReset);
+  OW_AddTest(S, G, TestAllocate);
 }

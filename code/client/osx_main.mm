@@ -15,6 +15,11 @@
 
 static bool TerminationRequested;
 
+struct resolution {
+  ui16 Width;
+  ui16 Height;
+};
+
 struct osx_state {
   bool Running;
   void *Memory;
@@ -24,6 +29,8 @@ struct osx_state {
   buffer ClientMemory;
   chunk_list NetworkCommandList;
   chunk_list NetworkEventList;
+  chunk_list RenderCommandList;
+  resolution Resolution;
   pthread_t NetworkThread;
   posix_network_context NetworkContext;
 };
@@ -64,7 +71,7 @@ void TerminateMemory(osx_state *State) {
   State->Memory = NULL;
 }
 
-void FlushNetworkCommands(posix_network_context *Context, chunk_list *Cmds) {
+void ExecuteNetworkCommands(posix_network_context *Context, chunk_list *Cmds) {
   for(;;) {
     buffer Command = ChunkListRead(Cmds);
     if(Command.Length == 0) {
@@ -86,6 +93,11 @@ void FlushNetworkCommands(posix_network_context *Context, chunk_list *Cmds) {
     }
   }
   ResetChunkList(Cmds);
+}
+
+void ExecuteRenderCommands(chunk_list *Commands) {
+  DisplayOpenGL(Commands);
+  ResetChunkList(Commands);
 }
 
 void ReadNetwork(posix_network_context *Context, chunk_list *Events) {
@@ -183,8 +195,14 @@ static void ProcessOSXMessages() {
   }
 }
 
+r32 GetAspectRatio(resolution Resolution) {
+  return r32(Resolution.Width) / r32(Resolution.Height);
+}
+
 int main() {
   osx_state State;
+  State.Resolution.Width = 800;
+  State.Resolution.Height = 600;
 
   InitMemory(&State);
 
@@ -200,6 +218,13 @@ int main() {
     Buffer.Length = NETWORK_EVENT_MAX_LENGTH*100;
     Buffer.Addr = LinearAllocate(&State.Allocator, Buffer.Length);
     InitChunkList(&State.NetworkEventList, Buffer);
+  }
+
+  {
+    buffer Buffer;
+    Buffer.Length = 1024*200;
+    Buffer.Addr = LinearAllocate(&State.Allocator, Buffer.Length);
+    InitChunkList(&State.RenderCommandList, Buffer);
   }
 
   InitNetwork(&State.NetworkContext);
@@ -221,7 +246,7 @@ int main() {
   SetupOSXMenu();
   [App finishLaunching];
 
-  State.Window = CreateOSXWindow(800, 600);
+  State.Window = CreateOSXWindow(State.Resolution.Width, State.Resolution.Height);
   Assert(State.Window != NULL);
 
   State.OGLContext = CreateOGLContext();
@@ -234,7 +259,7 @@ int main() {
 #endif
 
   signal(SIGINT, HandleSigint);
-  InitOpenGL();
+  InitOpenGL(GetAspectRatio(State.Resolution));
   State.Running = true;
   while(State.Running) {
     ProcessOSXMessages();
@@ -244,11 +269,12 @@ int main() {
       TerminationRequested,
       &State.NetworkEventList,
       &State.NetworkCommandList,
+      &State.RenderCommandList,
       &State.Running,
       State.ClientMemory
     );
-    FlushNetworkCommands(&State.NetworkContext, &State.NetworkCommandList);
-    DisplayOpenGL();
+    ExecuteNetworkCommands(&State.NetworkContext, &State.NetworkCommandList);
+    ExecuteRenderCommands(&State.RenderCommandList);
     [State.OGLContext flushBuffer];
   }
 
@@ -271,6 +297,7 @@ int main() {
   [State.Window release];
   [State.OGLContext release];
 
+  TerminateChunkList(&State.RenderCommandList);
   TerminateChunkList(&State.NetworkEventList);
   TerminateChunkList(&State.NetworkCommandList);
   TerminateNetwork(&State.NetworkContext);
