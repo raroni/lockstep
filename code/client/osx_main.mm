@@ -273,6 +273,7 @@ int main() {
       &State.Running,
       State.ClientMemory
     );
+    ResetChunkList(&State.NetEventList);
     ExecuteNetCommands(&State.NetContext, &State.NetCommandList);
     ExecuteRenderCommands(&State.RenderCommandList);
     [State.OGLContext flushBuffer];
