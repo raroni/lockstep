@@ -1,8 +1,7 @@
 #pragma once
 
 #include "lib/byte_ring_buffer.h"
-
-typedef memsize client_id;
+#include "network.h"
 
 #define CLIENT_SET_MAX 16
 

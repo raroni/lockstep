@@ -9,7 +9,7 @@
 #include "network_commands.h"
 #include "network_events.h"
 #include "server.h"
-#include "network.h"
+#include "posix_network.h"
 
 static bool TerminationRequested;
 

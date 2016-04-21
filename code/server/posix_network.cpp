@@ -11,7 +11,7 @@
 #include "common/network_messages.h"
 #include "network_events.h"
 #include "network_commands.h"
-#include "network.h"
+#include "posix_network.h"
 
 static buffer CreateBuffer(memsize Length) {
   buffer B;
