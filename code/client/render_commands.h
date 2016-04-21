@@ -7,6 +7,6 @@ enum render_command_type {
 };
 
 struct draw_square_render_command {
-  ui16 X;
-  ui16 Y;
+  si16 X;
+  si16 Y;
 };

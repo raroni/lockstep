@@ -3,8 +3,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
-typedef float real32;
-typedef double real64;
+typedef float r32;
+typedef double r64;
 
 typedef uint8_t ui8;
 typedef uint16_t ui16;

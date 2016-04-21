@@ -40,9 +40,13 @@ void* _AddRenderCommand(chunk_list *List, render_command_type Type, memsize Leng
 }
 
 void Render(chunk_list *Commands) {
-  draw_square_render_command *Command = AddRenderCommand(Commands, draw_square);
-  Command->X = 100;
-  Command->Y = 200;
+  draw_square_render_command *Command1 = AddRenderCommand(Commands, draw_square);
+  Command1->X = 100;
+  Command1->Y = 100;
+
+  draw_square_render_command *Command2 = AddRenderCommand(Commands, draw_square);
+  Command2->X = -100;
+  Command2->Y = -100;
 }
 
 void UpdateClient(bool TerminationRequested, chunk_list *NetEvents, chunk_list *NetCmds, chunk_list *RenderCmds, bool *Running, buffer Memory) {

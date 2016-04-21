@@ -15,6 +15,11 @@
 
 static bool TerminationRequested;
 
+struct resolution {
+  ui16 Width;
+  ui16 Height;
+};
+
 struct osx_state {
   bool Running;
   void *Memory;
@@ -25,6 +30,7 @@ struct osx_state {
   chunk_list NetworkCommandList;
   chunk_list NetworkEventList;
   chunk_list RenderCommandList;
+  resolution Resolution;
   pthread_t NetworkThread;
   posix_network_context NetworkContext;
 };
@@ -189,8 +195,14 @@ static void ProcessOSXMessages() {
   }
 }
 
+r32 GetAspectRatio(resolution Resolution) {
+  return r32(Resolution.Width) / r32(Resolution.Height);
+}
+
 int main() {
   osx_state State;
+  State.Resolution.Width = 800;
+  State.Resolution.Height = 600;
 
   InitMemory(&State);
 
@@ -234,7 +246,7 @@ int main() {
   SetupOSXMenu();
   [App finishLaunching];
 
-  State.Window = CreateOSXWindow(800, 600);
+  State.Window = CreateOSXWindow(State.Resolution.Width, State.Resolution.Height);
   Assert(State.Window != NULL);
 
   State.OGLContext = CreateOGLContext();
@@ -247,7 +259,7 @@ int main() {
 #endif
 
   signal(SIGINT, HandleSigint);
-  InitOpenGL();
+  InitOpenGL(GetAspectRatio(State.Resolution));
   State.Running = true;
   while(State.Running) {
     ProcessOSXMessages();
