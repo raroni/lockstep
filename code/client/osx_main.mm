@@ -24,6 +24,7 @@ struct osx_state {
   buffer ClientMemory;
   chunk_list NetworkCommandList;
   chunk_list NetworkEventList;
+  chunk_list RenderCommandList;
   pthread_t NetworkThread;
   posix_network_context NetworkContext;
 };
@@ -64,7 +65,7 @@ void TerminateMemory(osx_state *State) {
   State->Memory = NULL;
 }
 
-void FlushNetworkCommands(posix_network_context *Context, chunk_list *Cmds) {
+void ExecuteNetworkCommands(posix_network_context *Context, chunk_list *Cmds) {
   for(;;) {
     buffer Command = ChunkListRead(Cmds);
     if(Command.Length == 0) {
@@ -86,6 +87,11 @@ void FlushNetworkCommands(posix_network_context *Context, chunk_list *Cmds) {
     }
   }
   ResetChunkList(Cmds);
+}
+
+void ExecuteRenderCommands(chunk_list *Commands) {
+  DisplayOpenGL(Commands);
+  ResetChunkList(Commands);
 }
 
 void ReadNetwork(posix_network_context *Context, chunk_list *Events) {
@@ -202,6 +208,13 @@ int main() {
     InitChunkList(&State.NetworkEventList, Buffer);
   }
 
+  {
+    buffer Buffer;
+    Buffer.Length = 1024*200;
+    Buffer.Addr = LinearAllocate(&State.Allocator, Buffer.Length);
+    InitChunkList(&State.RenderCommandList, Buffer);
+  }
+
   InitNetwork(&State.NetworkContext);
   {
     int Result = pthread_create(&State.NetworkThread, 0, RunNetwork, &State.NetworkContext);
@@ -244,11 +257,12 @@ int main() {
       TerminationRequested,
       &State.NetworkEventList,
       &State.NetworkCommandList,
+      &State.RenderCommandList,
       &State.Running,
       State.ClientMemory
     );
-    FlushNetworkCommands(&State.NetworkContext, &State.NetworkCommandList);
-    DisplayOpenGL();
+    ExecuteNetworkCommands(&State.NetworkContext, &State.NetworkCommandList);
+    ExecuteRenderCommands(&State.RenderCommandList);
     [State.OGLContext flushBuffer];
   }
 
@@ -271,6 +285,7 @@ int main() {
   [State.Window release];
   [State.OGLContext release];
 
+  TerminateChunkList(&State.RenderCommandList);
   TerminateChunkList(&State.NetworkEventList);
   TerminateChunkList(&State.NetworkCommandList);
   TerminateNetwork(&State.NetworkContext);

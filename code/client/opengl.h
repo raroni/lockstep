@@ -1,2 +1,4 @@
+#include "lib/chunk_list.h"
+
 void InitOpenGL();
-void DisplayOpenGL();
+void DisplayOpenGL(chunk_list *Commands);
