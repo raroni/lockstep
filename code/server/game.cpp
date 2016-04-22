@@ -4,7 +4,6 @@
 #include "common/net_messages.h"
 #include "net_events.h"
 #include "net_commands.h"
-#include "net.h"
 #include "game.h"
 
 #define MESSAGE_OUT_BUFFER_LENGTH 1024*10

@@ -5,7 +5,6 @@
 #include "lib/assert.h"
 #include "lib/chunk_list.h"
 #include "common/memory.h"
-#include "common/net_messages.h"
 #include "net_commands.h"
 #include "net_events.h"
 #include "game.h"
