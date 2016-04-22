@@ -2,7 +2,7 @@
 
 #include "lib/def.h"
 #include "lib/chunk_ring_buffer.h"
-#include "client_set.h"
+#include "posix_net_client_set.h"
 
 enum posix_net_mode {
   net_mode_running,
@@ -19,7 +19,7 @@ struct posix_net_context {
   void *CommandBufferAddr;
   chunk_ring_buffer EventRing;
   void *EventBufferAddr;
-  client_set ClientSet;
+  posix_net_client_set ClientSet;
   posix_net_mode Mode;
   buffer ReceiveBuffer;
   buffer EventOutBuffer;

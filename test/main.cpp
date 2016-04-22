@@ -2,7 +2,7 @@
 
 void SetupByteRingBufferGroup(ow_suite *Suite);
 void SetupChunkRingBufferGroup(ow_suite *Suite);
-void SetupClientSetIteratorGroup(ow_suite *Suite);
+void SetupPosixNetClientSetIteratorGroup(ow_suite *Suite);
 void SetupChunkListGroup(ow_suite *Suite);
 
 int main() {
@@ -10,7 +10,7 @@ int main() {
 
   SetupByteRingBufferGroup(Suite);
   SetupChunkRingBufferGroup(Suite);
-  SetupClientSetIteratorGroup(Suite);
+  SetupPosixNetClientSetIteratorGroup(Suite);
   SetupChunkListGroup(Suite);
 
   OW_Run(Suite);

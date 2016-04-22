@@ -16,7 +16,7 @@ COMMON_HEADER_INCLUDES = -iquote $(CODE_ROOT)
 
 SERVER_PRODUCT_DIR = $(PRODUCT_DIR)/LockstepServer.app
 SERVER_BINARY = $(SERVER_PRODUCT_DIR)/Contents/MacOS/LockstepServer
-SERVER_SOURCES = $(COMMON_SOURCES) code/server/osx_main.cpp code/server/posix_net.cpp code/server/client_set.cpp code/server/net_events.cpp code/server/net_commands.cpp code/lib/chunk_ring_buffer.cpp code/lib/byte_ring_buffer.cpp code/server/game.cpp
+SERVER_SOURCES = $(COMMON_SOURCES) code/server/osx_main.cpp code/server/posix_net.cpp code/server/posix_net_client_set.cpp code/server/net_events.cpp code/server/net_commands.cpp code/lib/chunk_ring_buffer.cpp code/lib/byte_ring_buffer.cpp code/server/game.cpp
 SERVER_OBJS = $(patsubst %.cpp, $(OBJECTS_DIR)/%.o, $(SERVER_SOURCES))
 SERVER_DEPS = $(sort $(patsubst %, %.deps, $(SERVER_OBJS)))
 
@@ -41,14 +41,14 @@ TEST_SOURCES =\
 	test/orwell.cpp\
 	test/byte_ring_buffer_test.cpp\
 	test/chunk_ring_buffer_test.cpp\
-	test/client_set_iterator_test.cpp\
+	test/posix_net_client_set_iterator_test.cpp\
 	test/chunk_list_test.cpp\
 	code/lib/assert.cpp\
 	code/lib/byte_ring_buffer.cpp\
 	code/lib/chunk_list.cpp\
 	code/lib/chunk_ring_buffer.cpp\
 	code/lib/serialization.cpp\
-	code/server/client_set.cpp
+	code/server/posix_net_client_set.cpp
 TEST_OBJS = $(patsubst %.cpp, $(OBJECTS_DIR)/%.o, $(TEST_SOURCES))
 TEST_DEPS = $(sort $(patsubst %, %.deps, $(TEST_OBJS)))
 

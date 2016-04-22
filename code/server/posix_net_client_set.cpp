@@ -1,20 +1,20 @@
 #include <stdlib.h>
-#include "client_set.h"
+#include "posix_net_client_set.h"
 
-typedef client_set set;
-typedef client_set_iterator iterator;
+typedef posix_net_client_set set;
+typedef posix_net_client_set_iterator iterator;
 
 static client_id CreateClientID() {
   static client_id DummyHandleCount = 10;
   return DummyHandleCount++;
 }
 
-void InitClientSet(set *Set) {
+void InitPosixNetClientSet(set *Set) {
   Set->Count = 0;
-  memsize InBufferTotalCapacity = CLIENT_SET_MAX*1024*50;
-  memsize InBufferClientCapacity = InBufferTotalCapacity/CLIENT_SET_MAX;
+  memsize InBufferTotalCapacity = POSIX_NET_CLIENT_SET_MAX*1024*50;
+  memsize InBufferClientCapacity = InBufferTotalCapacity/POSIX_NET_CLIENT_SET_MAX;
   Set->InBuffer = malloc(InBufferTotalCapacity);
-  for(memsize I=0; I<CLIENT_SET_MAX; ++I) {
+  for(memsize I=0; I<POSIX_NET_CLIENT_SET_MAX; ++I) {
     buffer Storage;
     Storage.Addr = ((ui8*)Set->InBuffer) + I*InBufferClientCapacity;
     Storage.Length = InBufferClientCapacity;
@@ -22,9 +22,9 @@ void InitClientSet(set *Set) {
   }
 }
 
-client* FindClientByID(client_set *Set, client_id ID) {
+posix_net_client* FindClientByID(posix_net_client_set *Set, client_id ID) {
   for(memsize I=0; I<Set->Count; ++I) {
-    client *Client = Set->Clients + I;
+    posix_net_client *Client = Set->Clients + I;
     if(Client->ID == ID) {
       return Client;
     }
@@ -32,21 +32,21 @@ client* FindClientByID(client_set *Set, client_id ID) {
   return NULL;
 }
 
-client* CreateClient(set *Set, int FD) {
-  client *Client = &Set->Clients[Set->Count++];
+posix_net_client* CreateClient(set *Set, int FD) {
+  posix_net_client *Client = &Set->Clients[Set->Count++];
   Client->FD = FD;
   Client->ID = CreateClientID();
   return Client;
 }
 
-client_set_iterator CreateClientSetIterator(set *Set) {
+posix_net_client_set_iterator CreatePosixNetClientSetIterator(set *Set) {
   iterator Iterator;
   Iterator.Set = Set;
   Iterator.Client = Set->Clients - 1;
   return Iterator;
 }
 
-void DestroyClient(client_set_iterator *Iterator) {
+void DestroyClient(posix_net_client_set_iterator *Iterator) {
   set *Set = Iterator->Set;
   memsize Index = Iterator->Client - Set->Clients;
   Set->Clients[Index] = Set->Clients[Set->Count-1];
@@ -54,13 +54,13 @@ void DestroyClient(client_set_iterator *Iterator) {
   Iterator->Client--;
 }
 
-bool AdvanceClientSetIterator(iterator *Iterator) {
-  client_set *Set = Iterator->Set;
+bool AdvancePosixNetClientSetIterator(iterator *Iterator) {
+  posix_net_client_set *Set = Iterator->Set;
   Iterator->Client++;
   return Set->Clients + Set->Count > Iterator->Client;
 }
 
-void TerminateClientSet(client_set *Set) {
+void TerminatePosixNetClientSet(posix_net_client_set *Set) {
   for(memsize I=0; I<Set->Count; ++I) {
     TerminateByteRingBuffer(&Set->Clients[I].InBuffer);
   }

@@ -38,8 +38,8 @@ static void CheckNewReadFD(posix_net_context *Context, int NewFD) {
 
 static void RecalcReadFDMax(posix_net_context *Context) {
   Context->ReadFDMax = 0;
-  client_set_iterator Iterator = CreateClientSetIterator(&Context->ClientSet);
-  while(AdvanceClientSetIterator(&Iterator)) {
+  posix_net_client_set_iterator Iterator = CreatePosixNetClientSetIterator(&Context->ClientSet);
+  while(AdvancePosixNetClientSetIterator(&Iterator)) {
     CheckNewReadFD(Context, Iterator.Client->FD);
   }
   CheckNewReadFD(Context, Context->WakeReadFD);
@@ -83,7 +83,7 @@ void InitPosixNet(posix_net_context *Context) {
   Context->CommandReadBuffer = CreateBuffer(NETWORK_COMMAND_MAX_LENGTH);
   Context->IncomingReadBuffer = CreateBuffer(MAX_MESSAGE_LENGTH);
 
-  InitClientSet(&Context->ClientSet);
+  InitPosixNetClientSet(&Context->ClientSet);
 
   Context->HostFD = socket(PF_INET, SOCK_STREAM, 0);
   Assert(Context->HostFD != -1);
@@ -119,7 +119,7 @@ void TerminatePosixNet(posix_net_context *Context) {
   DestroyBuffer(&Context->ReceiveBuffer);
   DestroyBuffer(&Context->EventOutBuffer);
 
-  TerminateClientSet(&Context->ClientSet);
+  TerminatePosixNetClientSet(&Context->ClientSet);
 
   TerminateChunkRingBuffer(&Context->CommandRing);
   free(Context->CommandBufferAddr);
@@ -150,8 +150,8 @@ static void ProcessCommands(posix_net_context *Context) {
     };
     switch(Type) {
       case net_command_type_shutdown: {
-        client_set_iterator Iterator = CreateClientSetIterator(&Context->ClientSet);
-        while(AdvanceClientSetIterator(&Iterator)) {
+        posix_net_client_set_iterator Iterator = CreatePosixNetClientSetIterator(&Context->ClientSet);
+        while(AdvancePosixNetClientSetIterator(&Iterator)) {
           int Result = shutdown(Iterator.Client->FD, SHUT_RDWR);
           Assert(Result == 0);
         }
@@ -161,7 +161,7 @@ static void ProcessCommands(posix_net_context *Context) {
       case net_command_type_broadcast: {
         broadcast_net_command BroadcastCommand = UnserializeBroadcastNetCommand(Command);
         for(memsize I=0; I<BroadcastCommand.ClientIDCount; ++I) {
-          client *Client = FindClientByID(&Context->ClientSet, BroadcastCommand.ClientIDs[I]);
+          posix_net_client *Client = FindClientByID(&Context->ClientSet, BroadcastCommand.ClientIDs[I]);
           if(Client) {
             printf("Broadcasted to client id %zu\n", BroadcastCommand.ClientIDs[I]);
             ssize_t Result = PosixNetSend(Client->FD, BroadcastCommand.Message);
@@ -195,7 +195,7 @@ void PosixNetBroadcast(posix_net_context *Context, client_id *IDs, memsize IDCou
   RequestWake(Context);
 }
 
-void ProcessIncoming(posix_net_context *Context, client *Client) {
+void ProcessIncoming(posix_net_context *Context, posix_net_client *Client) {
   for(;;) {
     buffer Incoming = Context->IncomingReadBuffer;
     Incoming.Length = ByteRingBufferPeek(&Client->InBuffer, Incoming);
@@ -238,8 +238,8 @@ void* RunPosixNet(void *Data) {
     fd_set FDSet;
     FD_ZERO(&FDSet);
     {
-      client_set_iterator Iterator = CreateClientSetIterator(&Context->ClientSet);
-      while(AdvanceClientSetIterator(&Iterator)) {
+      posix_net_client_set_iterator Iterator = CreatePosixNetClientSetIterator(&Context->ClientSet);
+      while(AdvancePosixNetClientSetIterator(&Iterator)) {
         FD_SET(Iterator.Client->FD, &FDSet);
       }
     }
@@ -250,9 +250,9 @@ void* RunPosixNet(void *Data) {
     Assert(SelectResult != -1);
 
     {
-      client_set_iterator Iterator = CreateClientSetIterator(&Context->ClientSet);
-      while(AdvanceClientSetIterator(&Iterator)) {
-        client *Client = Iterator.Client;
+      posix_net_client_set_iterator Iterator = CreatePosixNetClientSetIterator(&Context->ClientSet);
+      while(AdvancePosixNetClientSetIterator(&Iterator)) {
+        posix_net_client *Client = Iterator.Client;
         if(FD_ISSET(Client->FD, &FDSet)) {
           ssize_t Result = PosixNetReceive(Client->FD, Context->ReceiveBuffer);
           if(Result == 0) {
@@ -289,12 +289,12 @@ void* RunPosixNet(void *Data) {
 
     if(
       FD_ISSET(Context->HostFD, &FDSet) &&
-      Context->ClientSet.Count != CLIENT_SET_MAX &&
+      Context->ClientSet.Count != POSIX_NET_CLIENT_SET_MAX &&
       Context->Mode == net_mode_running
     ) {
       int ClientFD = accept(Context->HostFD, NULL, NULL);
       Assert(ClientFD != -1);
-      client *Client = CreateClient(&Context->ClientSet, ClientFD);
+      posix_net_client *Client = CreateClient(&Context->ClientSet, ClientFD);
       CheckNewReadFD(Context, ClientFD);
       memsize Length = SerializeConnectNetEvent(Client->ID, Context->EventOutBuffer);
       buffer Event = {
