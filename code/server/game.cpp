@@ -93,6 +93,8 @@ void InitGame(buffer Memory) {
 }
 
 void UpdateGame(
+  ui64 Time,
+  ui64 *Delay,
   bool TerminationRequested,
   chunk_list *Events,
   chunk_list *Commands,
@@ -182,4 +184,5 @@ void UpdateGame(
       // we should just continue after a timeout.
     }
   }
+  *Delay = 1000;
 }
