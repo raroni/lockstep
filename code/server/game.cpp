@@ -2,6 +2,7 @@
 #include "lib/assert.h"
 #include "common/memory.h"
 #include "common/net_messages.h"
+#include "common/simulation.h"
 #include "net_events.h"
 #include "net_commands.h"
 #include "game.h"
@@ -34,6 +35,8 @@ struct game_state {
   game_mode Mode;
   linear_allocator Allocator;
   player_set PlayerSet;
+  ui64 NextTickTime;
+  simulation Sim;
 };
 
 static void InitPlayerSet(player_set *Set) {
@@ -94,12 +97,13 @@ void InitGame(buffer Memory) {
   InitPlayerSet(&State->PlayerSet);
 }
 
-void StartGame(game_state *State, chunk_list *NetCmds) {
+void StartGame(game_state *State, chunk_list *NetCmds, ui64 Time) {
   static ui8 TempWorkBufferBlock[1024*1024];
   buffer TempWorkBuffer = {
     .Addr = TempWorkBufferBlock,
     .Length = sizeof(TempWorkBufferBlock)
   };
+
 
   player_set *Set = &State->PlayerSet;
   for(memsize I=0; I<Set->Count; ++I) {
@@ -117,27 +121,15 @@ void StartGame(game_state *State, chunk_list *NetCmds) {
     ChunkListWrite(NetCmds, Command);
   }
 
+  State->NextTickTime = Time + SIMULATION_TICK_DURATION*1000;
+
+  InitSimulation(&State->Sim, Set->Count);
+
   printf("Starting game...\n");
   State->Mode = game_mode_active;
 }
 
-void UpdateGame(
-  ui64 Time,
-  ui64 *Delay,
-  bool TerminationRequested,
-  chunk_list *Events,
-  chunk_list *Commands,
-  bool *Running,
-  buffer Memory
-) {
-  game_state *State = (game_state*)Memory.Addr;
-
-  static ui8 TempWorkBufferBlock[1024*1024*5];
-  buffer TempWorkBuffer = {
-    .Addr = TempWorkBufferBlock,
-    .Length = sizeof(TempWorkBufferBlock)
-  };
-
+void ProcessNetEvents(game_state *State, chunk_list *Events) {
   for(;;) {
     buffer Event = ChunkListRead(Events);
     if(Event.Length == 0) {
@@ -172,6 +164,26 @@ void UpdateGame(
         InvalidCodePath;
     }
   }
+}
+
+void UpdateGame(
+  ui64 Time,
+  ui64 *Delay,
+  bool TerminationRequested,
+  chunk_list *Events,
+  chunk_list *Commands,
+  bool *Running,
+  buffer Memory
+) {
+  game_state *State = (game_state*)Memory.Addr;
+
+  static ui8 TempWorkBufferBlock[1024*1024*5];
+  buffer TempWorkBuffer = {
+    .Addr = TempWorkBufferBlock,
+    .Length = sizeof(TempWorkBufferBlock)
+  };
+
+  ProcessNetEvents(State, Events);
 
   if(State->Mode != game_mode_disconnecting && TerminationRequested) {
     State->Mode = game_mode_disconnecting;
@@ -195,16 +207,18 @@ void UpdateGame(
     *Running = false;
     State->Mode = game_mode_stopped;
   }
-  else {
-    if(State->Mode == game_mode_waiting_for_clients && State->PlayerSet.Count == PLAYERS_MAX) {
-      StartGame(State, Commands);
+  else if(State->Mode == game_mode_waiting_for_clients && State->PlayerSet.Count == PLAYERS_MAX) {
+      StartGame(State, Commands, Time);
+  }
+  else if(State->Mode == game_mode_active) {
+    if(Time >= State->NextTickTime) {
+      State->NextTickTime += SIMULATION_TICK_DURATION*1000;
+      TickSimulation(&State->Sim);
     }
-    else if(State->Mode == game_mode_active) {
-    }
-    else if(State->Mode == game_mode_disconnecting) {
-      // TODO: If players doesn't perform clean disconnect
-      // we should just continue after a timeout.
-    }
+  }
+  else if(State->Mode == game_mode_disconnecting) {
+    // TODO: If players doesn't perform clean disconnect
+    // we should just continue after a timeout.
   }
   *Delay = 1000;
 }

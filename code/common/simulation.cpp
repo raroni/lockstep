@@ -25,6 +25,5 @@ void InitSimulation(simulation *Sim, memsize PlayerCount) {
   }
 }
 
-void AdvanceSimulation(simulation *Sim) {
-
+void TickSimulation(simulation *Sim) {
 }

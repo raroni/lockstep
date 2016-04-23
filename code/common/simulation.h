@@ -2,6 +2,8 @@
 
 #include "lib/def.h"
 
+#define SIMULATION_TICK_DURATION 100
+
 struct simulation_unit {
   memsize PlayerID;
   ui16 X;
@@ -16,4 +18,4 @@ struct simulation {
 };
 
 void InitSimulation(simulation *Sim, memsize PlayerCount);
-void AdvanceSimulation(simulation *Sim);
+void TickSimulation(simulation *Sim);
