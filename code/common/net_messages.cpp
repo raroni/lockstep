@@ -3,6 +3,7 @@
 #include "common/conversion.h"
 #include "net_messages.h"
 
+const memsize MinMessageSize = 1;
 const memsize ReplyNetMessageSize = 1;
 const memsize StartNetMessageSize = 3;
 
@@ -23,6 +24,22 @@ memsize SerializeStartNetMessage(memsize PlayerCount, memsize PlayerID, buffer B
   return Writer.Position;
 }
 
+bool ValidateMessageLength(buffer Buffer, net_message_type Type) {
+  memsize RequiredLength = 0;
+  switch(Type) {
+    case net_message_type_start:
+      RequiredLength = StartNetMessageSize;
+      break;
+    case net_message_type_reply:
+      RequiredLength = ReplyNetMessageSize;
+      break;
+    default:
+      InvalidCodePath;
+  }
+
+  return RequiredLength <= Buffer.Length;
+}
+
 memsize SerializeReplyNetMessage(buffer Buffer) {
   ui8 TypeInt = SafeCastIntToUI8(net_message_type_reply);
   serializer Writer = CreateSerializer(Buffer);
@@ -31,28 +48,29 @@ memsize SerializeReplyNetMessage(buffer Buffer) {
   return Writer.Position;
 }
 
-bool UnserializeNetMessageType(buffer Input, net_message_type *Type) {
-  if(Input.Length >= 1) {
-    ui8 TypeInt = *(ui8*)Input.Addr;
-    *Type = (net_message_type)TypeInt;
-    return true;
-  }
-  else {
-    return false;
-  }
+net_message_type UnserializeNetMessageType(buffer Input) {
+  serializer S = CreateSerializer(Input);
+  net_message_type Type = (net_message_type)SerializerReadUI8(&S);
+  return Type;
 }
 
-bool UnserializeStartNetMessage(buffer Buffer, start_net_message *Message) {
-  if(Buffer.Length < StartNetMessageSize) {
-    return false;
-  }
-
+start_net_message UnserializeStartNetMessage(buffer Buffer) {
   serializer S = CreateSerializer(Buffer);
   net_message_type Type = (net_message_type)SerializerReadUI8(&S);
   Assert(Type == net_message_type_start);
 
-  Message->PlayerCount = SerializerReadUI8(&S);
-  Message->PlayerID = SerializerReadUI8(&S);
+  start_net_message Message;
+  Message.PlayerCount = SerializerReadUI8(&S);
+  Message.PlayerID = SerializerReadUI8(&S);
 
+  return Message;
+}
+
+bool ValidateNetMessageType(net_message_type Type) {
+  return Type < net_message_type_count;
+}
+
+bool ValidateStartNetMessage(start_net_message Message) {
+  // TODO: Check properties of message
   return true;
 }

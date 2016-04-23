@@ -219,9 +219,14 @@ void ProcessIncoming(posix_net_context *Context, posix_net_client *Client) {
   for(;;) {
     buffer Incoming = Context->IncomingReadBuffer;
     Incoming.Length = ByteRingBufferPeek(&Client->InBuffer, Incoming);
-    net_message_type Type;
-    bool Result = UnserializeNetMessageType(Incoming, &Type);
-    if(!Result) {
+
+    if(Incoming.Length < MinMessageSize) {
+      break;
+    }
+    net_message_type Type = UnserializeNetMessageType(Incoming);
+    Assert(ValidateNetMessageType(Type));
+
+    if(!ValidateMessageLength(Incoming, Type)) {
       break;
     }
 

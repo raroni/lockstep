@@ -60,19 +60,11 @@ void Render(chunk_list *Commands) {
 
 void ProcessMessageEvent(buffer Event, game_state *State, chunk_list *NetCmds) {
   message_net_event MessageEvent = UnserializeMessageNetEvent(Event);
-  net_message_type MessageType;
-  bool Result = UnserializeNetMessageType(MessageEvent.Message, &MessageType);
-
-  Assert(Result); // Should not be necessary, see comment below
-
-  // For now we only support start message here
-  // Should branch on this in the future
+  net_message_type MessageType = UnserializeNetMessageType(MessageEvent.Message);
 
   switch(MessageType) {
     case net_message_type_start: {
-      start_net_message StartMessage;
-      Result = UnserializeStartNetMessage(MessageEvent.Message, &StartMessage);
-      Assert(Result); // TODO: This shouldn't be necessary because we're in context where we trust contents
+      start_net_message StartMessage = UnserializeStartNetMessage(MessageEvent.Message);
       printf("Game got start event. PlayerCount: %zu, PlayerID: %zu\n", StartMessage.PlayerCount, StartMessage.PlayerID);
 
       static ui8 TempBufferBlock[MAX_MESSAGE_LENGTH];

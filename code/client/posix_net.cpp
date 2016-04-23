@@ -152,27 +152,30 @@ void ProcessIncoming(posix_net_context *Context) {
   for(;;) {
     buffer Incoming = Context->IncomingReadBuffer;
     Incoming.Length = ByteRingBufferPeek(&Context->IncomingRing, Incoming);
-    net_message_type Type;
-    bool Result = UnserializeNetMessageType(Incoming, &Type);
-    if(!Result) {
+
+    if(Incoming.Length < MinMessageSize) {
+      break;
+    }
+    net_message_type Type = UnserializeNetMessageType(Incoming);
+    Assert(ValidateNetMessageType(Type));
+
+    if(!ValidateMessageLength(Incoming, Type)) {
       break;
     }
 
     memsize ConsumedBytesCount = 0;
     switch(Type) {
       case net_message_type_start: {
-        start_net_message Message;
-        bool Result = UnserializeStartNetMessage(Incoming, &Message);
+        start_net_message Message = UnserializeStartNetMessage(Incoming);
+        Assert(ValidateStartNetMessage(Message));
 
-        if(Result) {
-          memsize Length = SerializeMessageNetEvent(Incoming, Context->EventSerializationBuffer);
-          buffer Event = {
-            .Addr = Context->EventSerializationBuffer.Addr,
-            .Length = Length
-          };
-          ChunkRingBufferWrite(&Context->EventRing, Event);
-          ConsumedBytesCount = StartNetMessageSize;
-        }
+        memsize Length = SerializeMessageNetEvent(Incoming, Context->EventSerializationBuffer);
+        buffer Event = {
+          .Addr = Context->EventSerializationBuffer.Addr,
+          .Length = Length
+        };
+        ChunkRingBufferWrite(&Context->EventRing, Event);
+        ConsumedBytesCount = StartNetMessageSize;
         break;
       }
       default:
