@@ -58,6 +58,48 @@ void Render(chunk_list *Commands) {
   Command2->Color = Blue;
 }
 
+void ProcessMessageEvent(buffer Event, game_state *State, chunk_list *NetCmds) {
+  message_net_event MessageEvent = UnserializeMessageNetEvent(Event);
+  net_message_type MessageType;
+  bool Result = UnserializeNetMessageType(MessageEvent.Message, &MessageType);
+
+  Assert(Result); // Should not be necessary, see comment below
+
+  // For now we only support start message here
+  // Should branch on this in the future
+
+  switch(MessageType) {
+    case net_message_type_start: {
+      start_net_message StartMessage;
+      Result = UnserializeStartNetMessage(MessageEvent.Message, &StartMessage);
+      Assert(Result); // TODO: This shouldn't be necessary because we're in context where we trust contents
+      printf("Game got start event. PlayerCount: %zu, PlayerID: %zu\n", StartMessage.PlayerCount, StartMessage.PlayerID);
+
+      static ui8 TempBufferBlock[MAX_MESSAGE_LENGTH];
+      buffer TempBuffer = {
+        .Addr = TempBufferBlock,
+        .Length = sizeof(TempBufferBlock)
+      };
+      memsize Length = SerializeReplyNetMessage(TempBuffer);
+      buffer ReplyMessage = {
+        .Addr = TempBuffer.Addr,
+        .Length = Length
+      };
+      printf("Starting game and replying...\n");
+
+      Length = SerializeSendNetCommand(State->CommandSerializationBuffer, ReplyMessage);
+      buffer Command = {
+        .Addr = State->CommandSerializationBuffer.Addr,
+        .Length = Length
+      };
+      ChunkListWrite(NetCmds, Command);
+      break;
+    }
+    default:
+      InvalidCodePath;
+  }
+}
+
 void UpdateGame(bool TerminationRequested, chunk_list *NetEvents, chunk_list *NetCmds, chunk_list *RenderCmds, bool *Running, buffer Memory) {
   game_state *State = (game_state*)Memory.Addr;
 
@@ -80,39 +122,7 @@ void UpdateGame(bool TerminationRequested, chunk_list *NetEvents, chunk_list *Ne
         *Running = false;
         break;
       case net_event_type_message: {
-        message_net_event MessageEvent = UnserializeMessageNetEvent(Event);
-        net_message_type MessageType;
-        bool Result = UnserializeNetMessageType(MessageEvent.Message, &MessageType);
-
-        Assert(Result); // Should not be necessary, see comment below
-
-        // For now we only support start message here
-        // Should branch on this in the future
-        Assert(MessageType == net_message_type_start);
-
-        start_net_message StartMessage;
-        Result = UnserializeStartNetMessage(MessageEvent.Message, &StartMessage);
-        Assert(Result); // TODO: This shouldn't be necessary because we're in context where we trust contents
-        printf("Game got start event. PlayerCount: %zu, PlayerID: %zu\n", StartMessage.PlayerCount, StartMessage.PlayerID);
-
-        static ui8 TempBufferBlock[MAX_MESSAGE_LENGTH];
-        buffer TempBuffer = {
-          .Addr = TempBufferBlock,
-          .Length = sizeof(TempBufferBlock)
-        };
-        memsize Length = SerializeReplyNetMessage(TempBuffer);
-        buffer ReplyMessage = {
-          .Addr = TempBuffer.Addr,
-          .Length = Length
-        };
-        printf("Starting game and replying...\n");
-
-        Length = SerializeSendNetCommand(State->CommandSerializationBuffer, ReplyMessage);
-        buffer Command = {
-          .Addr = State->CommandSerializationBuffer.Addr,
-          .Length = Length
-        };
-        ChunkListWrite(NetCmds, Command);
+        ProcessMessageEvent(Event, State, NetCmds);
         break;
       }
       default:
