@@ -165,7 +165,7 @@ void ProcessIncoming(posix_net_context *Context) {
         bool Result = UnserializeStartNetMessage(Incoming, &Message);
 
         if(Result) {
-          memsize Length = SerializeStartNetEvent(Context->EventSerializationBuffer, Message.PlayerCount, Message.PlayerID);
+          memsize Length = SerializeMessageNetEvent(Incoming, Context->EventSerializationBuffer);
           buffer Event = {
             .Addr = Context->EventSerializationBuffer.Addr,
             .Length = Length

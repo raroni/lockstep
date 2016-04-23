@@ -79,9 +79,21 @@ void UpdateGame(bool TerminationRequested, chunk_list *NetEvents, chunk_list *Ne
         printf("Game got connection failed!\n");
         *Running = false;
         break;
-      case net_event_type_start: {
-        start_net_event StartEvent = UnserializeStartNetEvent(Event);
-        printf("Game got start event. PlayerCount: %zu, PlayerID: %zu\n", StartEvent.PlayerCount, StartEvent.PlayerID);
+      case net_event_type_message: {
+        message_net_event MessageEvent = UnserializeMessageNetEvent(Event);
+        net_message_type MessageType;
+        bool Result = UnserializeNetMessageType(MessageEvent.Message, &MessageType);
+
+        Assert(Result); // Should not be necessary, see comment below
+
+        // For now we only support start message here
+        // Should branch on this in the future
+        Assert(MessageType == net_message_type_start);
+
+        start_net_message StartMessage;
+        Result = UnserializeStartNetMessage(MessageEvent.Message, &StartMessage);
+        Assert(Result); // TODO: This shouldn't be necessary because we're in context where we trust contents
+        printf("Game got start event. PlayerCount: %zu, PlayerID: %zu\n", StartMessage.PlayerCount, StartMessage.PlayerID);
 
         static ui8 TempBufferBlock[MAX_MESSAGE_LENGTH];
         buffer TempBuffer = {
@@ -89,13 +101,13 @@ void UpdateGame(bool TerminationRequested, chunk_list *NetEvents, chunk_list *Ne
           .Length = sizeof(TempBufferBlock)
         };
         memsize Length = SerializeReplyNetMessage(TempBuffer);
-        buffer Message = {
+        buffer ReplyMessage = {
           .Addr = TempBuffer.Addr,
           .Length = Length
         };
         printf("Starting game and replying...\n");
 
-        Length = SerializeSendNetCommand(State->CommandSerializationBuffer, Message);
+        Length = SerializeSendNetCommand(State->CommandSerializationBuffer, ReplyMessage);
         buffer Command = {
           .Addr = State->CommandSerializationBuffer.Addr,
           .Length = Length

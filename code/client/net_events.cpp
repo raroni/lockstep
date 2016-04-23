@@ -40,29 +40,25 @@ net_event_type UnserializeNetEventType(buffer Input) {
   return ReadType(&S);
 }
 
-memsize SerializeStartNetEvent(buffer Out, memsize PlayerCount, memsize PlayerID) {
+memsize SerializeMessageNetEvent(buffer Message, buffer Out) {
   serializer S = CreateSerializer(Out);
 
-  WriteType(&S, net_event_type_start);
-
-  ui8 PlayerCountInt = SafeCastIntToUI8(PlayerCount);
-  SerializerWriteUI8(&S, PlayerCountInt);
-
-  ui8 PlayerIDInt = SafeCastIntToUI8(PlayerID);
-  SerializerWriteUI8(&S, PlayerIDInt);
+  WriteType(&S, net_event_type_message);
+  SerializerWriteMemsize(&S, Message.Length);
+  SerializerWriteBuffer(&S, Message);
 
   return S.Position;
 }
 
-start_net_event UnserializeStartNetEvent(buffer Event) {
+message_net_event UnserializeMessageNetEvent(buffer Event) {
   serializer S = CreateSerializer(Event);
 
   net_event_type Type = ReadType(&S);
-  Assert(Type == net_event_type_start);
+  Assert(Type == net_event_type_message);
 
-  start_net_event StartEvent;
-  StartEvent.PlayerCount = SerializerReadUI8(&S);
-  StartEvent.PlayerID = SerializerReadUI8(&S);
+  message_net_event MessageEvent;
+  MessageEvent.Message.Length = SerializerReadMemsize(&S);
+  MessageEvent.Message.Addr = SerializerRead(&S, MessageEvent.Message.Length);
 
-  return StartEvent;
+  return MessageEvent;
 }
