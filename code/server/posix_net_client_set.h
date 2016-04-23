@@ -7,7 +7,7 @@
 
 struct posix_net_client {
   int FD;
-  client_id ID;
+  net_client_id ID;
   byte_ring_buffer InBuffer;
 };
 
@@ -28,5 +28,5 @@ void TerminatePosixNetClientSet(posix_net_client_set *Set);
 posix_net_client* CreateClient(posix_net_client_set *Set, int FD);
 void DestroyClient(posix_net_client_set_iterator *Iterator);
 posix_net_client_set_iterator CreatePosixNetClientSetIterator(posix_net_client_set *Set);
-posix_net_client* FindClientByID(posix_net_client_set *Set, client_id ID);
+posix_net_client* FindClientByID(posix_net_client_set *Set, net_client_id ID);
 bool AdvancePosixNetClientSetIterator(posix_net_client_set_iterator *Iterator);

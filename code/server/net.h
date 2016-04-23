@@ -2,4 +2,4 @@
 
 #include "lib/def.h"
 
-typedef memsize client_id;
+typedef memsize net_client_id;

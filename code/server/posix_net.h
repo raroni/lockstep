@@ -32,6 +32,6 @@ void InitPosixNet(posix_net_context *Context);
 void* RunPosixNet(void *Data);
 void ShutdownPosixNet(posix_net_context *Context);
 void TerminatePosixNet(posix_net_context *Context);
-void PosixNetBroadcast(posix_net_context *Context, client_id *IDs, memsize Count, buffer Message);
-void PosixNetSend(posix_net_context *Context, client_id ID, buffer Message);
+void PosixNetBroadcast(posix_net_context *Context, net_client_id *IDs, memsize Count, buffer Message);
+void PosixNetSend(posix_net_context *Context, net_client_id ID, buffer Message);
 memsize ReadPosixNetEvent(posix_net_context *Context, buffer Output);

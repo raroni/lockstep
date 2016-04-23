@@ -11,20 +11,20 @@ enum net_event_type {
 };
 
 struct connect_net_event {
-  client_id ClientID;
+  net_client_id ClientID;
 };
 
 struct disconnect_net_event {
-  client_id ClientID;
+  net_client_id ClientID;
 };
 
 struct reply_net_event {
-  client_id ClientID;
+  net_client_id ClientID;
 };
 
-memsize SerializeDisconnectNetEvent(client_id ID, buffer Out);
-memsize SerializeConnectNetEvent(client_id ID, buffer Out);
-memsize SerializeReplyNetEvent(client_id ID, buffer Out);
+memsize SerializeDisconnectNetEvent(net_client_id ID, buffer Out);
+memsize SerializeConnectNetEvent(net_client_id ID, buffer Out);
+memsize SerializeReplyNetEvent(net_client_id ID, buffer Out);
 net_event_type UnserializeNetEventType(buffer Input);
 connect_net_event UnserializeConnectNetEvent(buffer Input);
 disconnect_net_event UnserializeDisconnectNetEvent(buffer Input);

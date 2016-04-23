@@ -19,32 +19,32 @@ static net_event_type ReadType(serializer *S) {
   return (net_event_type)TypeInt;
 }
 
-static client_id ReadClientID(serializer *S) {
+static net_client_id ReadClientID(serializer *S) {
   ui8 IDInt = SerializerReadUI8(S);
-  return (client_id)IDInt;
+  return (net_client_id)IDInt;
 }
 
-static void WriteClientID(serializer *S, client_id ID) {
+static void WriteClientID(serializer *S, net_client_id ID) {
   Assert(ID < 256);
   ui8 IDInt = (ui8)ID;
   SerializerWriteUI8(S, IDInt);
 }
 
-memsize SerializeDisconnectNetEvent(client_id ID, buffer Out) {
+memsize SerializeDisconnectNetEvent(net_client_id ID, buffer Out) {
   serializer S = CreateSerializer(Out);
   WriteType(&S, net_event_type_disconnect);
   WriteClientID(&S, ID);
   return S.Position;
 }
 
-memsize SerializeConnectNetEvent(client_id ID, buffer Out) {
+memsize SerializeConnectNetEvent(net_client_id ID, buffer Out) {
   serializer S = CreateSerializer(Out);
   WriteType(&S, net_event_type_connect);
   WriteClientID(&S, ID);
   return S.Position;
 }
 
-memsize SerializeReplyNetEvent(client_id ID, buffer Out) {
+memsize SerializeReplyNetEvent(net_client_id ID, buffer Out) {
   serializer S = CreateSerializer(Out);
   WriteType(&S, net_event_type_reply);
   WriteClientID(&S, ID);

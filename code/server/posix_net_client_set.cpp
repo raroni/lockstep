@@ -4,8 +4,8 @@
 typedef posix_net_client_set set;
 typedef posix_net_client_set_iterator iterator;
 
-static client_id CreateClientID() {
-  static client_id DummyHandleCount = 10;
+static net_client_id CreateClientID() {
+  static net_client_id DummyHandleCount = 10;
   return DummyHandleCount++;
 }
 
@@ -22,7 +22,7 @@ void InitPosixNetClientSet(set *Set) {
   }
 }
 
-posix_net_client* FindClientByID(posix_net_client_set *Set, client_id ID) {
+posix_net_client* FindClientByID(posix_net_client_set *Set, net_client_id ID) {
   for(memsize I=0; I<Set->Count; ++I) {
     posix_net_client *Client = Set->Clients + I;
     if(Client->ID == ID) {

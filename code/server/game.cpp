@@ -14,7 +14,7 @@ static buffer MessageOutBuffer = {
 };
 
 struct player {
-  client_id ClientID;
+  net_client_id ClientID;
 };
 
 #define PLAYERS_MAX 1
@@ -40,7 +40,7 @@ static void InitPlayerSet(player_set *Set) {
   Set->Count = 0;
 }
 
-static bool FindPlayerByClientID(player_set *Set, client_id ID, memsize *Index) {
+static bool FindPlayerByClientID(player_set *Set, net_client_id ID, memsize *Index) {
   for(memsize I=0; I<Set->Count; ++I) {
     if(Set->Players[I].ClientID == ID) {
       *Index = I;
@@ -50,7 +50,7 @@ static bool FindPlayerByClientID(player_set *Set, client_id ID, memsize *Index) 
   return false;
 }
 
-static void AddPlayer(player_set *Set, client_id ID) {
+static void AddPlayer(player_set *Set, net_client_id ID) {
   printf("Added player with client id %zu\n", ID);
   Set->Players[Set->Count++].ClientID = ID;
 }
@@ -58,7 +58,7 @@ static void AddPlayer(player_set *Set, client_id ID) {
 /*
 static void Broadcast(const player_set *Set, const buffer Message, chunk_list *Commands) {
   printf("Request broadcast!\n");
-  client_id IDs[Set->Count];
+  net_client_id IDs[Set->Count];
   for(memsize I=0; I<Set->Count; ++I) {
     IDs[I] = Set->Players[I].ClientID;
   }
