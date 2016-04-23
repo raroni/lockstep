@@ -17,8 +17,7 @@ struct start_net_message {
   memsize PlayerID;
 };
 
-bool UnserializeNetMessageType(buffer Input, net_message_type *Type);
 memsize SerializeStartNetMessage(memsize PlayerCount, memsize PlayerID, buffer Buffer);
 memsize SerializeReplyNetMessage(buffer Buffer);
+bool UnserializeNetMessageType(buffer Input, net_message_type *Type);
 bool UnserializeStartNetMessage(buffer Buffer, start_net_message *Message);
-memsize GetStartNetMessageSize();
