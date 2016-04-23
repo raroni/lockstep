@@ -3,6 +3,7 @@
 #include "lib/def.h"
 
 struct simulation_unit {
+  memsize PlayerID;
   ui16 X;
   ui16 Y;
 };
@@ -14,5 +15,5 @@ struct simulation {
   ui16 UnitCount;
 };
 
-void InitSimulation(simulation *Sim);
+void InitSimulation(simulation *Sim, memsize PlayerCount);
 void AdvanceSimulation(simulation *Sim);

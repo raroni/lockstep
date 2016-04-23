@@ -4,18 +4,25 @@
 #include "common/memory.h"
 #include "common/net_messages.h"
 #include "common/simulation.h"
+#include "interpolation.h"
 #include "net_events.h"
 #include "net_commands.h"
 #include "render_commands.h"
 #include "game.h"
 
-static const ui32 Red = 0x000000FF;
-static const ui32 Blue = 0x00FF0000;
+static const ui32 Red = 0x00FF0000;
+static const ui32 Blue = 0x000000FF;
+
+static const ui32 PlayerColors[] = {
+  Red, Blue
+};
 
 struct game_state {
   linear_allocator Allocator;
   buffer CommandSerializationBuffer;
+  memsize PlayerID;
   simulation Sim;
+  interpolation Interpolation;
 };
 
 void InitGame(buffer Memory) {
@@ -31,8 +38,6 @@ void InitGame(buffer Memory) {
     B->Addr = LinearAllocate(&State->Allocator, NETWORK_COMMAND_MAX_LENGTH);
     B->Length = NETWORK_COMMAND_MAX_LENGTH;
   }
-
-  InitSimulation(&State->Sim);
 }
 
 #define AddRenderCommand(List, Type) (Type##_render_command*)_AddRenderCommand(List, render_command_type_##Type, sizeof(Type##_render_command))
@@ -46,16 +51,13 @@ void* _AddRenderCommand(chunk_list *List, render_command_type Type, memsize Leng
   return (void*)Command;
 }
 
-void Render(chunk_list *Commands) {
-  draw_square_render_command *Command1 = AddRenderCommand(Commands, draw_square);
-  Command1->X = 100;
-  Command1->Y = 100;
-  Command1->Color = Red;
-
-  draw_square_render_command *Command2 = AddRenderCommand(Commands, draw_square);
-  Command2->X = -100;
-  Command2->Y = -100;
-  Command2->Color = Blue;
+void Render(simulation *Sim, interpolation *Interpolation, chunk_list *Commands) {
+  for(memsize I=0; I<Sim->UnitCount; ++I) {
+    draw_square_render_command *Command = AddRenderCommand(Commands, draw_square);
+    Command->X = Interpolation->Positions[I].X;
+    Command->Y = Interpolation->Positions[I].Y;
+    Command->Color = PlayerColors[Sim->Units[I].PlayerID];
+  }
 }
 
 void ProcessMessageEvent(buffer Event, game_state *State, chunk_list *NetCmds) {
@@ -66,6 +68,10 @@ void ProcessMessageEvent(buffer Event, game_state *State, chunk_list *NetCmds) {
     case net_message_type_start: {
       start_net_message StartMessage = UnserializeStartNetMessage(MessageEvent.Message);
       printf("Game got start event. PlayerCount: %zu, PlayerID: %zu\n", StartMessage.PlayerCount, StartMessage.PlayerID);
+
+      InitSimulation(&State->Sim, StartMessage.PlayerCount);
+      InitInterpolation(&State->Interpolation, &State->Sim);
+      State->PlayerID = StartMessage.PlayerID;
 
       static ui8 TempBufferBlock[MAX_MESSAGE_LENGTH];
       buffer TempBuffer = {
@@ -125,7 +131,7 @@ void UpdateGame(bool TerminationRequested, chunk_list *NetEvents, chunk_list *Ne
   // Check if simulation update
   // Interpolation
 
-  Render(RenderCmds);
+  Render(&State->Sim, &State->Interpolation, RenderCmds);
 
   if(TerminationRequested) {
     printf("Requesting net shutdown...\n");
