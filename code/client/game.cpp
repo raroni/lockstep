@@ -80,7 +80,8 @@ void UpdateGame(bool TerminationRequested, chunk_list *NetEvents, chunk_list *Ne
         *Running = false;
         break;
       case net_event_type_start: {
-        printf("Game got start event!\n");
+        start_net_event StartEvent = UnserializeStartNetEvent(Event);
+        printf("Game got start event. PlayerCount: %zu, PlayerID: %zu\n", StartEvent.PlayerCount, StartEvent.PlayerID);
 
         static ui8 TempBufferBlock[MAX_MESSAGE_LENGTH];
         buffer TempBuffer = {

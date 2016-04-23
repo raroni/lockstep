@@ -55,6 +55,7 @@ static void AddPlayer(player_set *Set, client_id ID) {
   Set->Players[Set->Count++].ClientID = ID;
 }
 
+/*
 static void Broadcast(const player_set *Set, const buffer Message, chunk_list *Commands) {
   printf("Request broadcast!\n");
   client_id IDs[Set->Count];
@@ -75,6 +76,7 @@ static void Broadcast(const player_set *Set, const buffer Message, chunk_list *C
   };
   ChunkListWrite(Commands, Command);
 }
+*/
 
 static void RemovePlayer(player_set *Set, memsize Index) {
   Set->Count--;
@@ -90,6 +92,33 @@ void InitGame(buffer Memory) {
   }
 
   InitPlayerSet(&State->PlayerSet);
+}
+
+void StartGame(game_state *State, chunk_list *NetCmds) {
+  static ui8 TempWorkBufferBlock[1024*1024];
+  buffer TempWorkBuffer = {
+    .Addr = TempWorkBufferBlock,
+    .Length = sizeof(TempWorkBufferBlock)
+  };
+
+  player_set *Set = &State->PlayerSet;
+  for(memsize I=0; I<Set->Count; ++I) {
+    memsize Length = SerializeStartNetMessage(Set->Count, I, MessageOutBuffer);
+    buffer Message = {
+      .Addr = MessageOutBuffer.Addr,
+      .Length = Length
+    };
+
+    Length = SerializeSendNetCommand(Set->Players[I].ClientID, Message, TempWorkBuffer);
+    buffer Command = {
+      .Addr = TempWorkBuffer.Addr,
+      .Length = Length
+    };
+    ChunkListWrite(NetCmds, Command);
+  }
+
+  printf("Starting game...\n");
+  State->Mode = game_mode_active;
 }
 
 void UpdateGame(
@@ -168,14 +197,7 @@ void UpdateGame(
   }
   else {
     if(State->Mode == game_mode_waiting_for_clients && State->PlayerSet.Count == PLAYERS_MAX) {
-      memsize Length = SerializeStartNetMessage(MessageOutBuffer);
-      buffer MessageBuffer = {
-        .Addr = MessageOutBuffer.Addr,
-        .Length = Length
-      };
-      Broadcast(&State->PlayerSet, MessageBuffer, Commands);
-      printf("Starting game...\n");
-      State->Mode = game_mode_active;
+      StartGame(State, Commands);
     }
     else if(State->Mode == game_mode_active) {
     }

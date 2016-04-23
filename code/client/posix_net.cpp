@@ -161,13 +161,18 @@ void ProcessIncoming(posix_net_context *Context) {
     memsize ConsumedBytesCount = 0;
     switch(Type) {
       case net_message_type_start: {
-        memsize Length = SerializeStartNetEvent(Context->EventSerializationBuffer);
-        buffer Event = {
-          .Addr = Context->EventSerializationBuffer.Addr,
-          .Length = Length
-        };
-        ChunkRingBufferWrite(&Context->EventRing, Event);
-        ConsumedBytesCount = StartNetMesageSize;
+        start_net_message Message;
+        bool Result = UnserializeStartNetMessage(Incoming, &Message);
+
+        if(Result) {
+          memsize Length = SerializeStartNetEvent(Context->EventSerializationBuffer, Message.PlayerCount, Message.PlayerID);
+          buffer Event = {
+            .Addr = Context->EventSerializationBuffer.Addr,
+            .Length = Length
+          };
+          ChunkRingBufferWrite(&Context->EventRing, Event);
+          ConsumedBytesCount = StartNetMessageSize;
+        }
         break;
       }
       default:

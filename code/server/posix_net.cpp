@@ -149,15 +149,6 @@ static void ProcessCommands(posix_net_context *Context) {
       .Length = Length
     };
     switch(Type) {
-      case net_command_type_shutdown: {
-        posix_net_client_set_iterator Iterator = CreatePosixNetClientSetIterator(&Context->ClientSet);
-        while(AdvancePosixNetClientSetIterator(&Iterator)) {
-          int Result = shutdown(Iterator.Client->FD, SHUT_RDWR);
-          Assert(Result == 0);
-        }
-        Context->Mode = net_mode_disconnecting;
-        break;
-      }
       case net_command_type_broadcast: {
         broadcast_net_command BroadcastCommand = UnserializeBroadcastNetCommand(Command);
         for(memsize I=0; I<BroadcastCommand.ClientIDCount; ++I) {
@@ -168,6 +159,25 @@ static void ProcessCommands(posix_net_context *Context) {
             Assert(Result != -1);
           }
         }
+        break;
+      }
+      case net_command_type_send: {
+        send_net_command SendCommand = UnserializeSendNetCommand(Command);
+        posix_net_client *Client = FindClientByID(&Context->ClientSet, SendCommand.ClientID);
+        if(Client) {
+          printf("Sent to client id %zu\n", SendCommand.ClientID);
+          ssize_t Result = PosixNetSend(Client->FD, SendCommand.Message);
+          Assert(Result != -1);
+        }
+        break;
+      }
+      case net_command_type_shutdown: {
+        posix_net_client_set_iterator Iterator = CreatePosixNetClientSetIterator(&Context->ClientSet);
+        while(AdvancePosixNetClientSetIterator(&Iterator)) {
+          int Result = shutdown(Iterator.Client->FD, SHUT_RDWR);
+          Assert(Result == 0);
+        }
+        Context->Mode = net_mode_disconnecting;
         break;
       }
       default:
@@ -224,7 +234,7 @@ void ProcessIncoming(posix_net_context *Context, posix_net_client *Client) {
           .Length = Length
         };
         ChunkRingBufferWrite(&Context->EventRing, Event);
-        ConsumedBytesCount = ReplyNetMesageSize;
+        ConsumedBytesCount = ReplyNetMessageSize;
         break;
       }
       default:

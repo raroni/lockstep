@@ -4,15 +4,21 @@
 
 #define MAX_MESSAGE_LENGTH 1024
 
-extern const memsize StartNetMesageSize;
-extern const memsize ReplyNetMesageSize;
+extern const memsize StartNetMessageSize;
+extern const memsize ReplyNetMessageSize;
 
 enum net_message_type {
   net_message_type_start = 123, // Temp dummy value
   net_message_type_reply
 };
 
+struct start_net_message {
+  memsize PlayerCount;
+  memsize PlayerID;
+};
+
 bool UnserializeNetMessageType(buffer Input, net_message_type *Type);
-memsize SerializeStartNetMessage(buffer Buffer);
+memsize SerializeStartNetMessage(memsize PlayerCount, memsize PlayerID, buffer Buffer);
 memsize SerializeReplyNetMessage(buffer Buffer);
-memsize GetStartNetMesageSize();
+bool UnserializeStartNetMessage(buffer Buffer, start_net_message *Message);
+memsize GetStartNetMessageSize();
