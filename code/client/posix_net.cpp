@@ -163,30 +163,36 @@ void ProcessIncoming(posix_net_context *Context) {
       break;
     }
 
-    memsize ConsumedBytesCount = 0;
+    memsize MessageLength = 0;
     switch(Type) {
       case net_message_type_start: {
         start_net_message Message = UnserializeStartNetMessage(Incoming);
         Assert(ValidateStartNetMessage(Message));
-
-        memsize Length = SerializeMessageNetEvent(Incoming, Context->EventSerializationBuffer);
-        buffer Event = {
-          .Addr = Context->EventSerializationBuffer.Addr,
-          .Length = Length
-        };
-        ChunkRingBufferWrite(&Context->EventRing, Event);
-        ConsumedBytesCount = StartNetMessageSize;
+        MessageLength = StartNetMessageSize;
+        break;
+      }
+      case net_message_type_order_set: {
+        order_set_net_message Message = UnserializeOrderSetNetMessage(Incoming);
+        Assert(ValidateOrderSetNetMessage(Message));
+        MessageLength = OrderSetNetMessageSize;
         break;
       }
       default:
         InvalidCodePath;
     }
 
-    if(ConsumedBytesCount == 0) {
+    if(MessageLength == 0) {
       break;
     }
     else {
-      ByteRingBufferReadAdvance(&Context->IncomingRing, ConsumedBytesCount);
+      Incoming.Length = MessageLength;
+      memsize Length = SerializeMessageNetEvent(Incoming, Context->EventSerializationBuffer);
+      buffer Event = {
+        .Addr = Context->EventSerializationBuffer.Addr,
+        .Length = Length
+      };
+      ChunkRingBufferWrite(&Context->EventRing, Event);
+      ByteRingBufferReadAdvance(&Context->IncomingRing, MessageLength);
     }
   }
 }
@@ -265,7 +271,6 @@ void* RunPosixNet(void *VoidContext) {
             .Length = (memsize)ReceivedCount
           };
           ByteRingBufferWrite(&Context->IncomingRing, Incoming);
-          printf("Got something of length: %zd, as char %u\n", (int)ReceivedCount, *(ui8*)Context->ReceiveBuffer.Addr);
           ProcessIncoming(Context);
         }
       }

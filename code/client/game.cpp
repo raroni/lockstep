@@ -93,6 +93,9 @@ void ProcessMessageEvent(buffer Event, game_state *State, chunk_list *NetCmds) {
       ChunkListWrite(NetCmds, Command);
       break;
     }
+    case net_message_type_order_set:
+      // TODO: Handle
+      break;
     default:
       InvalidCodePath;
   }

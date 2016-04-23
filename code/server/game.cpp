@@ -58,9 +58,7 @@ static void AddPlayer(player_set *Set, net_client_id ID) {
   Set->Players[Set->Count++].ClientID = ID;
 }
 
-/*
 static void Broadcast(const player_set *Set, const buffer Message, chunk_list *Commands) {
-  printf("Request broadcast!\n");
   net_client_id IDs[Set->Count];
   for(memsize I=0; I<Set->Count; ++I) {
     IDs[I] = Set->Players[I].ClientID;
@@ -79,7 +77,6 @@ static void Broadcast(const player_set *Set, const buffer Message, chunk_list *C
   };
   ChunkListWrite(Commands, Command);
 }
-*/
 
 static void RemovePlayer(player_set *Set, memsize Index) {
   Set->Count--;
@@ -104,7 +101,6 @@ void StartGame(game_state *State, chunk_list *NetCmds, ui64 Time) {
     .Length = sizeof(TempWorkBufferBlock)
   };
 
-
   player_set *Set = &State->PlayerSet;
   for(memsize I=0; I<Set->Count; ++I) {
     memsize Length = SerializeStartNetMessage(Set->Count, I, MessageOutBuffer);
@@ -120,6 +116,7 @@ void StartGame(game_state *State, chunk_list *NetCmds, ui64 Time) {
     };
     ChunkListWrite(NetCmds, Command);
   }
+
 
   State->NextTickTime = Time + SIMULATION_TICK_DURATION*1000;
 
@@ -164,6 +161,16 @@ void ProcessNetEvents(game_state *State, chunk_list *Events) {
         InvalidCodePath;
     }
   }
+}
+
+void BroadcastLatestOrders(player_set *PlayerSet, chunk_list *Commands) {
+  memsize Length = SerializeOrderSetNetMessage(MessageOutBuffer);
+  buffer Message = {
+    .Addr = MessageOutBuffer.Addr,
+    .Length = Length
+  };
+
+  Broadcast(PlayerSet, Message, Commands);
 }
 
 void UpdateGame(
@@ -212,6 +219,7 @@ void UpdateGame(
   }
   else if(State->Mode == game_mode_active) {
     if(Time >= State->NextTickTime) {
+      BroadcastLatestOrders(&State->PlayerSet, Commands);
       State->NextTickTime += SIMULATION_TICK_DURATION*1000;
       TickSimulation(&State->Sim);
     }

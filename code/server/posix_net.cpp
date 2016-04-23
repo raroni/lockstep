@@ -154,7 +154,6 @@ static void ProcessCommands(posix_net_context *Context) {
         for(memsize I=0; I<BroadcastCommand.ClientIDCount; ++I) {
           posix_net_client *Client = FindClientByID(&Context->ClientSet, BroadcastCommand.ClientIDs[I]);
           if(Client) {
-            printf("Broadcasted to client id %zu\n", BroadcastCommand.ClientIDs[I]);
             ssize_t Result = PosixNetSend(Client->FD, BroadcastCommand.Message);
             Assert(Result != -1);
           }
