@@ -195,6 +195,16 @@ void PosixNetBroadcast(posix_net_context *Context, client_id *IDs, memsize IDCou
   RequestWake(Context);
 }
 
+void PosixNetSend(posix_net_context *Context, client_id ID, buffer Message) {
+  memsize Length = SerializeSendNetCommand(ID, Message, Context->CommandSerializationBuffer);
+  buffer Command = {
+    .Addr = Context->CommandSerializationBuffer.Addr,
+    .Length = Length
+  };
+  ChunkRingBufferWrite(&Context->CommandRing, Command);
+  RequestWake(Context);
+}
+
 void ProcessIncoming(posix_net_context *Context, posix_net_client *Client) {
   for(;;) {
     buffer Incoming = Context->IncomingReadBuffer;

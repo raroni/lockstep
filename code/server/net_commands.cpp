@@ -25,6 +25,16 @@ memsize SerializeBroadcastNetCommand(const client_id *IDs, memsize IDCount, cons
   return S.Position;
 }
 
+memsize SerializeSendNetCommand(client_id ID, const buffer Message, buffer Out) {
+  serializer S = CreateSerializer(Out);
+  net_command_type Type = net_command_type_send;
+  SerializerWrite(&S, &Type, sizeof(Type));
+  SerializerWrite(&S, &ID, sizeof(ID));
+  SerializerWriteMemsize(&S, Message.Length);
+  SerializerWriteBuffer(&S, Message);
+  return S.Position;
+}
+
 broadcast_net_command UnserializeBroadcastNetCommand(buffer Buffer) {
   serializer S = CreateSerializer(Buffer);
   net_command_type Type = *(net_command_type*)SerializerRead(&S, sizeof(net_command_type));
@@ -34,6 +44,19 @@ broadcast_net_command UnserializeBroadcastNetCommand(buffer Buffer) {
   Cmd.ClientIDCount = SerializerReadMemsize(&S);
   Cmd.Message.Length = SerializerReadMemsize(&S);
   Cmd.ClientIDs = (client_id*)SerializerRead(&S, sizeof(client_id)*Cmd.ClientIDCount);
+  Cmd.Message.Addr = SerializerRead(&S, Cmd.Message.Length);
+
+  return Cmd;
+}
+
+send_net_command UnserializeSendNetCommand(buffer Buffer) {
+  serializer S = CreateSerializer(Buffer);
+  net_command_type Type = *(net_command_type*)SerializerRead(&S, sizeof(net_command_type));
+  Assert(Type == net_command_type_send);
+
+  send_net_command Cmd;
+  Cmd.ClientID = *(client_id*)SerializerRead(&S, sizeof(client_id));
+  Cmd.Message.Length = SerializerReadMemsize(&S);
   Cmd.Message.Addr = SerializerRead(&S, Cmd.Message.Length);
 
   return Cmd;

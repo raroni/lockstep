@@ -71,6 +71,11 @@ void ExecuteNetCommands(posix_net_context *Context, chunk_list *Commands) {
         PosixNetBroadcast(Context, BroadcastCommand.ClientIDs, BroadcastCommand.ClientIDCount, BroadcastCommand.Message);
         break;
       }
+      case net_command_type_send: {
+        send_net_command SendCommand = UnserializeSendNetCommand(Command);
+        PosixNetSend(Context, SendCommand.ClientID, SendCommand.Message);
+        break;
+      }
       case net_command_type_shutdown: {
         ShutdownPosixNet(Context);
         break;
