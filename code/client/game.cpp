@@ -101,7 +101,7 @@ void ProcessMessageEvent(buffer Event, game_state *State, chunk_list *NetCmds) {
   }
 }
 
-void UpdateGame(bool TerminationRequested, chunk_list *NetEvents, chunk_list *NetCmds, chunk_list *RenderCmds, bool *Running, buffer Memory) {
+void UpdateGame(ui64 Time, bool TerminationRequested, chunk_list *NetEvents, chunk_list *NetCmds, chunk_list *RenderCmds, bool *Running, buffer Memory) {
   game_state *State = (game_state*)Memory.Addr;
 
   for(;;) {
