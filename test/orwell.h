@@ -42,6 +42,9 @@ void _OW_AssertEqualInt(ow_test_context Context, const char *Filename, size_t Li
 #define OW_AssertEqualStr(Expected, Actual) _OW_AssertEqualStr(Context, __FILE__, __LINE__, Expected, Actual)
 void _OW_AssertEqualStr(ow_test_context Context, const char *Filename, size_t LineNumber, const char *Expected, const char *Actual);
 
+#define OW_AssertInDelta(Expected, Delta, Actual) _OW_AssertInDelta(Context, __FILE__, __LINE__, Expected, Delta, Actual)
+void _OW_AssertInDelta(ow_test_context Context, const char *Filename, size_t LineNumber, double Expected, double Delta, double Actual);
+
 #define OW_AddTest(Suite, GroupIndex, Name) _OW_AddTest(Suite, GroupIndex, Name, #Name)
 void _OW_AddTest(
   ow_suite *Suite, ow_group_index GroupIndex,
