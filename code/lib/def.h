@@ -19,6 +19,7 @@ typedef ui16 umsec16;
 typedef si16 smsec16;
 typedef ui32 umsec32;
 typedef si32 smsec32;
+typedef ui32 usec32;
 typedef ui64 smsec64;
 typedef ui64 uusec64;
 

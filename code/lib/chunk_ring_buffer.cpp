@@ -30,6 +30,10 @@ void InitChunkRingBuffer(
   Buffer->WriteIndex = 0;
 }
 
+memsize GetChunkRingBufferUnreadCount(chunk_ring_buffer *Buffer) {
+  return Buffer->WriteIndex - Buffer->ReadIndex;
+}
+
 void ChunkRingBufferWrite(chunk_ring_buffer *Buffer, const buffer Input) {
   memsize NewWriteIndex = (Buffer->WriteIndex + 1) % Buffer->ChunkCount;
   Assert(NewWriteIndex != Buffer->ReadIndex);

@@ -18,4 +18,5 @@ void InitChunkRingBuffer(
 );
 void ChunkRingBufferWrite(chunk_ring_buffer *Buffer, const buffer Input);
 memsize ChunkRingBufferRead(chunk_ring_buffer *Buffer, const buffer Output);
+memsize GetChunkRingBufferUnreadCount(chunk_ring_buffer *Buffer);
 void TerminateChunkRingBuffer(chunk_ring_buffer *Buffer);

@@ -123,10 +123,10 @@ int main() {
   signal(SIGINT, HandleSignal);
   State.Running = true;
   printf("Listening...\n");
-  ui64 GameStartTime = GetTime();
+  uusec64 GameStartTime = GetTime();
   while(State.Running) {
-    ui64 GameDuration = GetTime() - GameStartTime;
-    ui64 Delay = 0;
+    uusec64 GameDuration = GetTime() - GameStartTime;
+    uusec64 Delay = 0;
     ReadNet(&State.NetContext, &State.NetEventList);
     UpdateGame(
       GameDuration,
@@ -140,7 +140,7 @@ int main() {
     ExecuteNetCommands(&State.NetContext, &State.NetCommandList);
     ResetChunkList(&State.NetEventList);
 
-    ui64 ConservativeDelay = Delay/2;
+    uusec64 ConservativeDelay = Delay/2;
     if(ConservativeDelay > 200) {
       usleep(ConservativeDelay);
     }

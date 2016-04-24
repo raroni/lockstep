@@ -35,7 +35,7 @@ struct game_state {
   game_mode Mode;
   linear_allocator Allocator;
   player_set PlayerSet;
-  ui64 NextTickTime;
+  uusec64 NextTickTime;
   simulation Sim;
 };
 
@@ -94,7 +94,7 @@ void InitGame(buffer Memory) {
   InitPlayerSet(&State->PlayerSet);
 }
 
-void StartGame(game_state *State, chunk_list *NetCmds, ui64 Time) {
+void StartGame(game_state *State, chunk_list *NetCmds, uusec64 Time) {
   static ui8 TempWorkBufferBlock[1024*1024];
   buffer TempWorkBuffer = {
     .Addr = TempWorkBufferBlock,
@@ -118,7 +118,7 @@ void StartGame(game_state *State, chunk_list *NetCmds, ui64 Time) {
   }
 
 
-  State->NextTickTime = Time + SIMULATION_TICK_DURATION*1000;
+  State->NextTickTime = Time + SimulationTickDuration*1000;
 
   InitSimulation(&State->Sim, Set->Count);
 
@@ -174,8 +174,8 @@ void BroadcastLatestOrders(player_set *PlayerSet, chunk_list *Commands) {
 }
 
 void UpdateGame(
-  ui64 Time,
-  ui64 *Delay,
+  uusec64 Time,
+  uusec64 *Delay,
   bool TerminationRequested,
   chunk_list *Events,
   chunk_list *Commands,
@@ -220,7 +220,7 @@ void UpdateGame(
   else if(State->Mode == game_mode_active) {
     if(Time >= State->NextTickTime) {
       BroadcastLatestOrders(&State->PlayerSet, Commands);
-      State->NextTickTime += SIMULATION_TICK_DURATION*1000;
+      State->NextTickTime += SimulationTickDuration*1000;
       TickSimulation(&State->Sim);
     }
   }

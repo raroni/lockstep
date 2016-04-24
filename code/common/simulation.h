@@ -2,7 +2,7 @@
 
 #include "lib/def.h"
 
-#define SIMULATION_TICK_DURATION 100
+const umsec32 SimulationTickDuration = 100;
 
 struct simulation_unit {
   memsize PlayerID;
