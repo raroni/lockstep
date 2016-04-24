@@ -43,7 +43,9 @@ TEST_SOURCES =\
 	test/chunk_ring_buffer_test.cpp\
 	test/posix_net_client_set_iterator_test.cpp\
 	test/chunk_list_test.cpp\
+	test/int_seq_test.cpp\
 	code/lib/assert.cpp\
+	code/lib/int_seq.cpp\
 	code/lib/byte_ring_buffer.cpp\
 	code/lib/chunk_list.cpp\
 	code/lib/chunk_ring_buffer.cpp\

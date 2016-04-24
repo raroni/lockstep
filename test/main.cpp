@@ -4,6 +4,7 @@ void SetupByteRingBufferGroup(ow_suite *Suite);
 void SetupChunkRingBufferGroup(ow_suite *Suite);
 void SetupPosixNetClientSetIteratorGroup(ow_suite *Suite);
 void SetupChunkListGroup(ow_suite *Suite);
+void SetupIntSeqGroup(ow_suite *Suite);
 
 int main() {
   ow_suite *Suite = OW_CreateSuite();
@@ -12,6 +13,7 @@ int main() {
   SetupChunkRingBufferGroup(Suite);
   SetupPosixNetClientSetIteratorGroup(Suite);
   SetupChunkListGroup(Suite);
+  SetupIntSeqGroup(Suite);
 
   OW_Run(Suite);
   OW_DestroySuite(Suite);
