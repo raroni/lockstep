@@ -139,11 +139,6 @@ void ProcessMessageEvent(buffer Event, game_state *State, chunk_list *NetCmds, u
 void UpdateGame(uusec64 Time, bool TerminationRequested, game_mouse *Mouse, chunk_list *NetEvents, chunk_list *NetCmds, chunk_list *RenderCmds, bool *Running, buffer Memory) {
   game_state *State = (game_state*)Memory.Addr;
 
-  printf("Mouse: %d, %d\n", Mouse->PosX, Mouse->PosY);
-  if(Mouse->ButtonPressed) {
-    printf("PRESSED!\n");
-  }
-
   for(;;) {
     buffer Event = ChunkListRead(NetEvents);
     if(Event.Length == 0) {
