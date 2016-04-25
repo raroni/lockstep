@@ -111,7 +111,7 @@ void Render(simulation *Sim, interpolation *Interpolation, unit_selection *UnitS
     Command->X = Interpolation->Positions[UnitID].X;
     Command->Y = Interpolation->Positions[UnitID].Y;
     Command->Color = White;
-    Command->HalfSize = 60;
+    Command->HalfSize = SIMULATION_UNIT_HALF_SIZE + 10;
   }
 
   for(memsize I=0; I<Sim->UnitCount; ++I) {
@@ -119,7 +119,7 @@ void Render(simulation *Sim, interpolation *Interpolation, unit_selection *UnitS
     Command->X = Interpolation->Positions[I].X;
     Command->Y = Interpolation->Positions[I].Y;
     Command->Color = PlayerColors[Sim->Units[I].PlayerID];
-    Command->HalfSize = 50;
+    Command->HalfSize = SIMULATION_UNIT_HALF_SIZE;
   }
 }
 
