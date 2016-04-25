@@ -13,8 +13,8 @@ static void TestVarCalcNonFull(ow_test_context Context) {
   IntSeqPush(&Seq, 7);
   IntSeqPush(&Seq, 10);
 
-  double Result = CalcIntSeqVariance(&Seq);
-  OW_AssertInDelta(7.5, 0.0001, Result);
+  double Result = CalcIntSeqStdDev(&Seq);
+  OW_AssertInDelta(2.738612787, 0.0001, Result);
 
   TerminateIntSeq(&Seq);
 }
@@ -29,8 +29,8 @@ static void TestVarCalcWithOverflow(ow_test_context Context) {
   IntSeqPush(&Seq, 7);
   IntSeqPush(&Seq, 17);
 
-  double Result = CalcIntSeqVariance(&Seq);
-  OW_AssertInDelta(30.888889, 0.0001, Result);
+  double Result = CalcIntSeqStdDev(&Seq);
+  OW_AssertInDelta(5.55777, 0.0001, Result);
 
   TerminateIntSeq(&Seq);
 }

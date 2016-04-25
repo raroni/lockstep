@@ -11,5 +11,5 @@ struct int_seq {
 
 void InitIntSeq(int_seq *Seq, memsize *Ints, memsize Capacity);
 void IntSeqPush(int_seq *Seq, memsize Int);
-double CalcIntSeqVariance(int_seq *Seq);
+double CalcIntSeqStdDev(int_seq *Seq);
 void TerminateIntSeq(int_seq *Seq);

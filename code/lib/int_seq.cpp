@@ -1,3 +1,4 @@
+#include <math.h>
 #include "int_seq.h"
 
 void InitIntSeq(int_seq *Seq, memsize *Ints, memsize Capacity) {
@@ -15,7 +16,7 @@ void IntSeqPush(int_seq *Seq, memsize Int) {
   }
 }
 
-double CalcIntSeqVariance(int_seq *Seq) {
+double CalcIntSeqStdDev(int_seq *Seq) {
   if(Seq->Count == 0) {
     return 0;
   }
@@ -33,7 +34,7 @@ double CalcIntSeqVariance(int_seq *Seq) {
   }
   double Variance = SquaredDevSum / Seq->Count;
 
-  return Variance;
+  return sqrt(Variance);
 }
 
 void TerminateIntSeq(int_seq *Seq) {
