@@ -13,7 +13,7 @@ void WriteType(serializer *S, net_message_type Type) {
   SerializerWriteUI8(S, TypeUI8);
 }
 
-memsize SerializeStartNetMessage(memsize PlayerCount, memsize PlayerID, buffer Buffer) {
+memsize SerializeStartNetMessage(memsize PlayerCount, memsize PlayerIndex, buffer Buffer) {
   serializer Writer = CreateSerializer(Buffer);
 
   ui8 TypeUI8 = SafeCastIntToUI8(net_message_type_start);
@@ -22,8 +22,8 @@ memsize SerializeStartNetMessage(memsize PlayerCount, memsize PlayerID, buffer B
   ui8 PlayerCountUI8 = SafeCastIntToUI8(PlayerCount);
   SerializerWriteUI8(&Writer, PlayerCountUI8);
 
-  ui8 PlayerIDUI8 = SafeCastIntToUI8(PlayerID);
-  SerializerWriteUI8(&Writer, PlayerIDUI8);
+  ui8 PlayerIndexUI8 = SafeCastIntToUI8(PlayerIndex);
+  SerializerWriteUI8(&Writer, PlayerIndexUI8);
 
   Assert(Writer.Position == StartNetMessageSize);
 
@@ -77,7 +77,7 @@ start_net_message UnserializeStartNetMessage(buffer Buffer) {
 
   start_net_message Message;
   Message.PlayerCount = SerializerReadUI8(&S);
-  Message.PlayerID = SerializerReadUI8(&S);
+  Message.PlayerIndex = SerializerReadUI8(&S);
 
   return Message;
 }

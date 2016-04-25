@@ -18,14 +18,14 @@ enum net_message_type {
 
 struct start_net_message {
   memsize PlayerCount;
-  memsize PlayerID;
+  memsize PlayerIndex;
 };
 
 struct order_set_net_message {
   memsize Count;
 };
 
-memsize SerializeStartNetMessage(memsize PlayerCount, memsize PlayerID, buffer Buffer);
+memsize SerializeStartNetMessage(memsize PlayerCount, memsize PlayerIndex, buffer Buffer);
 memsize SerializeReplyNetMessage(buffer Buffer);
 memsize SerializeOrderSetNetMessage(buffer Out);
 net_message_type UnserializeNetMessageType(buffer Input);

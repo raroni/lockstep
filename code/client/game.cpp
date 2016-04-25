@@ -22,7 +22,7 @@ static const ui32 PlayerColors[] = {
 struct game_state {
   linear_allocator Allocator;
   buffer CommandSerializationBuffer;
-  memsize PlayerID;
+  simulation_player_id PlayerID;
   simulation Sim;
   interpolation Interpolation;
   memsize *OrderSetCounts;
@@ -63,6 +63,8 @@ void InitGame(buffer Memory) {
     };
     InitChunkRingBuffer(&State->OrderSetRing, Count, Buffer);
   }
+
+  State->PlayerID = SIMULATION_UNDEFINED_PLAYER_ID;
 }
 
 #define AddRenderCommand(List, Type) (Type##_render_command*)_AddRenderCommand(List, render_command_type_##Type, sizeof(Type##_render_command))
@@ -92,11 +94,17 @@ void ProcessMessageEvent(buffer Event, game_state *State, chunk_list *NetCmds, u
   switch(MessageType) {
     case net_message_type_start: {
       start_net_message StartMessage = UnserializeStartNetMessage(MessageEvent.Message);
-      printf("Game got start event. PlayerCount: %zu, PlayerID: %zu\n", StartMessage.PlayerCount, StartMessage.PlayerID);
+      printf("Game got start event. PlayerCount: %zu, PlayerID: %zu\n", StartMessage.PlayerCount, StartMessage.PlayerIndex);
 
-      InitSimulation(&State->Sim, StartMessage.PlayerCount);
+      InitSimulation(&State->Sim);
+      for(memsize I=0; I<StartMessage.PlayerCount; ++I) {
+        simulation_player_id PlayerID = SimulationCreatePlayer(&State->Sim);
+        if(I == 0) {
+          State->PlayerID = PlayerID;
+        }
+      }
+      Assert(State->PlayerID != SIMULATION_UNDEFINED_PLAYER_ID);
       InitInterpolation(&State->Interpolation, &State->Sim);
-      State->PlayerID = StartMessage.PlayerID;
 
       static ui8 TempBufferBlock[MAX_MESSAGE_LENGTH];
       buffer TempBuffer = {
@@ -162,7 +170,9 @@ void UpdateGame(uusec64 Time, bool TerminationRequested, chunk_list *NetEvents, 
     memsize OrderSetCount = GetChunkRingBufferUnreadCount(&State->OrderSetRing);
     if(OrderSetCount != 0) {
       // TODO: extract order set and pass to tick
-      TickSimulation(&State->Sim);
+      simulation_order_list DummyOrderList;
+      DummyOrderList.Count = 0;
+      TickSimulation(&State->Sim, &DummyOrderList);
       IntSeqPush(&State->OrderSetCountSeq, OrderSetCount-1);
 
       // check for extra tick-sim here

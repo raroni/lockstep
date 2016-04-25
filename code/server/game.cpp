@@ -15,6 +15,7 @@ static buffer MessageOutBuffer = {
 };
 
 struct player {
+  simulation_player_id SimID;
   net_client_id ClientID;
 };
 
@@ -53,9 +54,12 @@ static bool FindPlayerByClientID(player_set *Set, net_client_id ID, memsize *Ind
   return false;
 }
 
-static void AddPlayer(player_set *Set, net_client_id ID) {
-  printf("Added player with client id %zu\n", ID);
-  Set->Players[Set->Count++].ClientID = ID;
+static void AddPlayer(player_set *Set, simulation_player_id SimID, net_client_id NetID) {
+  printf("Added player with client id %zu\n", NetID);
+  player *Player = Set->Players + Set->Count;
+  Player->ClientID = NetID;
+  Player->SimID = SimID;
+  Set->Count++;
 }
 
 static void Broadcast(const player_set *Set, const buffer Message, chunk_list *Commands) {
@@ -120,7 +124,7 @@ void StartGame(game_state *State, chunk_list *NetCmds, uusec64 Time) {
 
   State->NextTickTime = Time + SimulationTickDuration*1000;
 
-  InitSimulation(&State->Sim, Set->Count);
+  InitSimulation(&State->Sim);
 
   printf("Starting game...\n");
   State->Mode = game_mode_active;
@@ -138,7 +142,8 @@ void ProcessNetEvents(game_state *State, chunk_list *Events) {
         printf("Game got connection event!\n");
         if(State->PlayerSet.Count != PLAYERS_MAX) {
           connect_net_event ConnectEvent = UnserializeConnectNetEvent(Event);
-          AddPlayer(&State->PlayerSet, ConnectEvent.ClientID);
+          simulation_player_id SimID = SimulationCreatePlayer(&State->Sim);
+          AddPlayer(&State->PlayerSet, SimID, ConnectEvent.ClientID);
         }
         break;
       case net_event_type_disconnect: {
@@ -221,7 +226,10 @@ void UpdateGame(
     if(Time >= State->NextTickTime) {
       BroadcastLatestOrders(&State->PlayerSet, Commands);
       State->NextTickTime += SimulationTickDuration*1000;
-      TickSimulation(&State->Sim);
+
+      simulation_order_list DummyOrderList;
+      DummyOrderList.Count = 0;
+      TickSimulation(&State->Sim, &DummyOrderList);
     }
   }
   else if(State->Mode == game_mode_disconnecting) {
