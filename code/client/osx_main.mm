@@ -16,11 +16,6 @@
 
 static bool TerminationRequested;
 
-struct resolution {
-  ui16 Width;
-  ui16 Height;
-};
-
 struct osx_state {
   bool Running;
   void *Memory;
@@ -31,7 +26,7 @@ struct osx_state {
   chunk_list NetCommandList;
   chunk_list NetEventList;
   chunk_list RenderCommandList;
-  resolution Resolution;
+  ivec2 Resolution;
   pthread_t NetThread;
   posix_net_context NetContext;
   game_mouse Mouse;
@@ -159,15 +154,15 @@ static NSOpenGLContext* CreateOGLContext() {
   return Context;
 }
 
-static NSWindow* CreateOSXWindow(ui16 Width, ui16 Height) {
+static NSWindow* CreateOSXWindow(ivec2 Resolution) {
   int StyleMask = NSTitledWindowMask | NSClosableWindowMask | NSMiniaturizableWindowMask;
 
   NSScreen *Screen = [NSScreen mainScreen];
   CGRect Rect = NSMakeRect(
     0,
     0,
-    Width / Screen.backingScaleFactor,
-    Height / Screen.backingScaleFactor
+    Resolution.X / Screen.backingScaleFactor,
+    Resolution.Y / Screen.backingScaleFactor
   );
   NSWindow *Window = [[NSWindow alloc] initWithContentRect:Rect
                                           styleMask:StyleMask
@@ -233,14 +228,15 @@ static void ProcessOSXMessages(NSWindow *Window, game_mouse *Mouse) {
   }
 }
 
-r32 GetAspectRatio(resolution Resolution) {
-  return r32(Resolution.Width) / r32(Resolution.Height);
+r32 GetAspectRatio(ivec2 Resolution) {
+  rvec2 Real = ConvertIvec2ToRvec2(Resolution);
+  return Real.X / Real.Y;
 }
 
 int main() {
   osx_state State;
-  State.Resolution.Width = 1600;
-  State.Resolution.Height = 1200;
+  State.Resolution.X = 1600;
+  State.Resolution.Y = 1200;
 
   State.Mouse.PosX = 0;
   State.Mouse.PosY = 0;
@@ -286,7 +282,7 @@ int main() {
   SetupOSXMenu();
   [App finishLaunching];
 
-  State.Window = CreateOSXWindow(State.Resolution.Width, State.Resolution.Height);
+  State.Window = CreateOSXWindow(State.Resolution);
   Assert(State.Window != NULL);
 
   State.OGLContext = CreateOGLContext();
@@ -306,10 +302,13 @@ int main() {
     ProcessOSXMessages(State.Window, &State.Mouse);
     ReadNet(&State.NetContext, &State.NetEventList);
 
+    game_platform GamePlatform;
+    GamePlatform.Time = GetTime();
+    GamePlatform.Mouse = &State.Mouse;
+    GamePlatform.Resolution = State.Resolution;
+    GamePlatform.TerminationRequested = TerminationRequested;
     UpdateGame(
-      GetTime(),
-      TerminationRequested,
-      &State.Mouse,
+      &GamePlatform,
       &State.NetEventList,
       &State.NetCommandList,
       &State.RenderCommandList,

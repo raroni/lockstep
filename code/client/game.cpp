@@ -136,7 +136,7 @@ void ProcessMessageEvent(buffer Event, game_state *State, chunk_list *NetCmds, u
   }
 }
 
-void UpdateGame(uusec64 Time, bool TerminationRequested, game_mouse *Mouse, chunk_list *NetEvents, chunk_list *NetCmds, chunk_list *RenderCmds, bool *Running, buffer Memory) {
+void UpdateGame(game_platform *Platform, chunk_list *NetEvents, chunk_list *NetCmds, chunk_list *RenderCmds, bool *Running, buffer Memory) {
   game_state *State = (game_state*)Memory.Addr;
 
   for(;;) {
@@ -158,7 +158,7 @@ void UpdateGame(uusec64 Time, bool TerminationRequested, game_mouse *Mouse, chun
         *Running = false;
         break;
       case net_event_type_message: {
-        ProcessMessageEvent(Event, State, NetCmds, Time);
+        ProcessMessageEvent(Event, State, NetCmds, Platform->Time);
         break;
       }
       default:
@@ -166,7 +166,7 @@ void UpdateGame(uusec64 Time, bool TerminationRequested, game_mouse *Mouse, chun
     }
   }
 
-  if(Time >= State->NextTickTime) {
+  if(Platform->Time >= State->NextTickTime) {
     memsize OrderListCount = GetChunkRingBufferUnreadCount(&State->OrderListRing);
     if(OrderListCount != 0) {
       // TODO: extract order set and pass to tick
@@ -185,7 +185,7 @@ void UpdateGame(uusec64 Time, bool TerminationRequested, game_mouse *Mouse, chun
 
   Render(&State->Sim, &State->Interpolation, RenderCmds);
 
-  if(TerminationRequested) {
+  if(Platform->TerminationRequested) {
     printf("Requesting net shutdown...\n");
 
     memsize Length = SerializeShutdownNetCommand(State->CommandSerializationBuffer);
