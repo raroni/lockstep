@@ -11,6 +11,7 @@ typedef simulation_player player;
 void CreateUnit(simulation *Sim, memsize PlayerID, ui16 X, ui16 Y) {
   unit *Unit = Sim->Units + Sim->UnitCount;
 
+  Unit->ID = Sim->UnitCount;
   Unit->PlayerID = PlayerID;
   Unit->X = X;
   Unit->Y = Y;

@@ -4,7 +4,9 @@
 
 #define SIMULATION_PLAYER_MAX 8
 #define SIMULATION_UNIT_MAX 4096
+#define SIMULATION_UNIT_HALF_SIZE 50
 #define SIMULATION_UNDEFINED_PLAYER_ID SIMULATION_PLAYER_MAX
+#define SIMULATION_UNDEFINED_UNIT_ID SIMULATION_PLAYER_MAX
 
 typedef ui8 simulation_player_id;
 typedef ui16 simulation_unit_id;
@@ -30,6 +32,7 @@ struct simulation_order_list {
 
 struct simulation_unit {
   simulation_player_id PlayerID;
+  simulation_unit_id ID;
   ui16 X;
   ui16 Y;
 };
