@@ -25,10 +25,10 @@ struct game_state {
   simulation_player_id PlayerID;
   simulation Sim;
   interpolation Interpolation;
-  memsize *OrderSetCounts;
-  int_seq OrderSetCountSeq;
+  memsize *OrderListCounts;
+  int_seq OrderListCountSeq;
   uusec64 NextTickTime;
-  chunk_ring_buffer OrderSetRing;
+  chunk_ring_buffer OrderListRing;
 };
 
 void InitGame(buffer Memory) {
@@ -49,8 +49,8 @@ void InitGame(buffer Memory) {
     usec32 WatchDuration = 2;
     memsize SamplesPerSecond = 1000 / SimulationTickDuration;
     memsize SequenceLength = SamplesPerSecond * WatchDuration;
-    State->OrderSetCounts = (memsize*)LinearAllocate(&State->Allocator, sizeof(memsize)*SequenceLength);
-    InitIntSeq(&State->OrderSetCountSeq, State->OrderSetCounts, SequenceLength);
+    State->OrderListCounts = (memsize*)LinearAllocate(&State->Allocator, sizeof(memsize)*SequenceLength);
+    InitIntSeq(&State->OrderListCountSeq, State->OrderListCounts, SequenceLength);
   }
 
   {
@@ -61,7 +61,7 @@ void InitGame(buffer Memory) {
       .Addr = Storage,
       .Length = StorageSize
     };
-    InitChunkRingBuffer(&State->OrderSetRing, Count, Buffer);
+    InitChunkRingBuffer(&State->OrderListRing, Count, Buffer);
   }
 
   State->PlayerID = SIMULATION_UNDEFINED_PLAYER_ID;
@@ -128,7 +128,7 @@ void ProcessMessageEvent(buffer Event, game_state *State, chunk_list *NetCmds, u
       ChunkListWrite(NetCmds, Command);
       break;
     }
-    case net_message_type_order_set:
+    case net_message_type_order_list:
       // TODO: Handle
       break;
     default:
@@ -167,13 +167,13 @@ void UpdateGame(uusec64 Time, bool TerminationRequested, chunk_list *NetEvents, 
   }
 
   if(Time >= State->NextTickTime) {
-    memsize OrderSetCount = GetChunkRingBufferUnreadCount(&State->OrderSetRing);
-    if(OrderSetCount != 0) {
+    memsize OrderListCount = GetChunkRingBufferUnreadCount(&State->OrderListRing);
+    if(OrderListCount != 0) {
       // TODO: extract order set and pass to tick
       simulation_order_list DummyOrderList;
       DummyOrderList.Count = 0;
       TickSimulation(&State->Sim, &DummyOrderList);
-      IntSeqPush(&State->OrderSetCountSeq, OrderSetCount-1);
+      IntSeqPush(&State->OrderListCountSeq, OrderListCount-1);
 
       // check for extra tick-sim here
 

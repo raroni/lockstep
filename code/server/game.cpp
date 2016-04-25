@@ -169,7 +169,7 @@ void ProcessNetEvents(game_state *State, chunk_list *Events) {
 }
 
 void BroadcastLatestOrders(player_set *PlayerSet, chunk_list *Commands) {
-  memsize Length = SerializeOrderSetNetMessage(MessageOutBuffer);
+  memsize Length = SerializeOrderListNetMessage(MessageOutBuffer);
   buffer Message = {
     .Addr = MessageOutBuffer.Addr,
     .Length = Length

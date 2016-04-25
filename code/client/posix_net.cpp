@@ -171,10 +171,10 @@ void ProcessIncoming(posix_net_context *Context) {
         MessageLength = StartNetMessageSize;
         break;
       }
-      case net_message_type_order_set: {
-        order_set_net_message Message = UnserializeOrderSetNetMessage(Incoming);
-        Assert(ValidateOrderSetNetMessage(Message));
-        MessageLength = OrderSetNetMessageSize;
+      case net_message_type_order_list: {
+        order_list_net_message Message = UnserializeOrderListNetMessage(Incoming);
+        Assert(ValidateOrderListNetMessage(Message));
+        MessageLength = OrderListNetMessageSize;
         break;
       }
       default:
