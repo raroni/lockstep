@@ -16,10 +16,17 @@
 
 static const ui32 Red = 0x00FF0000;
 static const ui32 Blue = 0x000000FF;
+static const ui32 White = 0x00FFFFFF;
 static const r32 Zoom = 1.0 / 1000.0;
 
 static const ui32 PlayerColors[] = {
   Red, Blue
+};
+
+#define UNIT_SELECTION_MAX 8;
+struct unit_selection {
+  simulation_unit_id IDs[8];
+  ui8 Count;
 };
 
 struct game_state {
@@ -33,6 +40,7 @@ struct game_state {
   uusec64 NextTickTime;
   uusec64 NextExtraTickTime;
   chunk_ring_buffer OrderListRing;
+  unit_selection UnitSelection;
 };
 
 static r32 GetAspectRatio(ivec2 Resolution) {
@@ -74,6 +82,7 @@ void InitGame(buffer Memory) {
   }
 
   State->PlayerID = SIMULATION_UNDEFINED_PLAYER_ID;
+  State->UnitSelection.Count = 0;
 }
 
 #define AddRenderCommand(List, Type) (Type##_render_command*)_AddRenderCommand(List, render_command_type_##Type, sizeof(Type##_render_command))
@@ -87,11 +96,22 @@ void* _AddRenderCommand(chunk_list *List, render_command_type Type, memsize Leng
   return (void*)Command;
 }
 
-void Render(simulation *Sim, interpolation *Interpolation, chunk_list *Commands, ivec2 Resolution) {
+void Render(simulation *Sim, interpolation *Interpolation, unit_selection *UnitSelection, chunk_list *Commands, ivec2 Resolution) {
   {
     projection_render_command *Command = AddRenderCommand(Commands, projection);
     Command->AspectRatio = GetAspectRatio(Resolution);
     Command->Zoom = Zoom;
+  }
+
+  for(memsize I=0; I<UnitSelection->Count; ++I) {
+    simulation_unit_id UnitID = UnitSelection->IDs[I];
+    // TODO: Proper unit find based on ID (instead of index)
+    // simulation_unit *Unit = GetSimulationUnit(UnitID);
+    draw_square_render_command *Command = AddRenderCommand(Commands, draw_square);
+    Command->X = Interpolation->Positions[UnitID].X;
+    Command->Y = Interpolation->Positions[UnitID].Y;
+    Command->Color = White;
+    Command->HalfSize = 60;
   }
 
   for(memsize I=0; I<Sim->UnitCount; ++I) {
@@ -99,6 +119,7 @@ void Render(simulation *Sim, interpolation *Interpolation, chunk_list *Commands,
     Command->X = Interpolation->Positions[I].X;
     Command->Y = Interpolation->Positions[I].Y;
     Command->Color = PlayerColors[Sim->Units[I].PlayerID];
+    Command->HalfSize = 50;
   }
 }
 
@@ -167,16 +188,24 @@ simulation_unit_id FindUnit(simulation *Sim, ivec2 WorldPos) {
   return SIMULATION_UNDEFINED_UNIT_ID;
 }
 
-void ProcessMouse(simulation *Sim, game_mouse *Mouse, ivec2 Resolution) {
+void ToggleUnitSelection(unit_selection *UnitSelection, simulation_unit_id ID) {
+  for(memsize I=0; I<UnitSelection->Count; ++I) {
+    if(UnitSelection->IDs[I] == ID) {
+      UnitSelection->IDs[I] = UnitSelection->IDs[UnitSelection->Count-1];
+      UnitSelection->Count--;
+      return;
+    }
+  }
+  UnitSelection->IDs[UnitSelection->Count++] = ID;
+}
+
+void ProcessMouse(simulation *Sim, unit_selection *UnitSelection, game_mouse *Mouse, ivec2 Resolution) {
   if(Mouse->ButtonPressed && Mouse->ButtonChangeCount != 0) {
     r32 AspectRatio = GetAspectRatio(Resolution);
     ivec2 WorldPos = ConvertWindowToWorldCoors(Mouse->Pos, Resolution, AspectRatio, Zoom);
     simulation_unit_id UnitID = FindUnit(Sim, WorldPos);
     if(UnitID != SIMULATION_UNDEFINED_UNIT_ID) {
-      printf("HIT: %d\n", UnitID);
-    }
-    else {
-      printf("No hit :-(\n");
+      ToggleUnitSelection(UnitSelection, UnitID);
     }
   }
 }
@@ -184,7 +213,7 @@ void ProcessMouse(simulation *Sim, game_mouse *Mouse, ivec2 Resolution) {
 void UpdateGame(game_platform *Platform, chunk_list *NetEvents, chunk_list *NetCmds, chunk_list *RenderCmds, bool *Running, buffer Memory) {
   game_state *State = (game_state*)Memory.Addr;
 
-  ProcessMouse(&State->Sim, Platform->Mouse, Platform->Resolution);
+  ProcessMouse(&State->Sim, &State->UnitSelection, Platform->Mouse, Platform->Resolution);
 
   for(;;) {
     buffer Event = ChunkListRead(NetEvents);
@@ -244,7 +273,7 @@ void UpdateGame(game_platform *Platform, chunk_list *NetEvents, chunk_list *NetC
   }
   // TODO: Perform interpolation
 
-  Render(&State->Sim, &State->Interpolation, RenderCmds, Platform->Resolution);
+  Render(&State->Sim, &State->Interpolation, &State->UnitSelection, RenderCmds, Platform->Resolution);
 
   if(Platform->TerminationRequested) {
     printf("Requesting net shutdown...\n");

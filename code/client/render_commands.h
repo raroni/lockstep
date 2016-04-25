@@ -10,6 +10,7 @@ enum render_command_type {
 struct draw_square_render_command {
   si16 X;
   si16 Y;
+  ui8 HalfSize;
   ui32 Color;
 };
 
