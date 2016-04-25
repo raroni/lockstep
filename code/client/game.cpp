@@ -53,7 +53,7 @@ void InitGame(buffer Memory) {
   }
 
   {
-    usec32 WatchDuration = 2;
+    usec32 WatchDuration = 10;
     memsize SamplesPerSecond = 1000 / SimulationTickDuration;
     memsize SequenceLength = SamplesPerSecond * WatchDuration;
     State->OrderListCounts = (memsize*)LinearAllocate(&State->Allocator, sizeof(memsize)*SequenceLength);
