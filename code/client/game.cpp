@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <math.h>
 #include "lib/def.h"
 #include "lib/assert.h"
 #include "lib/int_seq.h"
@@ -30,6 +31,7 @@ struct game_state {
   memsize *OrderListCounts;
   int_seq OrderListCountSeq;
   uusec64 NextTickTime;
+  uusec64 NextExtraTickTime;
   chunk_ring_buffer OrderListRing;
 };
 
@@ -132,6 +134,7 @@ void ProcessMessageEvent(buffer Event, game_state *State, chunk_list *NetCmds, u
       printf("Starting game and replying...\n");
 
       State->NextTickTime = Time + SimulationTickDuration*1000;
+      State->NextExtraTickTime = Time + SimulationTickDuration*1000;
 
       Length = SerializeSendNetCommand(State->CommandSerializationBuffer, ReplyMessage);
       buffer Command = {
@@ -193,18 +196,32 @@ void UpdateGame(game_platform *Platform, chunk_list *NetEvents, chunk_list *NetC
     memsize OrderListCount = GetChunkRingBufferUnreadCount(&State->OrderListRing);
     if(OrderListCount != 0) {
       // TODO: extract order set and pass to tick
+      OrderListCount--;
+
       simulation_order_list DummyOrderList;
       DummyOrderList.Count = 0;
       TickSimulation(&State->Sim, &DummyOrderList);
-      IntSeqPush(&State->OrderListCountSeq, OrderListCount-1);
+      IntSeqPush(&State->OrderListCountSeq, OrderListCount);
+
+      if(Platform->Time >= State->NextExtraTickTime) {
+        double CountStdDev = CalcIntSeqStdDev(&State->OrderListCountSeq);
+        static const umsec32 BaseFrameLag = 200;
+        memsize TargetFrameLag = BaseFrameLag/SimulationTickDuration + round(CountStdDev * 4);
+        if(OrderListCount > TargetFrameLag) {
+          // TODO: extract order set and pass to tick
+          TickSimulation(&State->Sim, &DummyOrderList);
+          State->NextExtraTickTime += 1000*1000;
+        }
+      }
 
       // check for extra tick-sim here
+
+      // TODO: Notify interpolation about new tick
 
       State->NextTickTime += SimulationTickDuration*1000;
     }
   }
-
-  // Interpolation
+  // TODO: Perform interpolation
 
   Render(&State->Sim, &State->Interpolation, RenderCmds, Platform->Resolution);
 
