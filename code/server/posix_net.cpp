@@ -142,7 +142,7 @@ void ShutdownPosixNet(posix_net_context *Context) {
 
 static void ProcessCommands(posix_net_context *Context) {
   memsize Length;
-  while((Length = ChunkRingBufferRead(&Context->CommandRing, Context->CommandReadBuffer))) {
+  while((Length = ChunkRingBufferCopyRead(&Context->CommandRing, Context->CommandReadBuffer))) {
     net_command_type Type = UnserializeNetCommandType(Context->CommandReadBuffer);
     buffer Command = {
       .Addr = Context->CommandReadBuffer.Addr,
@@ -186,7 +186,7 @@ static void ProcessCommands(posix_net_context *Context) {
 }
 
 memsize ReadPosixNetEvent(posix_net_context *Context, buffer Buffer) {
-  return ChunkRingBufferRead(&Context->EventRing, Buffer);
+  return ChunkRingBufferCopyRead(&Context->EventRing, Buffer);
 }
 
 void PosixNetBroadcast(posix_net_context *Context, net_client_id *IDs, memsize IDCount, buffer Message) {

@@ -2,7 +2,7 @@
 #include "orwell.h"
 #include "lib/chunk_ring_buffer.h"
 
-static void TestBasicWriteRead(ow_test_context Context) {
+static void TestCopyRead(ow_test_context Context) {
   ui8 RingBufferBlock[256];
   buffer RingBuffer = {
     .Addr = &RingBufferBlock,
@@ -16,7 +16,7 @@ static void TestBasicWriteRead(ow_test_context Context) {
 
   char OutputBlock[8];
   buffer Output = { .Addr = &OutputBlock, .Length = sizeof(OutputBlock) };
-  memsize ReadLength = ChunkRingBufferRead(&Ring, Output);
+  memsize ReadLength = ChunkRingBufferCopyRead(&Ring, Output);
 
   OW_AssertEqualInt(4, ReadLength);
   OW_AssertEqualStr("hey", OutputBlock);
@@ -55,7 +55,7 @@ static void TestLoopingWriteRead(ow_test_context Context) {
   for(memsize I=0; I<200; I++) {
     char ResultBuffer[10];
     buffer Result = { .Addr = &ResultBuffer, .Length = sizeof(ResultBuffer) };
-    memsize ReadLength = ChunkRingBufferRead(&Ring, Result);
+    memsize ReadLength = ChunkRingBufferCopyRead(&Ring, Result);
     OW_AssertEqualInt(Inputs[ReadIndex].Length, ReadLength);
     OW_AssertEqualStr((const char*)Inputs[ReadIndex].Addr, (const char*)Result.Addr);
 
@@ -79,11 +79,11 @@ static void TestEmpty(ow_test_context Context) {
 
   char ResultBlock[8];
   buffer Result = { .Addr = ResultBlock, .Length = sizeof(ResultBlock) };
-  memsize ReadLength = ChunkRingBufferRead(&Ring, Result);
+  memsize ReadLength = ChunkRingBufferCopyRead(&Ring, Result);
   OW_AssertEqualInt(4, ReadLength);
-  ReadLength = ChunkRingBufferRead(&Ring, Result);
+  ReadLength = ChunkRingBufferCopyRead(&Ring, Result);
   OW_AssertEqualInt(0, ReadLength);
-  ReadLength = ChunkRingBufferRead(&Ring, Result);
+  ReadLength = ChunkRingBufferCopyRead(&Ring, Result);
   OW_AssertEqualInt(0, ReadLength);
 
   TerminateChunkRingBuffer(&Ring);
@@ -129,11 +129,32 @@ static void TestReadAdvance(ow_test_context Context) {
   TerminateChunkRingBuffer(&Ring);
 }
 
+static void TestRefRead(ow_test_context Context) {
+  ui8 RingBufferBlock[256];
+  buffer RingBuffer = { .Addr = &RingBufferBlock, .Length = sizeof(RingBufferBlock) };
+  chunk_ring_buffer Ring;
+  InitChunkRingBuffer(&Ring, 2, RingBuffer);
+
+  char InputBlock[] = { 'h', 'e', 'y', '\0' };
+  buffer Input = { .Addr = &InputBlock, .Length = sizeof(InputBlock) };
+  ChunkRingBufferWrite(&Ring, Input);
+
+  buffer Chunk = ChunkRingBufferRefRead(&Ring);
+  OW_AssertEqualInt(4, Chunk.Length);
+  OW_AssertEqualStr("hey", (const char*)Chunk.Addr);
+
+  Chunk = ChunkRingBufferPeek(&Ring);
+  OW_AssertEqualInt(0, Chunk.Length);
+
+  TerminateChunkRingBuffer(&Ring);
+}
+
 void SetupChunkRingBufferGroup(ow_suite *S) {
   ow_group_index G = OW_CreateGroup(S);
-  OW_AddTest(S, G, TestBasicWriteRead);
+  OW_AddTest(S, G, TestCopyRead);
   OW_AddTest(S, G, TestLoopingWriteRead);
   OW_AddTest(S, G, TestPeek);
   OW_AddTest(S, G, TestReadAdvance);
+  OW_AddTest(S, G, TestRefRead);
   OW_AddTest(S, G, TestEmpty);
 }

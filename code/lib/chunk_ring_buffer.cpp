@@ -75,11 +75,19 @@ buffer ChunkRingBufferPeek(chunk_ring_buffer *Buffer) {
   return Result;
 }
 
+buffer ChunkRingBufferRefRead(chunk_ring_buffer *Buffer) {
+  buffer Peek = ChunkRingBufferPeek(Buffer);
+  if(Peek.Length != 0) {
+    ChunkRingBufferReadAdvance(Buffer);
+  }
+  return Peek;
+}
+
 void ChunkRingBufferReadAdvance(chunk_ring_buffer *Buffer) {
   Buffer->ReadIndex = (Buffer->ReadIndex + 1) % Buffer->ChunkCount;
 }
 
-memsize ChunkRingBufferRead(chunk_ring_buffer *Buffer, buffer Output) {
+memsize ChunkRingBufferCopyRead(chunk_ring_buffer *Buffer, buffer Output) {
   buffer Peek = ChunkRingBufferPeek(Buffer);
   if(Peek.Length == 0) {
     return 0;

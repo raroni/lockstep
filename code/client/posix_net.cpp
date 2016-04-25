@@ -114,12 +114,12 @@ void Connect(posix_net_context *Context) {
 }
 
 memsize ReadPosixNetEvent(posix_net_context *Context, buffer Buffer) {
-  return ChunkRingBufferRead(&Context->EventRing, Buffer);
+  return ChunkRingBufferCopyRead(&Context->EventRing, Buffer);
 }
 
 void ProcessCommands(posix_net_context *Context) {
   memsize Length;
-  while((Length = ChunkRingBufferRead(&Context->CommandRing, Context->CommandReadBuffer))) {
+  while((Length = ChunkRingBufferCopyRead(&Context->CommandRing, Context->CommandReadBuffer))) {
     net_command_type Type = UnserializeNetCommandType(Context->CommandReadBuffer);
     buffer Command = {
       .Addr = Context->CommandReadBuffer.Addr,
