@@ -62,22 +62,37 @@ void ChunkRingBufferWrite(chunk_ring_buffer *Buffer, const buffer Input) {
   Buffer->WriteIndex = NewWriteIndex;
 }
 
-memsize ChunkRingBufferRead(chunk_ring_buffer *Buffer, buffer Output) {
+buffer ChunkRingBufferPeek(chunk_ring_buffer *Buffer) {
+  buffer Result;
   if(Buffer->ReadIndex == Buffer->WriteIndex) {
+    Result.Addr = NULL;
+    Result.Length = 0;
+    return Result;
+  }
+  memsize ReadOffset = Buffer->Offsets[Buffer->ReadIndex];
+  Result.Addr = ((ui8*)Buffer->Data.Addr) + ReadOffset;
+  Result.Length = Buffer->Sizes[Buffer->ReadIndex];
+  return Result;
+}
+
+void ChunkRingBufferReadAdvance(chunk_ring_buffer *Buffer) {
+  Buffer->ReadIndex = (Buffer->ReadIndex + 1) % Buffer->ChunkCount;
+}
+
+memsize ChunkRingBufferRead(chunk_ring_buffer *Buffer, buffer Output) {
+  buffer Peek = ChunkRingBufferPeek(Buffer);
+  if(Peek.Length == 0) {
     return 0;
   }
-  memsize ChunkSize = Buffer->Sizes[Buffer->ReadIndex];
 
-  Assert(Output.Length >= ChunkSize);
-
-  memsize ReadOffset = Buffer->Offsets[Buffer->ReadIndex];
-  void *Source = ((ui8*)Buffer->Data.Addr) + ReadOffset;
-  memcpy(Output.Addr, Source, ChunkSize);
+  Assert(Output.Length >= Peek.Length);
+  memcpy(Output.Addr, Peek.Addr, Peek.Length);
 
   MemoryBarrier;
 
-  Buffer->ReadIndex = (Buffer->ReadIndex + 1) % Buffer->ChunkCount;
-  return ChunkSize;
+  ChunkRingBufferReadAdvance(Buffer);
+
+  return Peek.Length;
 }
 
 void TerminateChunkRingBuffer(crb *Buffer) {

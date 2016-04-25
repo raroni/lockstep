@@ -89,9 +89,51 @@ static void TestEmpty(ow_test_context Context) {
   TerminateChunkRingBuffer(&Ring);
 }
 
+static void TestPeek(ow_test_context Context) {
+  ui8 RingBufferBlock[256];
+  buffer RingBuffer = { .Addr = &RingBufferBlock, .Length = sizeof(RingBufferBlock) };
+  chunk_ring_buffer Ring;
+  InitChunkRingBuffer(&Ring, 2, RingBuffer);
+
+  char InputBlock[] = { 'h', 'e', 'y', '\0' };
+  buffer Input = { .Addr = &InputBlock, .Length = sizeof(InputBlock) };
+  ChunkRingBufferWrite(&Ring, Input);
+
+  buffer Peek = ChunkRingBufferPeek(&Ring);
+  OW_AssertEqualInt(4, Peek.Length);
+  OW_AssertEqualStr("hey", (const char*)Peek.Addr);
+
+  TerminateChunkRingBuffer(&Ring);
+}
+
+static void TestReadAdvance(ow_test_context Context) {
+  ui8 RingBufferBlock[256];
+  buffer RingBuffer = { .Addr = &RingBufferBlock, .Length = sizeof(RingBufferBlock) };
+  chunk_ring_buffer Ring;
+  InitChunkRingBuffer(&Ring, 4, RingBuffer);
+
+  char Input1Block[] = { 'h', 'e', 'y', '\0' };
+  buffer Input1 = { .Addr = &Input1Block, .Length = sizeof(Input1Block) };
+  char Input2Block[] = { 'y', 'o', 'u', '\0' };
+  buffer Input2 = { .Addr = &Input2Block, .Length = sizeof(Input2Block) };
+
+  ChunkRingBufferWrite(&Ring, Input1);
+  ChunkRingBufferWrite(&Ring, Input2);
+
+  ChunkRingBufferReadAdvance(&Ring);
+
+  buffer Peek = ChunkRingBufferPeek(&Ring);
+  OW_AssertEqualInt(4, Peek.Length);
+  OW_AssertEqualStr("you", (const char*)Peek.Addr);
+
+  TerminateChunkRingBuffer(&Ring);
+}
+
 void SetupChunkRingBufferGroup(ow_suite *S) {
   ow_group_index G = OW_CreateGroup(S);
   OW_AddTest(S, G, TestBasicWriteRead);
   OW_AddTest(S, G, TestLoopingWriteRead);
+  OW_AddTest(S, G, TestPeek);
+  OW_AddTest(S, G, TestReadAdvance);
   OW_AddTest(S, G, TestEmpty);
 }
