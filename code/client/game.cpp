@@ -173,7 +173,7 @@ void ProcessMessageEvent(buffer Event, game_state *State, chunk_list *NetCmds, u
   }
 }
 
-simulation_unit_id FindUnit(simulation *Sim, ivec2 WorldPos) {
+simulation_unit* FindUnit(simulation *Sim, ivec2 WorldPos) {
   for(memsize I=0; I<Sim->UnitCount; ++I) {
     simulation_unit *Unit = Sim->Units + I;
     if(
@@ -182,10 +182,10 @@ simulation_unit_id FindUnit(simulation *Sim, ivec2 WorldPos) {
       Unit->Y - SIMULATION_UNIT_HALF_SIZE <= WorldPos.Y &&
       Unit->Y + SIMULATION_UNIT_HALF_SIZE > WorldPos.Y
     ) {
-      return Unit->ID;
+      return Unit;
     }
   }
-  return SIMULATION_UNDEFINED_UNIT_ID;
+  return NULL;
 }
 
 void ToggleUnitSelection(unit_selection *UnitSelection, simulation_unit_id ID) {
@@ -199,13 +199,13 @@ void ToggleUnitSelection(unit_selection *UnitSelection, simulation_unit_id ID) {
   UnitSelection->IDs[UnitSelection->Count++] = ID;
 }
 
-void ProcessMouse(simulation *Sim, unit_selection *UnitSelection, game_mouse *Mouse, ivec2 Resolution) {
+void ProcessMouse(simulation *Sim, simulation_player_id PlayerID, unit_selection *UnitSelection, game_mouse *Mouse, ivec2 Resolution) {
   if(Mouse->ButtonPressed && Mouse->ButtonChangeCount != 0) {
     r32 AspectRatio = GetAspectRatio(Resolution);
     ivec2 WorldPos = ConvertWindowToWorldCoors(Mouse->Pos, Resolution, AspectRatio, Zoom);
-    simulation_unit_id UnitID = FindUnit(Sim, WorldPos);
-    if(UnitID != SIMULATION_UNDEFINED_UNIT_ID) {
-      ToggleUnitSelection(UnitSelection, UnitID);
+    simulation_unit *Unit = FindUnit(Sim, WorldPos);
+    if(Unit != NULL && Unit->PlayerID == PlayerID) {
+      ToggleUnitSelection(UnitSelection, Unit->ID);
     }
   }
 }
@@ -213,7 +213,7 @@ void ProcessMouse(simulation *Sim, unit_selection *UnitSelection, game_mouse *Mo
 void UpdateGame(game_platform *Platform, chunk_list *NetEvents, chunk_list *NetCmds, chunk_list *RenderCmds, bool *Running, buffer Memory) {
   game_state *State = (game_state*)Memory.Addr;
 
-  ProcessMouse(&State->Sim, &State->UnitSelection, Platform->Mouse, Platform->Resolution);
+  ProcessMouse(&State->Sim, State->PlayerID, &State->UnitSelection, Platform->Mouse, Platform->Resolution);
 
   for(;;) {
     buffer Event = ChunkListRead(NetEvents);
