@@ -47,6 +47,13 @@ void _OW_AssertEqualStr(ow_test_context Context, const char *Filename, size_t Li
   }
 }
 
+void _OW_AssertInDelta(ow_test_context Context, const char *Filename, size_t LineNumber, double Expected, double Delta, double Actual) {
+  bool InDelta = (Expected - Delta) < Actual && (Expected + Delta) > Actual;
+  if(!InDelta) {
+    ReportFailure(Filename, LineNumber, "%f was not within %f +/- %f.", Actual, Expected, Delta);
+  }
+}
+
 void _OW_AddTest(
   ow_suite *Suite, ow_group_index GroupIndex,
   _ow_test_function Func, const char *Name

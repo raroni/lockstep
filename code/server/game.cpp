@@ -15,6 +15,7 @@ static buffer MessageOutBuffer = {
 };
 
 struct player {
+  simulation_player_id SimID;
   net_client_id ClientID;
 };
 
@@ -35,7 +36,7 @@ struct game_state {
   game_mode Mode;
   linear_allocator Allocator;
   player_set PlayerSet;
-  ui64 NextTickTime;
+  uusec64 NextTickTime;
   simulation Sim;
 };
 
@@ -53,9 +54,12 @@ static bool FindPlayerByClientID(player_set *Set, net_client_id ID, memsize *Ind
   return false;
 }
 
-static void AddPlayer(player_set *Set, net_client_id ID) {
-  printf("Added player with client id %zu\n", ID);
-  Set->Players[Set->Count++].ClientID = ID;
+static void AddPlayer(player_set *Set, simulation_player_id SimID, net_client_id NetID) {
+  printf("Added player with client id %zu\n", NetID);
+  player *Player = Set->Players + Set->Count;
+  Player->ClientID = NetID;
+  Player->SimID = SimID;
+  Set->Count++;
 }
 
 static void Broadcast(const player_set *Set, const buffer Message, chunk_list *Commands) {
@@ -94,7 +98,7 @@ void InitGame(buffer Memory) {
   InitPlayerSet(&State->PlayerSet);
 }
 
-void StartGame(game_state *State, chunk_list *NetCmds, ui64 Time) {
+void StartGame(game_state *State, chunk_list *NetCmds, uusec64 Time) {
   static ui8 TempWorkBufferBlock[1024*1024];
   buffer TempWorkBuffer = {
     .Addr = TempWorkBufferBlock,
@@ -118,9 +122,9 @@ void StartGame(game_state *State, chunk_list *NetCmds, ui64 Time) {
   }
 
 
-  State->NextTickTime = Time + SIMULATION_TICK_DURATION*1000;
+  State->NextTickTime = Time + SimulationTickDuration*1000;
 
-  InitSimulation(&State->Sim, Set->Count);
+  InitSimulation(&State->Sim);
 
   printf("Starting game...\n");
   State->Mode = game_mode_active;
@@ -138,7 +142,8 @@ void ProcessNetEvents(game_state *State, chunk_list *Events) {
         printf("Game got connection event!\n");
         if(State->PlayerSet.Count != PLAYERS_MAX) {
           connect_net_event ConnectEvent = UnserializeConnectNetEvent(Event);
-          AddPlayer(&State->PlayerSet, ConnectEvent.ClientID);
+          simulation_player_id SimID = SimulationCreatePlayer(&State->Sim);
+          AddPlayer(&State->PlayerSet, SimID, ConnectEvent.ClientID);
         }
         break;
       case net_event_type_disconnect: {
@@ -164,7 +169,7 @@ void ProcessNetEvents(game_state *State, chunk_list *Events) {
 }
 
 void BroadcastLatestOrders(player_set *PlayerSet, chunk_list *Commands) {
-  memsize Length = SerializeOrderSetNetMessage(MessageOutBuffer);
+  memsize Length = SerializeOrderListNetMessage(MessageOutBuffer);
   buffer Message = {
     .Addr = MessageOutBuffer.Addr,
     .Length = Length
@@ -174,8 +179,8 @@ void BroadcastLatestOrders(player_set *PlayerSet, chunk_list *Commands) {
 }
 
 void UpdateGame(
-  ui64 Time,
-  ui64 *Delay,
+  uusec64 Time,
+  uusec64 *Delay,
   bool TerminationRequested,
   chunk_list *Events,
   chunk_list *Commands,
@@ -220,8 +225,11 @@ void UpdateGame(
   else if(State->Mode == game_mode_active) {
     if(Time >= State->NextTickTime) {
       BroadcastLatestOrders(&State->PlayerSet, Commands);
-      State->NextTickTime += SIMULATION_TICK_DURATION*1000;
-      TickSimulation(&State->Sim);
+      State->NextTickTime += SimulationTickDuration*1000;
+
+      simulation_order_list DummyOrderList;
+      DummyOrderList.Count = 0;
+      TickSimulation(&State->Sim, &DummyOrderList);
     }
   }
   else if(State->Mode == game_mode_disconnecting) {

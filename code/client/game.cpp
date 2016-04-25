@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include "lib/def.h"
 #include "lib/assert.h"
+#include "lib/int_seq.h"
+#include "lib/chunk_ring_buffer.h"
 #include "common/memory.h"
 #include "common/net_messages.h"
 #include "common/simulation.h"
@@ -20,9 +22,13 @@ static const ui32 PlayerColors[] = {
 struct game_state {
   linear_allocator Allocator;
   buffer CommandSerializationBuffer;
-  memsize PlayerID;
+  simulation_player_id PlayerID;
   simulation Sim;
   interpolation Interpolation;
+  memsize *OrderListCounts;
+  int_seq OrderListCountSeq;
+  uusec64 NextTickTime;
+  chunk_ring_buffer OrderListRing;
 };
 
 void InitGame(buffer Memory) {
@@ -38,6 +44,27 @@ void InitGame(buffer Memory) {
     B->Addr = LinearAllocate(&State->Allocator, NETWORK_COMMAND_MAX_LENGTH);
     B->Length = NETWORK_COMMAND_MAX_LENGTH;
   }
+
+  {
+    usec32 WatchDuration = 2;
+    memsize SamplesPerSecond = 1000 / SimulationTickDuration;
+    memsize SequenceLength = SamplesPerSecond * WatchDuration;
+    State->OrderListCounts = (memsize*)LinearAllocate(&State->Allocator, sizeof(memsize)*SequenceLength);
+    InitIntSeq(&State->OrderListCountSeq, State->OrderListCounts, SequenceLength);
+  }
+
+  {
+    memsize Count = 100;
+    memsize StorageSize = Count * 1024;
+    void *Storage = LinearAllocate(&State->Allocator, StorageSize);
+    buffer Buffer = {
+      .Addr = Storage,
+      .Length = StorageSize
+    };
+    InitChunkRingBuffer(&State->OrderListRing, Count, Buffer);
+  }
+
+  State->PlayerID = SIMULATION_UNDEFINED_PLAYER_ID;
 }
 
 #define AddRenderCommand(List, Type) (Type##_render_command*)_AddRenderCommand(List, render_command_type_##Type, sizeof(Type##_render_command))
@@ -60,18 +87,24 @@ void Render(simulation *Sim, interpolation *Interpolation, chunk_list *Commands)
   }
 }
 
-void ProcessMessageEvent(buffer Event, game_state *State, chunk_list *NetCmds) {
+void ProcessMessageEvent(buffer Event, game_state *State, chunk_list *NetCmds, uusec64 Time) {
   message_net_event MessageEvent = UnserializeMessageNetEvent(Event);
   net_message_type MessageType = UnserializeNetMessageType(MessageEvent.Message);
 
   switch(MessageType) {
     case net_message_type_start: {
       start_net_message StartMessage = UnserializeStartNetMessage(MessageEvent.Message);
-      printf("Game got start event. PlayerCount: %zu, PlayerID: %zu\n", StartMessage.PlayerCount, StartMessage.PlayerID);
+      printf("Game got start event. PlayerCount: %zu, PlayerID: %zu\n", StartMessage.PlayerCount, StartMessage.PlayerIndex);
 
-      InitSimulation(&State->Sim, StartMessage.PlayerCount);
+      InitSimulation(&State->Sim);
+      for(memsize I=0; I<StartMessage.PlayerCount; ++I) {
+        simulation_player_id PlayerID = SimulationCreatePlayer(&State->Sim);
+        if(I == 0) {
+          State->PlayerID = PlayerID;
+        }
+      }
+      Assert(State->PlayerID != SIMULATION_UNDEFINED_PLAYER_ID);
       InitInterpolation(&State->Interpolation, &State->Sim);
-      State->PlayerID = StartMessage.PlayerID;
 
       static ui8 TempBufferBlock[MAX_MESSAGE_LENGTH];
       buffer TempBuffer = {
@@ -85,6 +118,8 @@ void ProcessMessageEvent(buffer Event, game_state *State, chunk_list *NetCmds) {
       };
       printf("Starting game and replying...\n");
 
+      State->NextTickTime = Time + SimulationTickDuration*1000;
+
       Length = SerializeSendNetCommand(State->CommandSerializationBuffer, ReplyMessage);
       buffer Command = {
         .Addr = State->CommandSerializationBuffer.Addr,
@@ -93,7 +128,7 @@ void ProcessMessageEvent(buffer Event, game_state *State, chunk_list *NetCmds) {
       ChunkListWrite(NetCmds, Command);
       break;
     }
-    case net_message_type_order_set:
+    case net_message_type_order_list:
       // TODO: Handle
       break;
     default:
@@ -101,7 +136,7 @@ void ProcessMessageEvent(buffer Event, game_state *State, chunk_list *NetCmds) {
   }
 }
 
-void UpdateGame(bool TerminationRequested, chunk_list *NetEvents, chunk_list *NetCmds, chunk_list *RenderCmds, bool *Running, buffer Memory) {
+void UpdateGame(uusec64 Time, bool TerminationRequested, chunk_list *NetEvents, chunk_list *NetCmds, chunk_list *RenderCmds, bool *Running, buffer Memory) {
   game_state *State = (game_state*)Memory.Addr;
 
   for(;;) {
@@ -123,7 +158,7 @@ void UpdateGame(bool TerminationRequested, chunk_list *NetEvents, chunk_list *Ne
         *Running = false;
         break;
       case net_event_type_message: {
-        ProcessMessageEvent(Event, State, NetCmds);
+        ProcessMessageEvent(Event, State, NetCmds, Time);
         break;
       }
       default:
@@ -131,7 +166,21 @@ void UpdateGame(bool TerminationRequested, chunk_list *NetEvents, chunk_list *Ne
     }
   }
 
-  // Check if simulation update
+  if(Time >= State->NextTickTime) {
+    memsize OrderListCount = GetChunkRingBufferUnreadCount(&State->OrderListRing);
+    if(OrderListCount != 0) {
+      // TODO: extract order set and pass to tick
+      simulation_order_list DummyOrderList;
+      DummyOrderList.Count = 0;
+      TickSimulation(&State->Sim, &DummyOrderList);
+      IntSeqPush(&State->OrderListCountSeq, OrderListCount-1);
+
+      // check for extra tick-sim here
+
+      State->NextTickTime += SimulationTickDuration*1000;
+    }
+  }
+
   // Interpolation
 
   Render(&State->Sim, &State->Interpolation, RenderCmds);

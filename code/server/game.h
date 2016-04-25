@@ -2,8 +2,8 @@
 
 void InitGame(buffer Memory);
 void UpdateGame(
-  ui64 Time,
-  ui64 *Delay,
+  uusec64 Time,
+  uusec64 *Delay,
   bool TerminationRequested,
   chunk_list *NetEvents,
   chunk_list *NetCmds,

@@ -5,7 +5,7 @@
 
 const memsize MinMessageSize = 1;
 const memsize ReplyNetMessageSize = 1;
-const memsize OrderSetNetMessageSize = 1;
+const memsize OrderListNetMessageSize = 1;
 const memsize StartNetMessageSize = 3;
 
 void WriteType(serializer *S, net_message_type Type) {
@@ -13,7 +13,7 @@ void WriteType(serializer *S, net_message_type Type) {
   SerializerWriteUI8(S, TypeUI8);
 }
 
-memsize SerializeStartNetMessage(memsize PlayerCount, memsize PlayerID, buffer Buffer) {
+memsize SerializeStartNetMessage(memsize PlayerCount, memsize PlayerIndex, buffer Buffer) {
   serializer Writer = CreateSerializer(Buffer);
 
   ui8 TypeUI8 = SafeCastIntToUI8(net_message_type_start);
@@ -22,8 +22,8 @@ memsize SerializeStartNetMessage(memsize PlayerCount, memsize PlayerID, buffer B
   ui8 PlayerCountUI8 = SafeCastIntToUI8(PlayerCount);
   SerializerWriteUI8(&Writer, PlayerCountUI8);
 
-  ui8 PlayerIDUI8 = SafeCastIntToUI8(PlayerID);
-  SerializerWriteUI8(&Writer, PlayerIDUI8);
+  ui8 PlayerIndexUI8 = SafeCastIntToUI8(PlayerIndex);
+  SerializerWriteUI8(&Writer, PlayerIndexUI8);
 
   Assert(Writer.Position == StartNetMessageSize);
 
@@ -39,8 +39,8 @@ bool ValidateMessageLength(buffer Buffer, net_message_type Type) {
     case net_message_type_reply:
       RequiredLength = ReplyNetMessageSize;
       break;
-    case net_message_type_order_set:
-      RequiredLength = OrderSetNetMessageSize;
+    case net_message_type_order_list:
+      RequiredLength = OrderListNetMessageSize;
       break;
     default:
       InvalidCodePath;
@@ -57,10 +57,10 @@ memsize SerializeReplyNetMessage(buffer Buffer) {
   return Writer.Position;
 }
 
-memsize SerializeOrderSetNetMessage(buffer Out) {
+memsize SerializeOrderListNetMessage(buffer Out) {
   serializer W = CreateSerializer(Out);
-  WriteType(&W, net_message_type_order_set);
-  Assert(W.Position == OrderSetNetMessageSize);
+  WriteType(&W, net_message_type_order_list);
+  Assert(W.Position == OrderListNetMessageSize);
   return W.Position;
 }
 
@@ -77,17 +77,17 @@ start_net_message UnserializeStartNetMessage(buffer Buffer) {
 
   start_net_message Message;
   Message.PlayerCount = SerializerReadUI8(&S);
-  Message.PlayerID = SerializerReadUI8(&S);
+  Message.PlayerIndex = SerializerReadUI8(&S);
 
   return Message;
 }
 
-order_set_net_message UnserializeOrderSetNetMessage(buffer Input) {
+order_list_net_message UnserializeOrderListNetMessage(buffer Input) {
   serializer S = CreateSerializer(Input);
   net_message_type Type = (net_message_type)SerializerReadUI8(&S);
-  Assert(Type == net_message_type_order_set);
+  Assert(Type == net_message_type_order_list);
 
-  order_set_net_message Message;
+  order_list_net_message Message;
   Message.Count = 0;
 
   return Message;
@@ -102,7 +102,7 @@ bool ValidateStartNetMessage(start_net_message Message) {
   return true;
 }
 
-bool ValidateOrderSetNetMessage(order_set_net_message Message) {
+bool ValidateOrderListNetMessage(order_list_net_message Message) {
   // TODO: Check properties of message
   return true;
 }

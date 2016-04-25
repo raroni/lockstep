@@ -114,12 +114,12 @@ void Connect(posix_net_context *Context) {
 }
 
 memsize ReadPosixNetEvent(posix_net_context *Context, buffer Buffer) {
-  return ChunkRingBufferRead(&Context->EventRing, Buffer);
+  return ChunkRingBufferCopyRead(&Context->EventRing, Buffer);
 }
 
 void ProcessCommands(posix_net_context *Context) {
   memsize Length;
-  while((Length = ChunkRingBufferRead(&Context->CommandRing, Context->CommandReadBuffer))) {
+  while((Length = ChunkRingBufferCopyRead(&Context->CommandRing, Context->CommandReadBuffer))) {
     net_command_type Type = UnserializeNetCommandType(Context->CommandReadBuffer);
     buffer Command = {
       .Addr = Context->CommandReadBuffer.Addr,
@@ -171,10 +171,10 @@ void ProcessIncoming(posix_net_context *Context) {
         MessageLength = StartNetMessageSize;
         break;
       }
-      case net_message_type_order_set: {
-        order_set_net_message Message = UnserializeOrderSetNetMessage(Incoming);
-        Assert(ValidateOrderSetNetMessage(Message));
-        MessageLength = OrderSetNetMessageSize;
+      case net_message_type_order_list: {
+        order_list_net_message Message = UnserializeOrderListNetMessage(Incoming);
+        Assert(ValidateOrderListNetMessage(Message));
+        MessageLength = OrderListNetMessageSize;
         break;
       }
       default:

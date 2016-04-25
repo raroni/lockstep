@@ -3,10 +3,10 @@
 #include <stdint.h>
 #include <pthread.h>
 #include <unistd.h>
-#include <sys/time.h>
 #include "lib/assert.h"
 #include "lib/chunk_list.h"
 #include "common/memory.h"
+#include "common/posix_time.h"
 #include "net_commands.h"
 #include "net_events.h"
 #include "game.h"
@@ -87,12 +87,6 @@ void ExecuteNetCommands(posix_net_context *Context, chunk_list *Commands) {
   ResetChunkList(Commands);
 }
 
-ui64 GetTime() {
-  struct timeval tv;
-  gettimeofday(&tv, NULL);
-  return (tv.tv_sec*1000000+tv.tv_usec);
-}
-
 int main() {
   osx_state State;
 
@@ -129,10 +123,10 @@ int main() {
   signal(SIGINT, HandleSignal);
   State.Running = true;
   printf("Listening...\n");
-  ui64 GameStartTime = GetTime();
+  uusec64 GameStartTime = GetTime();
   while(State.Running) {
-    ui64 GameDuration = GetTime() - GameStartTime;
-    ui64 Delay = 0;
+    uusec64 GameDuration = GetTime() - GameStartTime;
+    uusec64 Delay = 0;
     ReadNet(&State.NetContext, &State.NetEventList);
     UpdateGame(
       GameDuration,
@@ -146,7 +140,7 @@ int main() {
     ExecuteNetCommands(&State.NetContext, &State.NetCommandList);
     ResetChunkList(&State.NetEventList);
 
-    ui64 ConservativeDelay = Delay/2;
+    uusec64 ConservativeDelay = Delay/2;
     if(ConservativeDelay > 200) {
       usleep(ConservativeDelay);
     }
