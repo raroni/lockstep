@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <math.h>
 #include <signal.h>
 #include <pthread.h>
 #include <Foundation/Foundation.h>
@@ -33,6 +34,7 @@ struct osx_state {
   resolution Resolution;
   pthread_t NetThread;
   posix_net_context NetContext;
+  game_mouse Mouse;
 };
 
 @interface ClientAppDelegate : NSObject <NSApplicationDelegate>
@@ -160,12 +162,18 @@ static NSOpenGLContext* CreateOGLContext() {
 static NSWindow* CreateOSXWindow(ui16 Width, ui16 Height) {
   int StyleMask = NSTitledWindowMask | NSClosableWindowMask | NSMiniaturizableWindowMask;
 
-  CGRect Rect = NSMakeRect(0, 0, Width, Height);
+  NSScreen *Screen = [NSScreen mainScreen];
+  CGRect Rect = NSMakeRect(
+    0,
+    0,
+    Width / Screen.backingScaleFactor,
+    Height / Screen.backingScaleFactor
+  );
   NSWindow *Window = [[NSWindow alloc] initWithContentRect:Rect
                                           styleMask:StyleMask
                                             backing:NSBackingStoreBuffered
                                               defer:NO
-                                              screen:[NSScreen mainScreen]];
+                                              screen:Screen];
   if(Window == nil) {
     return NULL;
   }
@@ -180,7 +188,7 @@ static NSWindow* CreateOSXWindow(ui16 Width, ui16 Height) {
   return Window;
 }
 
-static void ProcessOSXMessages() {
+static void ProcessOSXMessages(NSWindow *Window, game_mouse *Mouse) {
   while(true) {
     NSEvent *Event = [NSApp nextEventMatchingMask:NSAnyEventMask
                                         untilDate:[NSDate distantPast]
@@ -189,9 +197,39 @@ static void ProcessOSXMessages() {
     if(Event == nil) {
       return;
     }
-    else {
-      [NSApp sendEvent:Event];
+    switch(Event.type) {
+      case NSLeftMouseDown:
+      case NSMouseMoved: {
+        NSPoint WindowLoc;
+        if(Event.window == Window) {
+          WindowLoc = Event.locationInWindow;
+        }
+        else {
+          const NSRect ScreenRect = NSMakeRect(Event.locationInWindow.x, Event.locationInWindow.y, 0, 0);
+          const NSRect GameWindowRect = [Window convertRectFromScreen:ScreenRect];
+          WindowLoc = GameWindowRect.origin;
+        }
+
+        if(NSPointInRect(WindowLoc, Window.contentView.bounds)) {
+          const NSRect WindowRect = NSMakeRect(WindowLoc.x, WindowLoc.y, 0, 0);
+          const NSRect BackingRect = [Window convertRectToBacking:WindowRect];
+          Mouse->PosX = BackingRect.origin.x;
+          Mouse->PosY = BackingRect.origin.y;
+          if(Event.type == NSLeftMouseDown) {
+            Mouse->ButtonPressed = true;
+            Mouse->ButtonChangeCount++;
+          }
+        }
+        break;
+      }
+      case NSLeftMouseUp:
+        Mouse->ButtonPressed = false;
+        Mouse->ButtonChangeCount++;
+        break;
+      default:
+        break;
     }
+    [NSApp sendEvent:Event];
   }
 }
 
@@ -201,9 +239,11 @@ r32 GetAspectRatio(resolution Resolution) {
 
 int main() {
   osx_state State;
-  State.Resolution.Width = 800;
-  State.Resolution.Height = 600;
+  State.Resolution.Width = 1600;
+  State.Resolution.Height = 1200;
 
+  State.Mouse.PosX = 0;
+  State.Mouse.PosY = 0;
   InitMemory(&State);
 
   {
@@ -262,12 +302,14 @@ int main() {
   InitOpenGL(GetAspectRatio(State.Resolution));
   State.Running = true;
   while(State.Running) {
-    ProcessOSXMessages();
+    State.Mouse.ButtonChangeCount = 0;
+    ProcessOSXMessages(State.Window, &State.Mouse);
     ReadNet(&State.NetContext, &State.NetEventList);
 
     UpdateGame(
       GetTime(),
       TerminationRequested,
+      &State.Mouse,
       &State.NetEventList,
       &State.NetCommandList,
       &State.RenderCommandList,
