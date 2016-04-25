@@ -228,11 +228,6 @@ static void ProcessOSXMessages(NSWindow *Window, game_mouse *Mouse) {
   }
 }
 
-r32 GetAspectRatio(ivec2 Resolution) {
-  rvec2 Real = ConvertIvec2ToRvec2(Resolution);
-  return Real.X / Real.Y;
-}
-
 int main() {
   osx_state State;
   State.Resolution.X = 1600;
@@ -294,7 +289,7 @@ int main() {
 #endif
 
   signal(SIGINT, HandleSigint);
-  InitOpenGL(GetAspectRatio(State.Resolution));
+  InitOpenGL();
   State.Running = true;
   while(State.Running) {
     State.Mouse.ButtonChangeCount = 0;

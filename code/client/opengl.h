@@ -1,4 +1,4 @@
 #include "lib/chunk_list.h"
 
-void InitOpenGL(r32 AspectRatio);
+void InitOpenGL();
 void DisplayOpenGL(chunk_list *Commands);
