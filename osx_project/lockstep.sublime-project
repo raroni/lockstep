@@ -11,7 +11,7 @@
       "selector": "source.c++",
       "working_dir": "${project_path}",
       "cmd": ["make"],
-      "file_regex": "([a-zA-Z\\-_/]+\\.(?:cpp|mm)):([0-9]+):([0-9]+)",
+      "file_regex": "([a-zA-Z\\-_/]+\\.(?:cpp|mm|h)):([0-9]+):([0-9]+)",
       "variants": [
         {
           "name": "Clean",
