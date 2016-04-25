@@ -1,6 +1,5 @@
 #include "lib/def.h"
 #include "common/simulation.h"
-#include "common/config.h"
 
 struct interpolation_position {
   r32 X;
@@ -8,7 +7,7 @@ struct interpolation_position {
 };
 
 struct interpolation {
-  interpolation_position Positions[UNIT_MAX];
+  interpolation_position Positions[SIMULATION_UNIT_MAX];
   memsize Count;
 };
 
