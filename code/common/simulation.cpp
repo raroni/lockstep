@@ -28,7 +28,7 @@ simulation_player_id SimulationCreatePlayer(simulation *Sim) {
   player *Player = Sim->Players + Sim->PlayerCount;
   Player->ID = Sim->PlayerCount;
   for(memsize U=0; U<UNITS_PER_PLAYER; ++U) {
-    CreateUnit(Sim, Player->ID, U*Displacement, 0);
+    CreateUnit(Sim, Player->ID, U*Displacement, U*Displacement/2);
   }
   Sim->PlayerCount++;
   return Player->ID;

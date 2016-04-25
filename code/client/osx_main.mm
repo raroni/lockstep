@@ -208,8 +208,8 @@ static void ProcessOSXMessages(NSWindow *Window, game_mouse *Mouse) {
         if(NSPointInRect(WindowLoc, Window.contentView.bounds)) {
           const NSRect WindowRect = NSMakeRect(WindowLoc.x, WindowLoc.y, 0, 0);
           const NSRect BackingRect = [Window convertRectToBacking:WindowRect];
-          Mouse->PosX = BackingRect.origin.x;
-          Mouse->PosY = BackingRect.origin.y;
+          Mouse->Pos.X = BackingRect.origin.x;
+          Mouse->Pos.Y = BackingRect.origin.y;
           if(Event.type == NSLeftMouseDown) {
             Mouse->ButtonPressed = true;
             Mouse->ButtonChangeCount++;
@@ -238,8 +238,7 @@ int main() {
   State.Resolution.X = 1600;
   State.Resolution.Y = 1200;
 
-  State.Mouse.PosX = 0;
-  State.Mouse.PosY = 0;
+  State.Mouse.Pos = MakeIvec2(0, 0);
   InitMemory(&State);
 
   {

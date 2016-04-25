@@ -4,8 +4,7 @@
 #include "lib/chunk_list.h"
 
 struct game_mouse {
-  ui16 PosX;
-  ui16 PosY;
+  ivec2 Pos;
   bool ButtonPressed;
   ui8 ButtonChangeCount;
 };

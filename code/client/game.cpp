@@ -6,6 +6,7 @@
 #include "common/memory.h"
 #include "common/net_messages.h"
 #include "common/simulation.h"
+#include "coors.h"
 #include "interpolation.h"
 #include "net_events.h"
 #include "net_commands.h"
@@ -136,8 +137,17 @@ void ProcessMessageEvent(buffer Event, game_state *State, chunk_list *NetCmds, u
   }
 }
 
+void ProcessMouse(game_mouse *Mouse, ivec2 Resolution) {
+  if(Mouse->ButtonPressed && Mouse->ButtonChangeCount != 0) {
+    ivec2 WorldPos = ConvertWindowToWorldCoors(Mouse->Pos, Resolution, 1600.0/1200.0, 1.0/1000.0);
+    // TODO: Collide with units
+  }
+}
+
 void UpdateGame(game_platform *Platform, chunk_list *NetEvents, chunk_list *NetCmds, chunk_list *RenderCmds, bool *Running, buffer Memory) {
   game_state *State = (game_state*)Memory.Addr;
+
+  ProcessMouse(Platform->Mouse, Platform->Resolution);
 
   for(;;) {
     buffer Event = ChunkListRead(NetEvents);
