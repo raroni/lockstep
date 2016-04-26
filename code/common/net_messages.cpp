@@ -7,11 +7,26 @@ const memsize MinMessageSize = 1;
 const memsize ReplyNetMessageSize = 1;
 const memsize OrderListNetMessageSize = 1;
 const memsize StartNetMessageSize = 3;
-const memsize OrderNetMessageMinSize = 9;
+
+const memsize OrderMessageMinSize = 9;
+const memsize OrderMessageHeaderSize = 9;
 
 void WriteType(serializer *S, net_message_type Type) {
   ui8 TypeUI8 = SafeCastIntToUI8(Type);
   SerializerWriteUI8(S, TypeUI8);
+}
+
+static order_net_message UnserializeOrderHeader(serializer *S) {
+  net_message_type Type = (net_message_type)SerializerReadUI8(S);
+  Assert(Type == net_message_type_order);
+
+  order_net_message Message;
+  Message.UnitCount = SerializerReadUI16(S);
+  Message.Target.X = SerializerReadSI16(S);
+  Message.Target.Y = SerializerReadSI16(S);
+  Message.UnitIDs = NULL;
+
+  return Message;
 }
 
 memsize SerializeStartNetMessage(memsize PlayerCount, memsize PlayerIndex, buffer Buffer) {
@@ -44,8 +59,14 @@ bool ValidateMessageLength(buffer Buffer, net_message_type Type) {
       RequiredLength = OrderListNetMessageSize;
       break;
     case net_message_type_order:
-      // TODO: This should depende on contents of message header!
-      RequiredLength = OrderNetMessageMinSize;
+      if(Buffer.Length < OrderMessageHeaderSize) {
+        return false;
+      }
+      else {
+        serializer S = CreateSerializer(Buffer);
+        order_net_message Message = UnserializeOrderHeader(&S);
+        RequiredLength = 7 + Message.UnitCount * 2;
+      }
       break;
     default:
       InvalidCodePath;
@@ -83,8 +104,6 @@ memsize SerializeOrderNetMessage(simulation_unit_id *UnitIDs, memsize UnitCount,
     SerializerWriteUI16(&W, IDUI16);
   }
 
-  Assert(W.Position >= OrderNetMessageMinSize);
-
   return W.Position;
 }
 
@@ -96,13 +115,7 @@ net_message_type UnserializeNetMessageType(buffer Input) {
 
 order_net_message UnserializeOrderNetMessage(buffer Input, linear_allocator Allocator) {
   serializer S = CreateSerializer(Input);
-  net_message_type Type = (net_message_type)SerializerReadUI8(&S);
-  Assert(Type == net_message_type_order);
-
-  order_net_message Message;
-  Message.UnitCount = SerializerReadUI16(&S);
-  Message.Target.X = SerializerReadSI16(&S);
-  Message.Target.Y = SerializerReadSI16(&S);
+  order_net_message Message = UnserializeOrderHeader(&S);
 
   memsize IDsSize = sizeof(simulation_unit_id) * Message.UnitCount;
   Message.UnitIDs = (simulation_unit_id*)LinearAllocate(&Allocator, IDsSize);
