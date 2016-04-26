@@ -20,3 +20,15 @@ void TerminateLinearAllocator(linear_allocator *A) {
   A->Length = 0;
   A->Capacity = 0;
 }
+
+linear_allocator_context CreateLinearAllocatorContext(linear_allocator *Allocator) {
+  linear_allocator_context C;
+  C.Allocator = Allocator;
+  C.Length = Allocator->Length;
+  return C;
+}
+
+void RestoreLinearAllocatorContext(linear_allocator_context Context) {
+  Assert(Context.Length <= Context.Allocator->Length);
+  Context.Allocator->Length = Context.Length;
+}

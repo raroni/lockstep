@@ -199,7 +199,7 @@ void ToggleUnitSelection(unit_selection *UnitSelection, simulation_unit_id ID) {
   UnitSelection->IDs[UnitSelection->Count++] = ID;
 }
 
-void ProcessMouse(simulation *Sim, simulation_player_id PlayerID, unit_selection *UnitSelection, game_mouse *Mouse, ivec2 Resolution) {
+void ProcessMouse(simulation *Sim, linear_allocator *Allocator, simulation_player_id PlayerID, unit_selection *UnitSelection, game_mouse *Mouse, ivec2 Resolution, chunk_list *NetCmds) {
   if(Mouse->ButtonPressed && Mouse->ButtonChangeCount != 0) {
     r32 AspectRatio = GetAspectRatio(Resolution);
     ivec2 WorldPos = ConvertWindowToWorldCoors(Mouse->Pos, Resolution, AspectRatio, Zoom);
@@ -207,13 +207,46 @@ void ProcessMouse(simulation *Sim, simulation_player_id PlayerID, unit_selection
     if(Unit != NULL && Unit->PlayerID == PlayerID) {
       ToggleUnitSelection(UnitSelection, Unit->ID);
     }
+    else if(UnitSelection->Count != 0) {
+      linear_allocator_context AllocatorContext = CreateLinearAllocatorContext(Allocator);
+
+      buffer MessageSerializationBuffer = {
+        .Addr = LinearAllocate(Allocator, MAX_MESSAGE_LENGTH),
+        .Length = MAX_MESSAGE_LENGTH
+      };
+      memsize Length = SerializeOrderNetMessage(
+        UnitSelection->IDs,
+        UnitSelection->Count,
+        WorldPos,
+        MessageSerializationBuffer
+      );
+      buffer OrderMessage = {
+        .Addr = MessageSerializationBuffer.Addr,
+        .Length = Length
+      };
+
+      buffer CommandSerializationBuffer = {
+        .Addr = LinearAllocate(Allocator, NETWORK_COMMAND_MAX_LENGTH),
+        .Length = NETWORK_COMMAND_MAX_LENGTH
+      };
+      Length = SerializeSendNetCommand(CommandSerializationBuffer, OrderMessage);
+      buffer Command = {
+        .Addr = CommandSerializationBuffer.Addr,
+        .Length = Length
+      };
+      ChunkListWrite(NetCmds, Command);
+
+      RestoreLinearAllocatorContext(AllocatorContext);
+
+      printf("SENT!\n");
+    }
   }
 }
 
 void UpdateGame(game_platform *Platform, chunk_list *NetEvents, chunk_list *NetCmds, chunk_list *RenderCmds, bool *Running, buffer Memory) {
   game_state *State = (game_state*)Memory.Addr;
 
-  ProcessMouse(&State->Sim, State->PlayerID, &State->UnitSelection, Platform->Mouse, Platform->Resolution);
+  ProcessMouse(&State->Sim, &State->Allocator, State->PlayerID, &State->UnitSelection, Platform->Mouse, Platform->Resolution, NetCmds);
 
   for(;;) {
     buffer Event = ChunkListRead(NetEvents);
