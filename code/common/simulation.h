@@ -1,6 +1,7 @@
 #pragma once
 
 #include "lib/def.h"
+#include "lib/math.h"
 
 #define SIMULATION_PLAYER_MAX 8
 #define SIMULATION_UNIT_MAX 4096
@@ -13,16 +14,11 @@ typedef ui16 simulation_unit_id;
 
 const umsec32 SimulationTickDuration = 100;
 
-struct simulation_coor {
-  ui16 X;
-  ui16 Y;
-};
-
 struct simulation_order {
   simulation_player_id PlayerID;
-  simulation_unit_id UnitIDs;
+  simulation_unit_id *UnitIDs;
   ui16 UnitCount;
-  simulation_coor Target;
+  ivec2 Target;
 };
 
 struct simulation_order_list {

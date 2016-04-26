@@ -41,5 +41,13 @@ void InitSimulation(simulation *Sim) {
 }
 
 void TickSimulation(simulation *Sim, order_list *OrderList) {
-
+  if(OrderList->Count != 0) {
+    printf("Got order:\n");
+    for(memsize I=0; I<OrderList->Count; ++I) {
+      printf("PlayerID: %d, UnitCount: %d, x: %d, y: %d\n", OrderList->Orders[I].PlayerID, OrderList->Orders[I].UnitCount, OrderList->Orders[I].Target.X, OrderList->Orders[I].Target.Y);
+      for(memsize N=0; N<OrderList->Orders[I].UnitCount; ++N) {
+        printf("... UnitID: %d\n", OrderList->Orders[I].UnitIDs[N]);
+      }
+    }
+  }
 }
