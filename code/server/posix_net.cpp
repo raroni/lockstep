@@ -46,7 +46,21 @@ static void RecalcReadFDMax(posix_net_context *Context) {
   CheckNewReadFD(Context, Context->HostFD);
 }
 
+static void InitMemory(posix_net_context *Context) {
+  memsize MemorySize = 1024*1024*5;
+  Context->Memory = malloc(MemorySize);
+  InitLinearAllocator(&Context->Allocator, Context->Memory, MemorySize);
+}
+
+static void TerminateMemory(posix_net_context *Context) {
+  TerminateLinearAllocator(&Context->Allocator);
+  free(Context->Memory);
+  Context->Memory = NULL;
+}
+
 void InitPosixNet(posix_net_context *Context) {
+  InitMemory(Context);
+
   Context->ReadFDMax = 0;
 
   {
@@ -128,6 +142,8 @@ void TerminatePosixNet(posix_net_context *Context) {
   TerminateChunkRingBuffer(&Context->EventRing);
   free(Context->EventBufferAddr);
   Context->EventBufferAddr = NULL;
+
+  TerminateMemory(Context);
 }
 
 void ShutdownPosixNet(posix_net_context *Context) {
