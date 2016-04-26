@@ -78,7 +78,7 @@ void InitPosixNet(posix_net_context *Context) {
   }
 
   Context->ReceiveBuffer = CreateBuffer(1024*10);
-  Context->EventOutBuffer = CreateBuffer(NETWORK_EVENT_MAX_LENGTH);
+  Context->EventOutBuffer = CreateBuffer(NET_EVENT_MAX_LENGTH);
   Context->CommandSerializationBuffer = CreateBuffer(NETWORK_COMMAND_MAX_LENGTH);
   Context->CommandReadBuffer = CreateBuffer(NETWORK_COMMAND_MAX_LENGTH);
   Context->IncomingReadBuffer = CreateBuffer(MAX_MESSAGE_LENGTH);

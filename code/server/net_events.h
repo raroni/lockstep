@@ -2,7 +2,7 @@
 
 #include "net.h"
 
-#define NETWORK_EVENT_MAX_LENGTH 512
+#define NET_EVENT_MAX_LENGTH 512
 
 enum net_event_type {
   net_event_type_connect,

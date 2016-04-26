@@ -44,7 +44,7 @@ static void TerminateMemory(osx_state *State) {
 
 static void ReadNet(posix_net_context *Context, chunk_list *Events) {
   memsize Length;
-  static ui8 ReadBufferBlock[NETWORK_EVENT_MAX_LENGTH];
+  static ui8 ReadBufferBlock[NET_EVENT_MAX_LENGTH];
   static buffer ReadBuffer = {
     .Addr = &ReadBufferBlock,
     .Length = sizeof(ReadBufferBlock)
@@ -101,7 +101,7 @@ int main() {
 
   {
     buffer Buffer;
-    Buffer.Length = NETWORK_EVENT_MAX_LENGTH*100;
+    Buffer.Length = NET_EVENT_MAX_LENGTH*100;
     Buffer.Addr = LinearAllocate(&State.Allocator, Buffer.Length);
     InitChunkList(&State.NetEventList, Buffer);
   }
