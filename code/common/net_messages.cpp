@@ -8,7 +8,7 @@ const memsize ReplyNetMessageSize = 1;
 const memsize OrderListNetMessageSize = 1;
 const memsize StartNetMessageSize = 3;
 
-const memsize OrderMessageHeaderSize = 9;
+const memsize OrderMessageHeaderSize = 7;
 
 void WriteType(serializer *S, net_message_type Type) {
   ui8 TypeUI8 = SafeCastIntToUI8(Type);
@@ -64,7 +64,7 @@ bool ValidateMessageLength(buffer Buffer, net_message_type Type) {
       else {
         serializer S = CreateSerializer(Buffer);
         order_net_message Message = UnserializeOrderHeader(&S);
-        RequiredLength = 7 + Message.UnitCount * 2;
+        RequiredLength = CalcOrderNetMessageLength(Message);
       }
       break;
     default:
@@ -112,12 +112,12 @@ net_message_type UnserializeNetMessageType(buffer Input) {
   return Type;
 }
 
-order_net_message UnserializeOrderNetMessage(buffer Input, linear_allocator Allocator) {
+order_net_message UnserializeOrderNetMessage(buffer Input, linear_allocator *Allocator) {
   serializer S = CreateSerializer(Input);
   order_net_message Message = UnserializeOrderHeader(&S);
 
   memsize IDsSize = sizeof(simulation_unit_id) * Message.UnitCount;
-  Message.UnitIDs = (simulation_unit_id*)LinearAllocate(&Allocator, IDsSize);
+  Message.UnitIDs = (simulation_unit_id*)LinearAllocate(Allocator, IDsSize);
   for(memsize I=0; I<Message.UnitCount; ++I) {
     Message.UnitIDs[I] = SerializerReadUI16(&S);
   }
@@ -160,4 +160,13 @@ bool ValidateStartNetMessage(start_net_message Message) {
 bool ValidateOrderListNetMessage(order_list_net_message Message) {
   // TODO: Check properties of message
   return true;
+}
+
+bool ValidateOrderNetMessage(order_net_message Message) {
+  // TODO: Check properties of message
+  return true;
+}
+
+memsize CalcOrderNetMessageLength(order_net_message Message) {
+  return OrderMessageHeaderSize + Message.UnitCount * 2;
 }

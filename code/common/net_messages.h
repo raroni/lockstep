@@ -40,10 +40,12 @@ memsize SerializeOrderNetMessage(simulation_unit_id *UnitIDs, memsize UnitCount,
 memsize SerializeReplyNetMessage(buffer Buffer);
 memsize SerializeOrderListNetMessage(buffer Out);
 net_message_type UnserializeNetMessageType(buffer Input);
-order_net_message UnserializeOrderNetMessage(buffer Input, linear_allocator Allocator);
+order_net_message UnserializeOrderNetMessage(buffer Input, linear_allocator *Allocator);
 start_net_message UnserializeStartNetMessage(buffer Input);
 order_list_net_message UnserializeOrderListNetMessage(buffer Input);
 bool ValidateMessageLength(buffer Buffer, net_message_type Type);
 bool ValidateStartNetMessage(start_net_message Message);
 bool ValidateOrderListNetMessage(order_list_net_message Message);
+bool ValidateOrderNetMessage(order_net_message Message);
 bool ValidateNetMessageType(net_message_type Type);
+memsize CalcOrderNetMessageLength(order_net_message OrderMessage);

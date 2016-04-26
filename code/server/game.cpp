@@ -130,6 +130,27 @@ void StartGame(game_state *State, chunk_list *NetCmds, uusec64 Time) {
   State->Mode = game_mode_active;
 }
 
+void ProcessMessageEvent(message_net_event Event, linear_allocator *Allocator) {
+  net_message_type Type = UnserializeNetMessageType(Event.Message);
+  switch(Type) {
+    case net_message_type_reply:
+      printf("Received reply.\n");
+      break;
+    case net_message_type_order: {
+      linear_allocator_context LAContext = CreateLinearAllocatorContext(Allocator);
+      order_net_message Message = UnserializeOrderNetMessage(Event.Message, Allocator);
+      printf("Received order. Unit count: %zu, target: %d, %d.\n", Message.UnitCount, Message.Target.X, Message.Target.Y);
+      for(memsize I=0; I<Message.UnitCount; ++I) {
+        printf("... Unit ID %zu: %d\n", I, Message.UnitIDs[I]);
+      }
+      RestoreLinearAllocatorContext(LAContext);
+      break;
+    }
+    default:
+      InvalidCodePath;
+  }
+}
+
 void ProcessNetEvents(game_state *State, chunk_list *Events) {
   for(;;) {
     buffer Event = ChunkListRead(Events);
@@ -160,6 +181,7 @@ void ProcessNetEvents(game_state *State, chunk_list *Events) {
       case net_event_type_message: {
         message_net_event MessageEvent = UnserializeMessageNetEvent(Event);
         printf("Got message from client %zu of length %zu\n", MessageEvent.ClientID, MessageEvent.Message.Length);
+        ProcessMessageEvent(MessageEvent, &State->Allocator);
         break;
       }
       default:

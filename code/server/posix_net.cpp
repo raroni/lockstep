@@ -253,7 +253,12 @@ void ProcessIncoming(posix_net_context *Context, posix_net_client *Client) {
         break;
       }
       case net_message_type_order: {
-        // TODO: Handle this!
+        linear_allocator_context LAContext = CreateLinearAllocatorContext(&Context->Allocator);
+        order_net_message OrderMessage = UnserializeOrderNetMessage(Incoming, &Context->Allocator);
+        MessageLength = CalcOrderNetMessageLength(OrderMessage);
+        Assert(ValidateOrderNetMessage(OrderMessage));
+        RestoreLinearAllocatorContext(LAContext);
+        break;
       }
       default:
         InvalidCodePath;
@@ -316,7 +321,6 @@ void* RunPosixNet(void *Data) {
             buffer Input;
             Input.Addr = Context->ReceiveBuffer.Addr;
             Input.Length = Result;
-            printf("Write to %p\n", &Client->InBuffer);
             ByteRingBufferWrite(&Client->InBuffer, Input);
             ProcessIncoming(Context, Client);
           }
