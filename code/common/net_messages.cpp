@@ -8,7 +8,6 @@ const memsize ReplyNetMessageSize = 1;
 const memsize OrderListNetMessageSize = 1;
 const memsize StartNetMessageSize = 3;
 
-const memsize OrderMessageMinSize = 9;
 const memsize OrderMessageHeaderSize = 9;
 
 void WriteType(serializer *S, net_message_type Type) {
