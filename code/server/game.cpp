@@ -157,9 +157,9 @@ void ProcessNetEvents(game_state *State, chunk_list *Events) {
         }
         break;
       }
-      case net_event_type_reply: {
-        reply_net_event ReplyEvent = UnserializeReplyNetEvent(Event);
-        printf("Got reply from %zu.\n", ReplyEvent.ClientID);
+      case net_event_type_message: {
+        message_net_event MessageEvent = UnserializeMessageNetEvent(Event);
+        printf("Got message from client %zu of length %zu\n", MessageEvent.ClientID, MessageEvent.Message.Length);
         break;
       }
       default:

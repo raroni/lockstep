@@ -229,27 +229,34 @@ void ProcessIncoming(posix_net_context *Context, posix_net_client *Client) {
       break;
     }
 
-    memsize ConsumedBytesCount = 0;
+    memsize MessageLength = 0;
     switch(Type) {
       case net_message_type_reply: {
-        memsize Length = SerializeReplyNetEvent(Client->ID, Context->EventOutBuffer);
-        buffer Event = {
-          .Addr = Context->EventOutBuffer.Addr,
-          .Length = Length
-        };
-        ChunkRingBufferWrite(&Context->EventRing, Event);
-        ConsumedBytesCount = ReplyNetMessageSize;
+        // Should unserialize and validate here
+        // but I won't because this is just a dummy
+        // event that will be deleted soon.
+        MessageLength = ReplyNetMessageSize;
         break;
+      }
+      case net_message_type_order: {
+        // TODO: Handle this!
       }
       default:
         InvalidCodePath;
     }
 
-    if(ConsumedBytesCount == 0) {
+    if(MessageLength == 0) {
       break;
     }
     else {
-      ByteRingBufferReadAdvance(&Client->InBuffer, ConsumedBytesCount);
+      Incoming.Length = MessageLength;
+      memsize Length = SerializeMessageNetEvent(Client->ID, Incoming, Context->EventOutBuffer);
+      buffer Event = {
+        .Addr = Context->EventOutBuffer.Addr,
+        .Length = Length
+      };
+      ChunkRingBufferWrite(&Context->EventRing, Event);
+      ByteRingBufferReadAdvance(&Client->InBuffer, MessageLength);
     }
   }
 }

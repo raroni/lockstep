@@ -234,11 +234,11 @@ void ProcessMouse(simulation *Sim, linear_allocator *Allocator, simulation_playe
         .Addr = CommandSerializationBuffer.Addr,
         .Length = Length
       };
-      ChunkListWrite(NetCmds, Command);
+
+      // Temporarily disabled because server can't handle it yet
+      //ChunkListWrite(NetCmds, Command);
 
       RestoreLinearAllocatorContext(AllocatorContext);
-
-      printf("SENT!\n");
     }
   }
 }
