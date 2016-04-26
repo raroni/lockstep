@@ -19,7 +19,6 @@ struct posix_net_context {
   void *Memory;
   linear_allocator Allocator;
   chunk_ring_buffer CommandRing;
-  void *CommandBufferAddr;
   chunk_ring_buffer EventRing;
   void *EventBufferAddr;
   posix_net_client_set ClientSet;
