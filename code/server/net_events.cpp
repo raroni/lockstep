@@ -51,6 +51,17 @@ memsize SerializeReplyNetEvent(net_client_id ID, buffer Out) {
   return S.Position;
 }
 
+memsize SerializeMessageNetEvent(net_client_id ID, buffer Message, buffer Out) {
+  serializer S = CreateSerializer(Out);
+
+  WriteType(&S, net_event_type_message);
+  WriteClientID(&S, ID);
+  SerializerWriteMemsize(&S, Message.Length);
+  SerializerWriteBuffer(&S, Message);
+
+  return S.Position;
+}
+
 net_event_type UnserializeNetEventType(buffer Input) {
   serializer S = CreateSerializer(Input);
   return ReadType(&S);
@@ -83,5 +94,19 @@ reply_net_event UnserializeReplyNetEvent(buffer Input) {
   net_event_type Type = ReadType(&S);
   Assert(Type == net_event_type_reply);
   Event.ClientID = ReadClientID(&S);
+  return Event;
+}
+
+message_net_event UnserializeMessageNetEvent(buffer Input) {
+  serializer S = CreateSerializer(Input);
+
+  net_event_type Type = ReadType(&S);
+  Assert(Type == net_event_type_message);
+
+  message_net_event Event;
+  Event.ClientID = ReadClientID(&S);
+  Event.Message.Length = SerializerReadMemsize(&S);
+  Event.Message.Addr = SerializerRead(&S, Event.Message.Length);
+
   return Event;
 }
