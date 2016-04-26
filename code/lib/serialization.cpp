@@ -32,6 +32,14 @@ void SerializerWriteUI8(serializer *Serializer, ui8 Int) {
   SerializerWrite(Serializer, &Int, sizeof(Int));
 }
 
+void SerializerWriteUI16(serializer *Serializer, ui16 Int) {
+  SerializerWrite(Serializer, &Int, sizeof(Int));
+}
+
+void SerializerWriteSI16(serializer *Serializer, si16 Int) {
+  SerializerWrite(Serializer, &Int, sizeof(Int));
+}
+
 void* SerializerRead(serializer *S, memsize Length) {
   void *Result = (ui8*)S->Buffer.Addr + S->Position;
   S->Position += Length;
@@ -44,6 +52,16 @@ memsize GetRemainingSize(serializer *S) {
 
 ui8 SerializerReadUI8(serializer *S) {
   ui8 Int = *(ui8*)SerializerRead(S, sizeof(ui8));
+  return Int;
+}
+
+ui16 SerializerReadUI16(serializer *S) {
+  ui16 Int = *(ui16*)SerializerRead(S, sizeof(ui16));
+  return Int;
+}
+
+si16 SerializerReadSI16(serializer *S) {
+  si16 Int = *(si16*)SerializerRead(S, sizeof(si16));
   return Int;
 }
 
