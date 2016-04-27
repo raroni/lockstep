@@ -4,6 +4,7 @@
 #include "common/net_messages.h"
 #include "common/simulation.h"
 #include "net_events.h"
+#include "common/order_serialization.h"
 #include "net_commands.h"
 #include "game.h"
 
@@ -36,6 +37,7 @@ struct game_state {
   game_mode Mode;
   linear_allocator Allocator;
   player_set PlayerSet;
+  chunk_list OrderQueue;
   uusec64 NextTickTime;
   simulation Sim;
 };
@@ -52,6 +54,15 @@ static bool FindPlayerByClientID(player_set *Set, net_client_id ID, memsize *Ind
     }
   }
   return false;
+}
+
+static simulation_player_id FindSimIDByClientID(player_set *Set, net_client_id ClientID) {
+  for(memsize I=0; I<Set->Count; ++I) {
+    if(Set->Players[I].ClientID == ClientID) {
+      return Set->Players[I].SimID;
+    }
+  }
+  return SIMULATION_UNDEFINED_PLAYER_ID;
 }
 
 static void AddPlayer(player_set *Set, simulation_player_id SimID, net_client_id NetID) {
@@ -95,6 +106,16 @@ void InitGame(buffer Memory) {
     InitLinearAllocator(&State->Allocator, Base, Length);
   }
 
+  {
+    memsize Length = 1024*20;
+    void *Storage = LinearAllocate(&State->Allocator, Length);
+    buffer Buffer = {
+      .Addr = Storage,
+      .Length = Length
+    };
+    InitChunkList(&State->OrderQueue, Buffer);
+  }
+
   InitPlayerSet(&State->PlayerSet);
 }
 
@@ -121,13 +142,40 @@ void StartGame(game_state *State, chunk_list *NetCmds, uusec64 Time) {
     ChunkListWrite(NetCmds, Command);
   }
 
-
   State->NextTickTime = Time + SimulationTickDuration*1000;
 
   InitSimulation(&State->Sim);
 
   printf("Starting game...\n");
   State->Mode = game_mode_active;
+}
+
+void ProcessMessageEvent(message_net_event Event, player_set *PlayerSet, linear_allocator *Allocator, chunk_list *OrderQueue) {
+  net_message_type Type = UnserializeNetMessageType(Event.Message);
+  switch(Type) {
+    case net_message_type_reply:
+      printf("Received reply.\n");
+      break;
+    case net_message_type_order: {
+      linear_allocator_context LAContext = CreateLinearAllocatorContext(Allocator);
+      order_net_message Message = UnserializeOrderNetMessage(Event.Message, Allocator);
+
+      simulation_order Order;
+      Order.PlayerID = FindSimIDByClientID(PlayerSet, Event.ClientID);
+      if(Order.PlayerID != SIMULATION_UNDEFINED_PLAYER_ID) {
+        Order.UnitIDs = Message.UnitIDs;
+        Order.UnitCount = Message.UnitCount;
+        Order.Target = Message.Target;
+        buffer OrderBuffer = SerializeOrder(Order, Allocator);
+        ChunkListWrite(OrderQueue, OrderBuffer);
+      }
+
+      RestoreLinearAllocatorContext(LAContext);
+      break;
+    }
+    default:
+      InvalidCodePath;
+  }
 }
 
 void ProcessNetEvents(game_state *State, chunk_list *Events) {
@@ -157,9 +205,10 @@ void ProcessNetEvents(game_state *State, chunk_list *Events) {
         }
         break;
       }
-      case net_event_type_reply: {
-        reply_net_event ReplyEvent = UnserializeReplyNetEvent(Event);
-        printf("Got reply from %zu.\n", ReplyEvent.ClientID);
+      case net_event_type_message: {
+        message_net_event MessageEvent = UnserializeMessageNetEvent(Event);
+        printf("Got message from client %zu of length %zu\n", MessageEvent.ClientID, MessageEvent.Message.Length);
+        ProcessMessageEvent(MessageEvent, &State->PlayerSet, &State->Allocator, &State->OrderQueue);
         break;
       }
       default:
@@ -168,14 +217,35 @@ void ProcessNetEvents(game_state *State, chunk_list *Events) {
   }
 }
 
-void BroadcastLatestOrders(player_set *PlayerSet, chunk_list *Commands) {
-  memsize Length = SerializeOrderListNetMessage(MessageOutBuffer);
+void BroadcastOrders(player_set *PlayerSet, simulation_order_list *SimOrderList, chunk_list *Commands, linear_allocator *Allocator) {
+  linear_allocator_context LAContext = CreateLinearAllocatorContext(Allocator);
+
+  net_message_order *NetOrders = NULL;
+  if(SimOrderList->Count != 0) {
+    memsize NetOrdersSize = sizeof(net_message_order) * SimOrderList->Count;
+    NetOrders = (net_message_order*)LinearAllocate(Allocator, NetOrdersSize);
+    for(memsize I=0; I<SimOrderList->Count; ++I) {
+      net_message_order *NetOrder = NetOrders + I;
+      simulation_order *SimOrder = SimOrderList->Orders + I;
+      NetOrder->PlayerID = SimOrder->PlayerID;
+      NetOrder->UnitCount = SimOrder->UnitCount;
+      NetOrder->Target = SimOrder->Target;
+
+      memsize NetOrderUnitIDsSize = sizeof(ui16) * NetOrder->UnitCount;
+      NetOrder->UnitIDs = (ui16*)LinearAllocate(Allocator, NetOrderUnitIDsSize);
+      for(memsize U=0; U<NetOrder->UnitCount; ++U) {
+        NetOrder->UnitIDs[U] = SimOrder->UnitIDs[U];
+      }
+    }
+  }
+
+  memsize Length = SerializeOrderListNetMessage(NetOrders, SimOrderList->Count, MessageOutBuffer);
   buffer Message = {
     .Addr = MessageOutBuffer.Addr,
     .Length = Length
   };
-
   Broadcast(PlayerSet, Message, Commands);
+  RestoreLinearAllocatorContext(LAContext);
 }
 
 void UpdateGame(
@@ -224,12 +294,24 @@ void UpdateGame(
   }
   else if(State->Mode == game_mode_active) {
     if(Time >= State->NextTickTime) {
-      BroadcastLatestOrders(&State->PlayerSet, Commands);
-      State->NextTickTime += SimulationTickDuration*1000;
+      linear_allocator_context LAContext = CreateLinearAllocatorContext(&State->Allocator);
 
-      simulation_order_list DummyOrderList;
-      DummyOrderList.Count = 0;
-      TickSimulation(&State->Sim, &DummyOrderList);
+      simulation_order_list OrderList;
+      OrderList.Count = State->OrderQueue.Count;
+      if(OrderList.Count != 0) {
+        memsize OrderListSize = sizeof(simulation_order) * State->OrderQueue.Count;
+        OrderList.Orders = (simulation_order*)LinearAllocate(&State->Allocator, OrderListSize);
+
+        for(memsize I=0; I<State->OrderQueue.Count; ++I) {
+          buffer OrderBuffer = ChunkListRead(&State->OrderQueue);
+          OrderList.Orders[I] = UnserializeOrder(OrderBuffer, &State->Allocator);
+        }
+      }
+      BroadcastOrders(&State->PlayerSet, &OrderList, Commands, &State->Allocator);
+      TickSimulation(&State->Sim, &OrderList);
+      ResetChunkList(&State->OrderQueue);
+      RestoreLinearAllocatorContext(LAContext);
+      State->NextTickTime += SimulationTickDuration*1000;
     }
   }
   else if(State->Mode == game_mode_disconnecting) {

@@ -11,11 +11,7 @@ struct chunk_ring_buffer {
   memsize ReadIndex;
 };
 
-void InitChunkRingBuffer(
-  chunk_ring_buffer *Buffer,
-  memsize ChunkCount,
-  buffer Storage
-);
+void InitChunkRingBuffer(chunk_ring_buffer *Buffer, memsize ChunkCount, buffer Storage);
 void ChunkRingBufferWrite(chunk_ring_buffer *Buffer, const buffer Input);
 memsize ChunkRingBufferCopyRead(chunk_ring_buffer *Buffer, const buffer Output);
 buffer ChunkRingBufferRefRead(chunk_ring_buffer *Buffer);

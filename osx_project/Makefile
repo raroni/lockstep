@@ -11,7 +11,7 @@ OBJECTS_DIR = $(BUILD_DIR)/objects
 ROOT = $(realpath ./..)
 CODE_ROOT = $(ROOT)/code
 
-COMMON_SOURCES = code/common/memory.cpp code/common/posix_net.cpp code/lib/serialization.cpp code/lib/assert.cpp code/common/net_messages.cpp code/common/conversion.cpp code/lib/chunk_list.cpp code/common/simulation.cpp
+COMMON_SOURCES = code/common/memory.cpp code/common/posix_net.cpp code/lib/serialization.cpp code/lib/assert.cpp code/common/net_messages.cpp code/common/conversion.cpp code/lib/chunk_list.cpp code/common/simulation.cpp code/common/order_serialization.cpp
 COMMON_HEADER_INCLUDES = -iquote $(CODE_ROOT)
 
 SERVER_PRODUCT_DIR = $(PRODUCT_DIR)/LockstepServer.app

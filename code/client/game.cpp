@@ -7,6 +7,7 @@
 #include "common/memory.h"
 #include "common/net_messages.h"
 #include "common/simulation.h"
+#include "common/order_serialization.h"
 #include "coors.h"
 #include "interpolation.h"
 #include "net_events.h"
@@ -123,13 +124,12 @@ void Render(simulation *Sim, interpolation *Interpolation, unit_selection *UnitS
   }
 }
 
-void ProcessMessageEvent(buffer Event, game_state *State, chunk_list *NetCmds, uusec64 Time) {
-  message_net_event MessageEvent = UnserializeMessageNetEvent(Event);
-  net_message_type MessageType = UnserializeNetMessageType(MessageEvent.Message);
+void ProcessMessageEvent(message_net_event Event, game_state *State, chunk_list *NetCmds, uusec64 Time) {
+  net_message_type MessageType = UnserializeNetMessageType(Event.Message);
 
   switch(MessageType) {
     case net_message_type_start: {
-      start_net_message StartMessage = UnserializeStartNetMessage(MessageEvent.Message);
+      start_net_message StartMessage = UnserializeStartNetMessage(Event.Message);
       printf("Game got start event. PlayerCount: %zu, PlayerID: %zu\n", StartMessage.PlayerCount, StartMessage.PlayerIndex);
 
       InitSimulation(&State->Sim);
@@ -142,7 +142,7 @@ void ProcessMessageEvent(buffer Event, game_state *State, chunk_list *NetCmds, u
       Assert(State->PlayerID != SIMULATION_UNDEFINED_PLAYER_ID);
       InitInterpolation(&State->Interpolation, &State->Sim);
 
-      static ui8 TempBufferBlock[MAX_MESSAGE_LENGTH];
+      static ui8 TempBufferBlock[NET_MESSAGE_MAX_LENGTH];
       buffer TempBuffer = {
         .Addr = TempBufferBlock,
         .Length = sizeof(TempBufferBlock)
@@ -165,9 +165,42 @@ void ProcessMessageEvent(buffer Event, game_state *State, chunk_list *NetCmds, u
       ChunkListWrite(NetCmds, Command);
       break;
     }
-    case net_message_type_order_list:
-      // TODO: Handle
+    case net_message_type_order_list: {
+      linear_allocator_context LAContext = CreateLinearAllocatorContext(&State->Allocator);
+      order_list_net_message ListMessage = UnserializeOrderListNetMessage(Event.Message, &State->Allocator);
+
+      simulation_order_list SimOrderList;
+      SimOrderList.Count = ListMessage.Count;
+      SimOrderList.Orders = NULL;
+      if(SimOrderList.Count != 0) {
+        memsize SimOrdersSize = sizeof(simulation_order) * SimOrderList.Count;
+        SimOrderList.Orders = (simulation_order*)LinearAllocate(&State->Allocator, SimOrdersSize);
+        for(memsize I=0; I<SimOrderList.Count; ++I) {
+          simulation_order *SimOrder = SimOrderList.Orders + I;
+          net_message_order *NetOrder = ListMessage.Orders + I;
+          SimOrder->PlayerID = NetOrder->PlayerID;
+          SimOrder->UnitCount = NetOrder->UnitCount;
+          SimOrder->Target = NetOrder->Target;
+
+          memsize SimOrderUnitIDsSize = sizeof(simulation_unit_id) * SimOrder->UnitCount;
+          SimOrder->UnitIDs = (simulation_unit_id*)LinearAllocate(&State->Allocator, SimOrderUnitIDsSize);
+          for(memsize U=0; U<SimOrder->UnitCount; ++U) {
+            SimOrder->UnitIDs[U] = NetOrder->UnitIDs[U];
+          }
+        }
+      }
+
+      // TODO: In theory, this could overflow. Set up some kind of
+      // general max size policy for order lists.
+      buffer SimOrderListBuffer;
+      SimOrderListBuffer.Length = 1024*200;
+      SimOrderListBuffer.Addr = LinearAllocate(&State->Allocator, SimOrderListBuffer.Length);
+      SimOrderListBuffer.Length = SerializeOrderList(&SimOrderList, SimOrderListBuffer);
+      ChunkRingBufferWrite(&State->OrderListRing, SimOrderListBuffer);
+
+      RestoreLinearAllocatorContext(LAContext);
       break;
+    }
     default:
       InvalidCodePath;
   }
@@ -199,7 +232,7 @@ void ToggleUnitSelection(unit_selection *UnitSelection, simulation_unit_id ID) {
   UnitSelection->IDs[UnitSelection->Count++] = ID;
 }
 
-void ProcessMouse(simulation *Sim, simulation_player_id PlayerID, unit_selection *UnitSelection, game_mouse *Mouse, ivec2 Resolution) {
+void ProcessMouse(simulation *Sim, linear_allocator *Allocator, simulation_player_id PlayerID, unit_selection *UnitSelection, game_mouse *Mouse, ivec2 Resolution, chunk_list *NetCmds) {
   if(Mouse->ButtonPressed && Mouse->ButtonChangeCount != 0) {
     r32 AspectRatio = GetAspectRatio(Resolution);
     ivec2 WorldPos = ConvertWindowToWorldCoors(Mouse->Pos, Resolution, AspectRatio, Zoom);
@@ -207,13 +240,50 @@ void ProcessMouse(simulation *Sim, simulation_player_id PlayerID, unit_selection
     if(Unit != NULL && Unit->PlayerID == PlayerID) {
       ToggleUnitSelection(UnitSelection, Unit->ID);
     }
+    else if(UnitSelection->Count != 0) {
+      linear_allocator_context AllocatorContext = CreateLinearAllocatorContext(Allocator);
+
+      buffer MessageSerializationBuffer = {
+        .Addr = LinearAllocate(Allocator, NET_MESSAGE_MAX_LENGTH),
+        .Length = NET_MESSAGE_MAX_LENGTH
+      };
+      memsize Length = SerializeOrderNetMessage(
+        UnitSelection->IDs,
+        UnitSelection->Count,
+        WorldPos,
+        MessageSerializationBuffer
+      );
+      buffer OrderMessage = {
+        .Addr = MessageSerializationBuffer.Addr,
+        .Length = Length
+      };
+
+      buffer CommandSerializationBuffer = {
+        .Addr = LinearAllocate(Allocator, NETWORK_COMMAND_MAX_LENGTH),
+        .Length = NETWORK_COMMAND_MAX_LENGTH
+      };
+      Length = SerializeSendNetCommand(CommandSerializationBuffer, OrderMessage);
+      buffer Command = {
+        .Addr = CommandSerializationBuffer.Addr,
+        .Length = Length
+      };
+      ChunkListWrite(NetCmds, Command);
+      RestoreLinearAllocatorContext(AllocatorContext);
+    }
   }
+}
+
+void RunSimulationTick(simulation *Sim, chunk_ring_buffer *OrderListRing, linear_allocator *Allocator) {
+  Assert(GetChunkRingBufferUnreadCount(OrderListRing) != 0);
+  buffer OrderListBuffer = ChunkRingBufferRefRead(OrderListRing);
+  simulation_order_list OrderList = UnserializeOrderList(OrderListBuffer, Allocator);
+  TickSimulation(Sim, &OrderList);
 }
 
 void UpdateGame(game_platform *Platform, chunk_list *NetEvents, chunk_list *NetCmds, chunk_list *RenderCmds, bool *Running, buffer Memory) {
   game_state *State = (game_state*)Memory.Addr;
 
-  ProcessMouse(&State->Sim, State->PlayerID, &State->UnitSelection, Platform->Mouse, Platform->Resolution);
+  ProcessMouse(&State->Sim, &State->Allocator, State->PlayerID, &State->UnitSelection, Platform->Mouse, Platform->Resolution, NetCmds);
 
   for(;;) {
     buffer Event = ChunkListRead(NetEvents);
@@ -234,7 +304,8 @@ void UpdateGame(game_platform *Platform, chunk_list *NetEvents, chunk_list *NetC
         *Running = false;
         break;
       case net_event_type_message: {
-        ProcessMessageEvent(Event, State, NetCmds, Platform->Time);
+        message_net_event MessageEvent = UnserializeMessageNetEvent(Event);
+        ProcessMessageEvent(MessageEvent, State, NetCmds, Platform->Time);
         break;
       }
       default:
@@ -245,26 +316,18 @@ void UpdateGame(game_platform *Platform, chunk_list *NetEvents, chunk_list *NetC
   if(Platform->Time >= State->NextTickTime) {
     memsize OrderListCount = GetChunkRingBufferUnreadCount(&State->OrderListRing);
     if(OrderListCount != 0) {
-      // TODO: extract order set and pass to tick
-      OrderListCount--;
-
-      simulation_order_list DummyOrderList;
-      DummyOrderList.Count = 0;
-      TickSimulation(&State->Sim, &DummyOrderList);
-      IntSeqPush(&State->OrderListCountSeq, OrderListCount);
+      RunSimulationTick(&State->Sim, &State->OrderListRing, &State->Allocator);
+      IntSeqPush(&State->OrderListCountSeq, OrderListCount-1);
 
       if(Platform->Time >= State->NextExtraTickTime) {
         double CountStdDev = CalcIntSeqStdDev(&State->OrderListCountSeq);
         static const umsec32 BaseFrameLag = 200;
         memsize TargetFrameLag = BaseFrameLag/SimulationTickDuration + round(CountStdDev * 4);
         if(OrderListCount > TargetFrameLag) {
-          // TODO: extract order set and pass to tick
-          TickSimulation(&State->Sim, &DummyOrderList);
+          RunSimulationTick(&State->Sim, &State->OrderListRing, &State->Allocator);
           State->NextExtraTickTime += 1000*1000;
         }
       }
-
-      // check for extra tick-sim here
 
       // TODO: Notify interpolation about new tick
 

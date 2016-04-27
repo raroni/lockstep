@@ -36,7 +36,21 @@ static void DestroyBuffer(buffer *B) {
   B->Length = 0;
 }
 
+static void InitMemory(posix_net_context *Context) {
+  memsize MemorySize = 1024*1024*5;
+  Context->Memory = malloc(MemorySize);
+  InitLinearAllocator(&Context->Allocator, Context->Memory, MemorySize);
+}
+
+static void TerminateMemory(posix_net_context *Context) {
+  TerminateLinearAllocator(&Context->Allocator);
+  free(Context->Memory);
+  Context->Memory = NULL;
+}
+
 void InitPosixNet(posix_net_context *Context) {
+  InitMemory(Context);
+
   {
     int SocketFD = socket(PF_INET, SOCK_STREAM, 0);
     Assert(SocketFD != -1);
@@ -60,9 +74,9 @@ void InitPosixNet(posix_net_context *Context) {
 
   {
     memsize Length = 1024*100;
-    Context->EventBufferAddr = malloc(Length);
+    void *EventBufferAddr = LinearAllocate(&Context->Allocator, Length);
     buffer Buffer = {
-      .Addr = Context->EventBufferAddr,
+      .Addr = EventBufferAddr,
       .Length = Length
     };
     InitChunkRingBuffer(&Context->EventRing, 50, Buffer);
@@ -70,9 +84,9 @@ void InitPosixNet(posix_net_context *Context) {
 
   {
     memsize Length = 1024*100;
-    Context->CommandBufferAddr = malloc(Length);
+    void *CommandBufferAddr = LinearAllocate(&Context->Allocator, Length);
     buffer Buffer = {
-      .Addr = Context->CommandBufferAddr,
+      .Addr = CommandBufferAddr,
       .Length = Length
     };
     InitChunkRingBuffer(&Context->CommandRing, 50, Buffer);
@@ -80,9 +94,9 @@ void InitPosixNet(posix_net_context *Context) {
 
   {
     memsize Length = 1024*100;
-    Context->IncomingBufferAddr = malloc(Length);
+    void *IncomingBufferAddr = LinearAllocate(&Context->Allocator, Length);
     buffer Buffer = {
-      .Addr = Context->IncomingBufferAddr,
+      .Addr = IncomingBufferAddr,
       .Length = Length
     };
     InitByteRingBuffer(&Context->IncomingRing, Buffer);
@@ -91,8 +105,8 @@ void InitPosixNet(posix_net_context *Context) {
   Context->CommandSerializationBuffer = CreateBuffer(NETWORK_COMMAND_MAX_LENGTH);
   Context->CommandReadBuffer = CreateBuffer(NETWORK_COMMAND_MAX_LENGTH);
   Context->ReceiveBuffer = CreateBuffer(1024*10);
-  Context->EventSerializationBuffer = CreateBuffer(NETWORK_EVENT_MAX_LENGTH);
-  Context->IncomingReadBuffer = CreateBuffer(MAX_MESSAGE_LENGTH);
+  Context->EventSerializationBuffer = CreateBuffer(NET_EVENT_MAX_LENGTH);
+  Context->IncomingReadBuffer = CreateBuffer(NET_MESSAGE_MAX_LENGTH);
 
   Context->State = posix_net_state_inactive;
 }
@@ -140,7 +154,7 @@ void ProcessCommands(posix_net_context *Context) {
           send_net_command SendCommand = UnserializeSendNetCommand(Command);
           buffer Message = SendCommand.Message;
           printf("Sending message of size %zu!\n", Message.Length);
-          PosixNetSend(Context->SocketFD, Message);
+          PosixNetSendPacket(Context->SocketFD, Message);
         }
         break;
       }
@@ -153,47 +167,38 @@ void ProcessIncoming(posix_net_context *Context) {
     buffer Incoming = Context->IncomingReadBuffer;
     Incoming.Length = ByteRingBufferPeek(&Context->IncomingRing, Incoming);
 
-    if(Incoming.Length < MinMessageSize) {
+    buffer Message = PosixExtractPacketMessage(Incoming);
+    if(Message.Length == 0) {
       break;
     }
-    net_message_type Type = UnserializeNetMessageType(Incoming);
+
+    net_message_type Type = UnserializeNetMessageType(Message);
     Assert(ValidateNetMessageType(Type));
 
-    if(!ValidateMessageLength(Incoming, Type)) {
-      break;
-    }
-
-    memsize MessageLength = 0;
     switch(Type) {
       case net_message_type_start: {
-        start_net_message Message = UnserializeStartNetMessage(Incoming);
-        Assert(ValidateStartNetMessage(Message));
-        MessageLength = StartNetMessageSize;
+        start_net_message StartMessage = UnserializeStartNetMessage(Message);
+        Assert(ValidateStartNetMessage(StartMessage));
         break;
       }
       case net_message_type_order_list: {
-        order_list_net_message Message = UnserializeOrderListNetMessage(Incoming);
-        Assert(ValidateOrderListNetMessage(Message));
-        MessageLength = OrderListNetMessageSize;
+        linear_allocator_context LAContext = CreateLinearAllocatorContext(&Context->Allocator);
+        order_list_net_message ListMessage = UnserializeOrderListNetMessage(Message, &Context->Allocator);
+        Assert(ValidateOrderListNetMessage(ListMessage));
+        RestoreLinearAllocatorContext(LAContext);
         break;
       }
       default:
         InvalidCodePath;
     }
 
-    if(MessageLength == 0) {
-      break;
-    }
-    else {
-      Incoming.Length = MessageLength;
-      memsize Length = SerializeMessageNetEvent(Incoming, Context->EventSerializationBuffer);
-      buffer Event = {
-        .Addr = Context->EventSerializationBuffer.Addr,
-        .Length = Length
-      };
-      ChunkRingBufferWrite(&Context->EventRing, Event);
-      ByteRingBufferReadAdvance(&Context->IncomingRing, MessageLength);
-    }
+    memsize Length = SerializeMessageNetEvent(Message, Context->EventSerializationBuffer);
+    buffer Event = {
+      .Addr = Context->EventSerializationBuffer.Addr,
+      .Length = Length
+    };
+    ChunkRingBufferWrite(&Context->EventRing, Event);
+    ByteRingBufferReadAdvance(&Context->IncomingRing, POSIX_PACKET_HEADER_SIZE + Message.Length);
   }
 }
 
@@ -318,16 +323,10 @@ void TerminatePosixNet(posix_net_context *Context) {
   DestroyBuffer(&Context->EventSerializationBuffer);
 
   TerminateChunkRingBuffer(&Context->EventRing);
-  free(Context->EventBufferAddr);
-  Context->EventBufferAddr = NULL;
-
   TerminateChunkRingBuffer(&Context->CommandRing);
-  free(Context->CommandBufferAddr);
-  Context->CommandBufferAddr = NULL;
-
   TerminateByteRingBuffer(&Context->IncomingRing);
-  free(Context->IncomingBufferAddr);
-  Context->IncomingBufferAddr = NULL;
 
   Context->State = posix_net_state_inactive;
+
+  TerminateMemory(Context);
 }
