@@ -5,7 +5,7 @@
 #include "common/memory.h"
 #include "common/simulation.h"
 
-#define MAX_MESSAGE_LENGTH 1024
+#define NET_MESSAGE_MAX_LENGTH 1024
 
 enum net_message_type {
   net_message_type_start = 123, // Temp dummy value

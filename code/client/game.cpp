@@ -142,7 +142,7 @@ void ProcessMessageEvent(buffer Event, game_state *State, chunk_list *NetCmds, u
       Assert(State->PlayerID != SIMULATION_UNDEFINED_PLAYER_ID);
       InitInterpolation(&State->Interpolation, &State->Sim);
 
-      static ui8 TempBufferBlock[MAX_MESSAGE_LENGTH];
+      static ui8 TempBufferBlock[NET_MESSAGE_MAX_LENGTH];
       buffer TempBuffer = {
         .Addr = TempBufferBlock,
         .Length = sizeof(TempBufferBlock)
@@ -211,8 +211,8 @@ void ProcessMouse(simulation *Sim, linear_allocator *Allocator, simulation_playe
       linear_allocator_context AllocatorContext = CreateLinearAllocatorContext(Allocator);
 
       buffer MessageSerializationBuffer = {
-        .Addr = LinearAllocate(Allocator, MAX_MESSAGE_LENGTH),
-        .Length = MAX_MESSAGE_LENGTH
+        .Addr = LinearAllocate(Allocator, NET_MESSAGE_MAX_LENGTH),
+        .Length = NET_MESSAGE_MAX_LENGTH
       };
       memsize Length = SerializeOrderNetMessage(
         UnitSelection->IDs,
