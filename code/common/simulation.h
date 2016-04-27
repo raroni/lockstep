@@ -30,6 +30,7 @@ struct simulation_unit {
   simulation_player_id PlayerID;
   simulation_unit_id ID;
   ivec2 Pos;
+  ivec2 Target;
 };
 
 struct simulation_player {

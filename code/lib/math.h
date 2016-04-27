@@ -18,10 +18,16 @@ struct rvec2 {
 rvec2 MakeRvec2(r32 X, r32 Y);
 rvec2 operator+(rvec2 A, rvec2 B);
 rvec2 operator+(rvec2 V, r32 S);
+rvec2 operator-(rvec2 A, rvec2 B);
 rvec2 operator-(rvec2 V, r32 S);
 rvec2 operator*(rvec2 A, r32 S);
 rvec2 operator/(rvec2 A, rvec2 B);
 rvec2 operator/(rvec2 A, r32 S);
 
+rvec2 ClampRvec2(rvec2 V, r32 Magnitude);
+r32 CalcRvec2Magnitude(rvec2 V);
+
 rvec2 ConvertIvec2ToRvec2(ivec2 V);
 ivec2 ConvertRvec2ToIvec2(rvec2 V);
+
+r32 SquareRoot(r32 R);

@@ -7,3 +7,4 @@ struct interpolation {
 };
 
 void InitInterpolation(interpolation *Interpolation, simulation *Sim);
+void UpdateInterpolation(interpolation *Interpolation, simulation *Sim);

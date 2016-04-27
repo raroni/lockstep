@@ -335,10 +335,9 @@ void UpdateGame(game_platform *Platform, chunk_list *NetEvents, chunk_list *NetC
       State->NextTickTime += SimulationTickDuration*1000;
     }
   }
-  // TODO: Perform interpolation
+  UpdateInterpolation(&State->Interpolation, &State->Sim);
 
   Render(&State->Sim, &State->Interpolation, &State->UnitSelection, RenderCmds, Platform->Resolution);
-
   if(Platform->TerminationRequested) {
     printf("Requesting net shutdown...\n");
 

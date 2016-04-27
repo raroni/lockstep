@@ -15,3 +15,9 @@ void InitInterpolation(interpolation *Interpolation, simulation *Sim) {
     CreateUnit(Interpolation, Sim->Units, I);
   }
 }
+
+void UpdateInterpolation(interpolation *Interpolation, simulation *Sim) {
+  for(memsize I=0; I<Interpolation->Count; ++I) {
+    Interpolation->Positions[I] = Sim->Units[I].Pos;
+  }
+}
