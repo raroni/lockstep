@@ -30,6 +30,11 @@ struct unit_selection {
   ui8 Count;
 };
 
+enum game_mode {
+  game_mode_waiting,
+  game_mode_active
+};
+
 struct game_state {
   linear_allocator Allocator;
   buffer CommandSerializationBuffer;
@@ -42,6 +47,7 @@ struct game_state {
   uusec64 NextExtraTickTime;
   chunk_ring_buffer OrderListRing;
   unit_selection UnitSelection;
+  game_mode Mode;
 };
 
 static r32 GetAspectRatio(ivec2 Resolution) {
@@ -84,6 +90,7 @@ void InitGame(buffer Memory) {
 
   State->PlayerID = SIMULATION_UNDEFINED_PLAYER_ID;
   State->UnitSelection.Count = 0;
+  State->Mode = game_mode_waiting;
 }
 
 #define AddRenderCommand(List, Type) (Type##_render_command*)_AddRenderCommand(List, render_command_type_##Type, sizeof(Type##_render_command))
@@ -163,6 +170,8 @@ void ProcessMessageEvent(message_net_event Event, game_state *State, chunk_list 
         .Length = Length
       };
       ChunkListWrite(NetCmds, Command);
+
+      State->Mode = game_mode_active;
       break;
     }
     case net_message_type_order_list: {
@@ -283,7 +292,9 @@ void RunSimulationTick(simulation *Sim, chunk_ring_buffer *OrderListRing, linear
 void UpdateGame(game_platform *Platform, chunk_list *NetEvents, chunk_list *NetCmds, chunk_list *RenderCmds, bool *Running, buffer Memory) {
   game_state *State = (game_state*)Memory.Addr;
 
-  ProcessMouse(&State->Sim, &State->Allocator, State->PlayerID, &State->UnitSelection, Platform->Mouse, Platform->Resolution, NetCmds);
+  if(State->Mode == game_mode_active) {
+    ProcessMouse(&State->Sim, &State->Allocator, State->PlayerID, &State->UnitSelection, Platform->Mouse, Platform->Resolution, NetCmds);
+  }
 
   for(;;) {
     buffer Event = ChunkListRead(NetEvents);
@@ -313,31 +324,33 @@ void UpdateGame(game_platform *Platform, chunk_list *NetEvents, chunk_list *NetC
     }
   }
 
-  if(Platform->Time >= State->NextTickTime) {
-    memsize OrderListCount = GetChunkRingBufferUnreadCount(&State->OrderListRing);
-    if(OrderListCount != 0) {
-      RunSimulationTick(&State->Sim, &State->OrderListRing, &State->Allocator);
-      OrderListCount--;
-      IntSeqPush(&State->OrderListCountSeq, OrderListCount);
+  if(State->Mode == game_mode_active) {
+    if(Platform->Time >= State->NextTickTime) {
+      memsize OrderListCount = GetChunkRingBufferUnreadCount(&State->OrderListRing);
+      if(OrderListCount != 0) {
+        RunSimulationTick(&State->Sim, &State->OrderListRing, &State->Allocator);
+        OrderListCount--;
+        IntSeqPush(&State->OrderListCountSeq, OrderListCount);
 
-      if(Platform->Time >= State->NextExtraTickTime && OrderListCount != 0) {
-        double CountStdDev = CalcIntSeqStdDev(&State->OrderListCountSeq);
-        static const umsec32 BaseFrameLag = 200;
-        memsize TargetFrameLag = BaseFrameLag/SimulationTickDuration + round(CountStdDev * 4);
-        if(OrderListCount > TargetFrameLag) {
-          RunSimulationTick(&State->Sim, &State->OrderListRing, &State->Allocator);
-          State->NextExtraTickTime += 1000*1000;
+        if(Platform->Time >= State->NextExtraTickTime && OrderListCount != 0) {
+          double CountStdDev = CalcIntSeqStdDev(&State->OrderListCountSeq);
+          static const umsec32 BaseFrameLag = 200;
+          memsize TargetFrameLag = BaseFrameLag/SimulationTickDuration + round(CountStdDev * 4);
+          if(OrderListCount > TargetFrameLag) {
+            RunSimulationTick(&State->Sim, &State->OrderListRing, &State->Allocator);
+            State->NextExtraTickTime += 1000*1000;
+          }
         }
+
+        // TODO: Notify interpolation about new tick
+
+        State->NextTickTime += SimulationTickDuration*1000;
       }
-
-      // TODO: Notify interpolation about new tick
-
-      State->NextTickTime += SimulationTickDuration*1000;
     }
+    UpdateInterpolation(&State->Interpolation, &State->Sim);
+    Render(&State->Sim, &State->Interpolation, &State->UnitSelection, RenderCmds, Platform->Resolution);
   }
-  UpdateInterpolation(&State->Interpolation, &State->Sim);
 
-  Render(&State->Sim, &State->Interpolation, &State->UnitSelection, RenderCmds, Platform->Resolution);
   if(Platform->TerminationRequested) {
     printf("Requesting net shutdown...\n");
 
