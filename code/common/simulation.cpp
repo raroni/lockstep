@@ -19,10 +19,6 @@ void CreateUnit(simulation *Sim, memsize PlayerID, ui16 X, ui16 Y) {
   Sim->UnitCount++;
 }
 
-void CreatePlayer(simulation *Sim, player_id PlayerID) {
-
-}
-
 simulation_player_id SimulationCreatePlayer(simulation *Sim) {
   Assert(Sim->PlayerCount != SIMULATION_PLAYER_MAX);
   ui16 Displacement = 200;
