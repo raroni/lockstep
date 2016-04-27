@@ -168,8 +168,7 @@ static void ProcessCommands(posix_net_context *Context) {
         for(memsize I=0; I<BroadcastCommand.ClientIDCount; ++I) {
           posix_net_client *Client = FindClientByID(&Context->ClientSet, BroadcastCommand.ClientIDs[I]);
           if(Client) {
-            ssize_t Result = PosixNetSend(Client->FD, BroadcastCommand.Message);
-            Assert(Result != -1);
+            PosixNetSendPacket(Client->FD, BroadcastCommand.Message);
           }
         }
         break;
@@ -179,8 +178,7 @@ static void ProcessCommands(posix_net_context *Context) {
         posix_net_client *Client = FindClientByID(&Context->ClientSet, SendCommand.ClientID);
         if(Client) {
           printf("Sent to client id %zu\n", SendCommand.ClientID);
-          ssize_t Result = PosixNetSend(Client->FD, SendCommand.Message);
-          Assert(Result != -1);
+          PosixNetSendPacket(Client->FD, SendCommand.Message);
         }
         break;
       }
@@ -233,29 +231,24 @@ void ProcessIncoming(posix_net_context *Context, posix_net_client *Client) {
     buffer Incoming = Context->IncomingReadBuffer;
     Incoming.Length = ByteRingBufferPeek(&Client->InBuffer, Incoming);
 
-    if(Incoming.Length < MinMessageSize) {
+    buffer Message = PosixExtractPacketMessage(Incoming);
+    if(Message.Length == 0) {
       break;
     }
-    net_message_type Type = UnserializeNetMessageType(Incoming);
+
+    net_message_type Type = UnserializeNetMessageType(Message);
     Assert(ValidateNetMessageType(Type));
 
-    if(!ValidateMessageLength(Incoming, Type)) {
-      break;
-    }
-
-    memsize MessageLength = 0;
     switch(Type) {
       case net_message_type_reply: {
         // Should unserialize and validate here
         // but I won't because this is just a dummy
         // event that will be deleted soon.
-        MessageLength = ReplyNetMessageSize;
         break;
       }
       case net_message_type_order: {
         linear_allocator_context LAContext = CreateLinearAllocatorContext(&Context->Allocator);
-        order_net_message OrderMessage = UnserializeOrderNetMessage(Incoming, &Context->Allocator);
-        MessageLength = CalcOrderNetMessageLength(OrderMessage);
+        order_net_message OrderMessage = UnserializeOrderNetMessage(Message, &Context->Allocator);
         Assert(ValidateOrderNetMessage(OrderMessage));
         RestoreLinearAllocatorContext(LAContext);
         break;
@@ -264,19 +257,13 @@ void ProcessIncoming(posix_net_context *Context, posix_net_client *Client) {
         InvalidCodePath;
     }
 
-    if(MessageLength == 0) {
-      break;
-    }
-    else {
-      Incoming.Length = MessageLength;
-      memsize Length = SerializeMessageNetEvent(Client->ID, Incoming, Context->EventOutBuffer);
-      buffer Event = {
-        .Addr = Context->EventOutBuffer.Addr,
-        .Length = Length
-      };
-      ChunkRingBufferWrite(&Context->EventRing, Event);
-      ByteRingBufferReadAdvance(&Client->InBuffer, MessageLength);
-    }
+    memsize Length = SerializeMessageNetEvent(Client->ID, Message, Context->EventOutBuffer);
+    buffer Event = {
+      .Addr = Context->EventOutBuffer.Addr,
+      .Length = Length
+    };
+    ChunkRingBufferWrite(&Context->EventRing, Event);
+    ByteRingBufferReadAdvance(&Client->InBuffer, POSIX_PACKET_HEADER_SIZE + Message.Length);
   }
 }
 

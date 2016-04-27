@@ -3,13 +3,6 @@
 #include "common/conversion.h"
 #include "net_messages.h"
 
-const memsize MinMessageSize = 1;
-const memsize ReplyNetMessageSize = 1;
-const memsize OrderListNetMessageSize = 1;
-const memsize StartNetMessageSize = 3;
-
-const memsize OrderMessageHeaderSize = 7;
-
 void WriteType(serializer *S, net_message_type Type) {
   ui8 TypeUI8 = SafeCastIntToUI8(Type);
   SerializerWriteUI8(S, TypeUI8);
@@ -40,52 +33,19 @@ memsize SerializeStartNetMessage(memsize PlayerCount, memsize PlayerIndex, buffe
   ui8 PlayerIndexUI8 = SafeCastIntToUI8(PlayerIndex);
   SerializerWriteUI8(&Writer, PlayerIndexUI8);
 
-  Assert(Writer.Position == StartNetMessageSize);
-
   return Writer.Position;
-}
-
-bool ValidateMessageLength(buffer Buffer, net_message_type Type) {
-  memsize RequiredLength = 0;
-  switch(Type) {
-    case net_message_type_start:
-      RequiredLength = StartNetMessageSize;
-      break;
-    case net_message_type_reply:
-      RequiredLength = ReplyNetMessageSize;
-      break;
-    case net_message_type_order_list:
-      RequiredLength = OrderListNetMessageSize;
-      break;
-    case net_message_type_order:
-      if(Buffer.Length < OrderMessageHeaderSize) {
-        return false;
-      }
-      else {
-        serializer S = CreateSerializer(Buffer);
-        order_net_message Message = UnserializeOrderHeader(&S);
-        RequiredLength = CalcOrderNetMessageLength(Message);
-      }
-      break;
-    default:
-      InvalidCodePath;
-  }
-
-  return RequiredLength <= Buffer.Length;
 }
 
 memsize SerializeReplyNetMessage(buffer Buffer) {
   ui8 TypeInt = SafeCastIntToUI8(net_message_type_reply);
   serializer Writer = CreateSerializer(Buffer);
   SerializerWriteUI8(&Writer, TypeInt);
-  Assert(Writer.Position == ReplyNetMessageSize);
   return Writer.Position;
 }
 
 memsize SerializeOrderListNetMessage(buffer Out) {
   serializer W = CreateSerializer(Out);
   WriteType(&W, net_message_type_order_list);
-  Assert(W.Position == OrderListNetMessageSize);
   return W.Position;
 }
 
@@ -165,8 +125,4 @@ bool ValidateOrderListNetMessage(order_list_net_message Message) {
 bool ValidateOrderNetMessage(order_net_message Message) {
   // TODO: Check properties of message
   return true;
-}
-
-memsize CalcOrderNetMessageLength(order_net_message Message) {
-  return OrderMessageHeaderSize + Message.UnitCount * 2;
 }

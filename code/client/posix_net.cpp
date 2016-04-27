@@ -140,7 +140,7 @@ void ProcessCommands(posix_net_context *Context) {
           send_net_command SendCommand = UnserializeSendNetCommand(Command);
           buffer Message = SendCommand.Message;
           printf("Sending message of size %zu!\n", Message.Length);
-          PosixNetSend(Context->SocketFD, Message);
+          PosixNetSendPacket(Context->SocketFD, Message);
         }
         break;
       }
@@ -153,47 +153,36 @@ void ProcessIncoming(posix_net_context *Context) {
     buffer Incoming = Context->IncomingReadBuffer;
     Incoming.Length = ByteRingBufferPeek(&Context->IncomingRing, Incoming);
 
-    if(Incoming.Length < MinMessageSize) {
+    buffer Message = PosixExtractPacketMessage(Incoming);
+    if(Message.Length == 0) {
       break;
     }
-    net_message_type Type = UnserializeNetMessageType(Incoming);
+
+    net_message_type Type = UnserializeNetMessageType(Message);
     Assert(ValidateNetMessageType(Type));
 
-    if(!ValidateMessageLength(Incoming, Type)) {
-      break;
-    }
-
-    memsize MessageLength = 0;
     switch(Type) {
       case net_message_type_start: {
-        start_net_message Message = UnserializeStartNetMessage(Incoming);
-        Assert(ValidateStartNetMessage(Message));
-        MessageLength = StartNetMessageSize;
+        start_net_message StartMessage = UnserializeStartNetMessage(Message);
+        Assert(ValidateStartNetMessage(StartMessage));
         break;
       }
       case net_message_type_order_list: {
-        order_list_net_message Message = UnserializeOrderListNetMessage(Incoming);
-        Assert(ValidateOrderListNetMessage(Message));
-        MessageLength = OrderListNetMessageSize;
+        order_list_net_message ListMessage = UnserializeOrderListNetMessage(Message);
+        Assert(ValidateOrderListNetMessage(ListMessage));
         break;
       }
       default:
         InvalidCodePath;
     }
 
-    if(MessageLength == 0) {
-      break;
-    }
-    else {
-      Incoming.Length = MessageLength;
-      memsize Length = SerializeMessageNetEvent(Incoming, Context->EventSerializationBuffer);
-      buffer Event = {
-        .Addr = Context->EventSerializationBuffer.Addr,
-        .Length = Length
-      };
-      ChunkRingBufferWrite(&Context->EventRing, Event);
-      ByteRingBufferReadAdvance(&Context->IncomingRing, MessageLength);
-    }
+    memsize Length = SerializeMessageNetEvent(Message, Context->EventSerializationBuffer);
+    buffer Event = {
+      .Addr = Context->EventSerializationBuffer.Addr,
+      .Length = Length
+    };
+    ChunkRingBufferWrite(&Context->EventRing, Event);
+    ByteRingBufferReadAdvance(&Context->IncomingRing, POSIX_PACKET_HEADER_SIZE + Message.Length);
   }
 }
 
