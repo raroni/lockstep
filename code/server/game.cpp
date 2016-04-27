@@ -65,11 +65,11 @@ static simulation_player_id FindSimIDByClientID(player_set *Set, net_client_id C
   return SIMULATION_UNDEFINED_PLAYER_ID;
 }
 
-static void AddPlayer(player_set *Set, simulation_player_id SimID, net_client_id NetID) {
+static void AddPlayer(player_set *Set, net_client_id NetID) {
   printf("Added player with client id %zu\n", NetID);
   player *Player = Set->Players + Set->Count;
   Player->ClientID = NetID;
-  Player->SimID = SimID;
+  Player->SimID = 0;
   Set->Count++;
 }
 
@@ -120,13 +120,19 @@ void InitGame(buffer Memory) {
 }
 
 void StartGame(game_state *State, chunk_list *NetCmds, uusec64 Time) {
+  player_set *Set = &State->PlayerSet;
+
+  InitSimulation(&State->Sim);
+  for(memsize I=0; I<Set->Count; ++I) {
+    Set->Players[I].SimID = SimulationCreatePlayer(&State->Sim);
+  }
+
   static ui8 TempWorkBufferBlock[1024*1024];
   buffer TempWorkBuffer = {
     .Addr = TempWorkBufferBlock,
     .Length = sizeof(TempWorkBufferBlock)
   };
 
-  player_set *Set = &State->PlayerSet;
   for(memsize I=0; I<Set->Count; ++I) {
     memsize Length = SerializeStartNetMessage(Set->Count, I, MessageOutBuffer);
     buffer Message = {
@@ -143,8 +149,6 @@ void StartGame(game_state *State, chunk_list *NetCmds, uusec64 Time) {
   }
 
   State->NextTickTime = Time + SimulationTickDuration*1000;
-
-  InitSimulation(&State->Sim);
 
   printf("Starting game...\n");
   State->Mode = game_mode_active;
@@ -190,8 +194,7 @@ void ProcessNetEvents(game_state *State, chunk_list *Events) {
         printf("Game got connection event!\n");
         if(State->PlayerSet.Count != PLAYERS_MAX) {
           connect_net_event ConnectEvent = UnserializeConnectNetEvent(Event);
-          simulation_player_id SimID = SimulationCreatePlayer(&State->Sim);
-          AddPlayer(&State->PlayerSet, SimID, ConnectEvent.ClientID);
+          AddPlayer(&State->PlayerSet, ConnectEvent.ClientID);
         }
         break;
       case net_event_type_disconnect: {
@@ -298,6 +301,7 @@ void UpdateGame(
 
       simulation_order_list OrderList;
       OrderList.Count = State->OrderQueue.Count;
+      OrderList.Orders = NULL;
       if(OrderList.Count != 0) {
         memsize OrderListSize = sizeof(simulation_order) * State->OrderQueue.Count;
         OrderList.Orders = (simulation_order*)LinearAllocate(&State->Allocator, OrderListSize);
