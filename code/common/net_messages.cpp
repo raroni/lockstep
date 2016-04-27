@@ -43,7 +43,7 @@ memsize SerializeReplyNetMessage(buffer Buffer) {
   return Writer.Position;
 }
 
-memsize SerializeOrderListNetMessage(net_message_order *Orders, ui16 OrderCount, linear_allocator *Allocator, buffer Out) {
+memsize SerializeOrderListNetMessage(net_message_order *Orders, ui16 OrderCount, buffer Out) {
   serializer W = CreateSerializer(Out);
   WriteType(&W, net_message_type_order_list);
   SerializerWriteUI16(&W, OrderCount);

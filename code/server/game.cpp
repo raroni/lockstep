@@ -239,7 +239,7 @@ void BroadcastOrders(player_set *PlayerSet, simulation_order_list *SimOrderList,
     }
   }
 
-  memsize Length = SerializeOrderListNetMessage(NetOrders, SimOrderList->Count, Allocator, MessageOutBuffer);
+  memsize Length = SerializeOrderListNetMessage(NetOrders, SimOrderList->Count, MessageOutBuffer);
   buffer Message = {
     .Addr = MessageOutBuffer.Addr,
     .Length = Length

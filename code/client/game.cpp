@@ -7,6 +7,7 @@
 #include "common/memory.h"
 #include "common/net_messages.h"
 #include "common/simulation.h"
+#include "common/order_serialization.h"
 #include "coors.h"
 #include "interpolation.h"
 #include "net_events.h"
@@ -167,16 +168,36 @@ void ProcessMessageEvent(message_net_event Event, game_state *State, chunk_list 
     case net_message_type_order_list: {
       linear_allocator_context LAContext = CreateLinearAllocatorContext(&State->Allocator);
       order_list_net_message ListMessage = UnserializeOrderListNetMessage(Event.Message, &State->Allocator);
-      if(ListMessage.Count != 0) {
-        printf("Order list count: %d\n", ListMessage.Count);
-        for(memsize I=0; I<ListMessage.Count; ++I) {
-          net_message_order *Order = ListMessage.Orders + I;
-          printf("... Order PlayerID: %d, unit count: %d, target: %d, %d\n", Order->PlayerID, Order->UnitCount, Order->Target.X, Order->Target.Y);
-          for(memsize Y=0; Y<Order->UnitCount; ++Y) {
-            printf("...... UnitID: %d\n", Order->UnitIDs[Y]);
+
+      simulation_order_list SimOrderList;
+      SimOrderList.Count = ListMessage.Count;
+      SimOrderList.Orders = NULL;
+      if(SimOrderList.Count != 0) {
+        memsize SimOrdersSize = sizeof(simulation_order) * SimOrderList.Count;
+        SimOrderList.Orders = (simulation_order*)LinearAllocate(&State->Allocator, SimOrdersSize);
+        for(memsize I=0; I<SimOrderList.Count; ++I) {
+          simulation_order *SimOrder = SimOrderList.Orders + I;
+          net_message_order *NetOrder = ListMessage.Orders + I;
+          SimOrder->PlayerID = NetOrder->PlayerID;
+          SimOrder->UnitCount = NetOrder->UnitCount;
+          SimOrder->Target = NetOrder->Target;
+
+          memsize SimOrderUnitIDsSize = sizeof(simulation_unit_id) * SimOrder->UnitCount;
+          SimOrder->UnitIDs = (simulation_unit_id*)LinearAllocate(&State->Allocator, SimOrderUnitIDsSize);
+          for(memsize U=0; U<SimOrder->UnitCount; ++U) {
+            SimOrder->UnitIDs[U] = NetOrder->UnitIDs[U];
           }
         }
       }
+
+      // TODO: In theory, this could overflow. Set up some kind of
+      // general max size policy for order lists.
+      buffer SimOrderListBuffer;
+      SimOrderListBuffer.Length = 1024*200;
+      SimOrderListBuffer.Addr = LinearAllocate(&State->Allocator, SimOrderListBuffer.Length);
+      SimOrderListBuffer.Length = SerializeOrderList(&SimOrderList, SimOrderListBuffer);
+      ChunkRingBufferWrite(&State->OrderListRing, SimOrderListBuffer);
+
       RestoreLinearAllocatorContext(LAContext);
       break;
     }
@@ -252,6 +273,13 @@ void ProcessMouse(simulation *Sim, linear_allocator *Allocator, simulation_playe
   }
 }
 
+void RunSimulationTick(simulation *Sim, chunk_ring_buffer *OrderListRing, linear_allocator *Allocator) {
+  Assert(GetChunkRingBufferUnreadCount(OrderListRing) != 0);
+  buffer OrderListBuffer = ChunkRingBufferRefRead(OrderListRing);
+  simulation_order_list OrderList = UnserializeOrderList(OrderListBuffer, Allocator);
+  TickSimulation(Sim, &OrderList);
+}
+
 void UpdateGame(game_platform *Platform, chunk_list *NetEvents, chunk_list *NetCmds, chunk_list *RenderCmds, bool *Running, buffer Memory) {
   game_state *State = (game_state*)Memory.Addr;
 
@@ -288,26 +316,18 @@ void UpdateGame(game_platform *Platform, chunk_list *NetEvents, chunk_list *NetC
   if(Platform->Time >= State->NextTickTime) {
     memsize OrderListCount = GetChunkRingBufferUnreadCount(&State->OrderListRing);
     if(OrderListCount != 0) {
-      // TODO: extract order set and pass to tick
-      OrderListCount--;
-
-      simulation_order_list DummyOrderList;
-      DummyOrderList.Count = 0;
-      TickSimulation(&State->Sim, &DummyOrderList);
-      IntSeqPush(&State->OrderListCountSeq, OrderListCount);
+      RunSimulationTick(&State->Sim, &State->OrderListRing, &State->Allocator);
+      IntSeqPush(&State->OrderListCountSeq, OrderListCount-1);
 
       if(Platform->Time >= State->NextExtraTickTime) {
         double CountStdDev = CalcIntSeqStdDev(&State->OrderListCountSeq);
         static const umsec32 BaseFrameLag = 200;
         memsize TargetFrameLag = BaseFrameLag/SimulationTickDuration + round(CountStdDev * 4);
         if(OrderListCount > TargetFrameLag) {
-          // TODO: extract order set and pass to tick
-          TickSimulation(&State->Sim, &DummyOrderList);
+          RunSimulationTick(&State->Sim, &State->OrderListRing, &State->Allocator);
           State->NextExtraTickTime += 1000*1000;
         }
       }
-
-      // check for extra tick-sim here
 
       // TODO: Notify interpolation about new tick
 
