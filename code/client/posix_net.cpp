@@ -74,9 +74,9 @@ void InitPosixNet(posix_net_context *Context) {
 
   {
     memsize Length = 1024*100;
-    Context->EventBufferAddr = malloc(Length);
+    void *EventBufferAddr = LinearAllocate(&Context->Allocator, Length);
     buffer Buffer = {
-      .Addr = Context->EventBufferAddr,
+      .Addr = EventBufferAddr,
       .Length = Length
     };
     InitChunkRingBuffer(&Context->EventRing, 50, Buffer);
@@ -84,9 +84,9 @@ void InitPosixNet(posix_net_context *Context) {
 
   {
     memsize Length = 1024*100;
-    Context->CommandBufferAddr = malloc(Length);
+    void *CommandBufferAddr = LinearAllocate(&Context->Allocator, Length);
     buffer Buffer = {
-      .Addr = Context->CommandBufferAddr,
+      .Addr = CommandBufferAddr,
       .Length = Length
     };
     InitChunkRingBuffer(&Context->CommandRing, 50, Buffer);
@@ -94,9 +94,9 @@ void InitPosixNet(posix_net_context *Context) {
 
   {
     memsize Length = 1024*100;
-    Context->IncomingBufferAddr = malloc(Length);
+    void *IncomingBufferAddr = LinearAllocate(&Context->Allocator, Length);
     buffer Buffer = {
-      .Addr = Context->IncomingBufferAddr,
+      .Addr = IncomingBufferAddr,
       .Length = Length
     };
     InitByteRingBuffer(&Context->IncomingRing, Buffer);
@@ -321,16 +321,8 @@ void TerminatePosixNet(posix_net_context *Context) {
   DestroyBuffer(&Context->EventSerializationBuffer);
 
   TerminateChunkRingBuffer(&Context->EventRing);
-  free(Context->EventBufferAddr);
-  Context->EventBufferAddr = NULL;
-
   TerminateChunkRingBuffer(&Context->CommandRing);
-  free(Context->CommandBufferAddr);
-  Context->CommandBufferAddr = NULL;
-
   TerminateByteRingBuffer(&Context->IncomingRing);
-  free(Context->IncomingBufferAddr);
-  Context->IncomingBufferAddr = NULL;
 
   Context->State = posix_net_state_inactive;
 
