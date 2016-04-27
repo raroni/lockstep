@@ -12,6 +12,8 @@ enum posix_net_state {
 };
 
 struct posix_net_context {
+  void *Memory;
+  linear_allocator Allocator;
   void *EventBufferAddr;
   chunk_ring_buffer EventRing;
   void *CommandBufferAddr;

@@ -36,7 +36,21 @@ static void DestroyBuffer(buffer *B) {
   B->Length = 0;
 }
 
+static void InitMemory(posix_net_context *Context) {
+  memsize MemorySize = 1024*1024*5;
+  Context->Memory = malloc(MemorySize);
+  InitLinearAllocator(&Context->Allocator, Context->Memory, MemorySize);
+}
+
+static void TerminateMemory(posix_net_context *Context) {
+  TerminateLinearAllocator(&Context->Allocator);
+  free(Context->Memory);
+  Context->Memory = NULL;
+}
+
 void InitPosixNet(posix_net_context *Context) {
+  InitMemory(Context);
+
   {
     int SocketFD = socket(PF_INET, SOCK_STREAM, 0);
     Assert(SocketFD != -1);
@@ -319,4 +333,6 @@ void TerminatePosixNet(posix_net_context *Context) {
   Context->IncomingBufferAddr = NULL;
 
   Context->State = posix_net_state_inactive;
+
+  TerminateMemory(Context);
 }
