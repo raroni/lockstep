@@ -167,11 +167,11 @@ void ProcessMessageEvent(message_net_event Event, game_state *State, chunk_list 
     case net_message_type_order_list: {
       linear_allocator_context LAContext = CreateLinearAllocatorContext(&State->Allocator);
       order_list_net_message ListMessage = UnserializeOrderListNetMessage(Event.Message, &State->Allocator);
-      if(ListMessage.List.Count != 0) {
-        printf("Order list count: %d\n", ListMessage.List.Count);
-        for(memsize I=0; I<ListMessage.List.Count; ++I) {
-          simulation_order *Order = ListMessage.List.Orders + I;
-          printf("... Order PlayerID: %D, unit count: %d, target: %d, %d\n", Order->PlayerID, Order->UnitCount, Order->Target.X, Order->Target.Y);
+      if(ListMessage.Count != 0) {
+        printf("Order list count: %d\n", ListMessage.Count);
+        for(memsize I=0; I<ListMessage.Count; ++I) {
+          net_message_order *Order = ListMessage.Orders + I;
+          printf("... Order PlayerID: %d, unit count: %d, target: %d, %d\n", Order->PlayerID, Order->UnitCount, Order->Target.X, Order->Target.Y);
           for(memsize Y=0; Y<Order->UnitCount; ++Y) {
             printf("...... UnitID: %d\n", Order->UnitIDs[Y]);
           }

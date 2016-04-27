@@ -3,7 +3,6 @@
 #include "lib/def.h"
 #include "lib/math.h"
 #include "common/memory.h"
-#include "common/simulation.h"
 
 #define NET_MESSAGE_MAX_LENGTH 1024
 
@@ -20,20 +19,28 @@ struct start_net_message {
   memsize PlayerIndex;
 };
 
+struct net_message_order {
+  ui8 PlayerID;
+  ui16 *UnitIDs;
+  ui16 UnitCount;
+  ivec2 Target;
+};
+
 struct order_list_net_message {
-  simulation_order_list List;
+  net_message_order *Orders;
+  ui16 Count;
 };
 
 struct order_net_message {
-  simulation_unit_id *UnitIDs;
+  ui16 *UnitIDs;
   memsize UnitCount;
   ivec2 Target;
 };
 
 memsize SerializeStartNetMessage(memsize PlayerCount, memsize PlayerIndex, buffer Buffer);
-memsize SerializeOrderNetMessage(simulation_unit_id *UnitIDs, memsize UnitCount, ivec2 Target, buffer Out);
+memsize SerializeOrderNetMessage(ui16 *UnitIDs, memsize UnitCount, ivec2 Target, buffer Out);
 memsize SerializeReplyNetMessage(buffer Buffer);
-memsize SerializeOrderListNetMessage(simulation_order_list *List, linear_allocator *Allocator, buffer Out);
+memsize SerializeOrderListNetMessage(net_message_order *Orders, ui16 OrderCount, linear_allocator *Allocator, buffer Out);
 net_message_type UnserializeNetMessageType(buffer Input);
 order_net_message UnserializeOrderNetMessage(buffer Input, linear_allocator *Allocator);
 start_net_message UnserializeStartNetMessage(buffer Input);

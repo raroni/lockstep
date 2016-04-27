@@ -217,9 +217,29 @@ void ProcessNetEvents(game_state *State, chunk_list *Events) {
   }
 }
 
-void BroadcastOrders(player_set *PlayerSet, simulation_order_list *OrderList, chunk_list *Commands, linear_allocator *Allocator) {
+void BroadcastOrders(player_set *PlayerSet, simulation_order_list *SimOrderList, chunk_list *Commands, linear_allocator *Allocator) {
   linear_allocator_context LAContext = CreateLinearAllocatorContext(Allocator);
-  memsize Length = SerializeOrderListNetMessage(OrderList, Allocator, MessageOutBuffer);
+
+  net_message_order *NetOrders = NULL;
+  if(SimOrderList->Count != 0) {
+    memsize NetOrdersSize = sizeof(net_message_order) * SimOrderList->Count;
+    NetOrders = (net_message_order*)LinearAllocate(Allocator, NetOrdersSize);
+    for(memsize I=0; I<SimOrderList->Count; ++I) {
+      net_message_order *NetOrder = NetOrders + I;
+      simulation_order *SimOrder = SimOrderList->Orders + I;
+      NetOrder->PlayerID = SimOrder->PlayerID;
+      NetOrder->UnitCount = SimOrder->UnitCount;
+      NetOrder->Target = SimOrder->Target;
+
+      memsize NetOrderUnitIDsSize = sizeof(ui16) * NetOrder->UnitCount;
+      NetOrder->UnitIDs = (ui16*)LinearAllocate(Allocator, NetOrderUnitIDsSize);
+      for(memsize U=0; U<NetOrder->UnitCount; ++U) {
+        NetOrder->UnitIDs[U] = SimOrder->UnitIDs[U];
+      }
+    }
+  }
+
+  memsize Length = SerializeOrderListNetMessage(NetOrders, SimOrderList->Count, Allocator, MessageOutBuffer);
   buffer Message = {
     .Addr = MessageOutBuffer.Addr,
     .Length = Length
