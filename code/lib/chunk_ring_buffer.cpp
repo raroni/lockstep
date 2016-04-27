@@ -31,7 +31,12 @@ void InitChunkRingBuffer(
 }
 
 memsize GetChunkRingBufferUnreadCount(chunk_ring_buffer *Buffer) {
-  return Buffer->WriteIndex - Buffer->ReadIndex;
+  if(Buffer->WriteIndex > Buffer->ReadIndex) {
+    return Buffer->WriteIndex - Buffer->ReadIndex;
+  }
+  else {
+    return Buffer->WriteIndex + Buffer->ChunkCount - Buffer->ReadIndex;
+  }
 }
 
 void ChunkRingBufferWrite(chunk_ring_buffer *Buffer, const buffer Input) {
