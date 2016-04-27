@@ -317,9 +317,10 @@ void UpdateGame(game_platform *Platform, chunk_list *NetEvents, chunk_list *NetC
     memsize OrderListCount = GetChunkRingBufferUnreadCount(&State->OrderListRing);
     if(OrderListCount != 0) {
       RunSimulationTick(&State->Sim, &State->OrderListRing, &State->Allocator);
-      IntSeqPush(&State->OrderListCountSeq, OrderListCount-1);
+      OrderListCount--;
+      IntSeqPush(&State->OrderListCountSeq, OrderListCount);
 
-      if(Platform->Time >= State->NextExtraTickTime) {
+      if(Platform->Time >= State->NextExtraTickTime && OrderListCount != 0) {
         double CountStdDev = CalcIntSeqStdDev(&State->OrderListCountSeq);
         static const umsec32 BaseFrameLag = 200;
         memsize TargetFrameLag = BaseFrameLag/SimulationTickDuration + round(CountStdDev * 4);
