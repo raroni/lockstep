@@ -170,7 +170,14 @@ void ProcessMessageEvent(message_net_event Event, player_set *PlayerSet, linear_
         Order.UnitIDs = Message.UnitIDs;
         Order.UnitCount = Message.UnitCount;
         Order.Target = Message.Target;
-        buffer OrderBuffer = SerializeOrder(Order, Allocator);
+
+        // TODO: In theory, this could overflow. Set up some kind of
+        // general max size policy for orders.
+        buffer OrderBuffer;
+        OrderBuffer.Length = 1024;
+        OrderBuffer.Addr = LinearAllocate(Allocator, OrderBuffer.Length);
+
+        OrderBuffer.Length = SerializeOrder(Order, OrderBuffer);
         ChunkListWrite(OrderQueue, OrderBuffer);
       }
 
