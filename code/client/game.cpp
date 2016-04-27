@@ -123,13 +123,12 @@ void Render(simulation *Sim, interpolation *Interpolation, unit_selection *UnitS
   }
 }
 
-void ProcessMessageEvent(buffer Event, game_state *State, chunk_list *NetCmds, uusec64 Time) {
-  message_net_event MessageEvent = UnserializeMessageNetEvent(Event);
-  net_message_type MessageType = UnserializeNetMessageType(MessageEvent.Message);
+void ProcessMessageEvent(message_net_event Event, game_state *State, chunk_list *NetCmds, uusec64 Time) {
+  net_message_type MessageType = UnserializeNetMessageType(Event.Message);
 
   switch(MessageType) {
     case net_message_type_start: {
-      start_net_message StartMessage = UnserializeStartNetMessage(MessageEvent.Message);
+      start_net_message StartMessage = UnserializeStartNetMessage(Event.Message);
       printf("Game got start event. PlayerCount: %zu, PlayerID: %zu\n", StartMessage.PlayerCount, StartMessage.PlayerIndex);
 
       InitSimulation(&State->Sim);
@@ -167,7 +166,7 @@ void ProcessMessageEvent(buffer Event, game_state *State, chunk_list *NetCmds, u
     }
     case net_message_type_order_list: {
       linear_allocator_context LAContext = CreateLinearAllocatorContext(&State->Allocator);
-      order_list_net_message ListMessage = UnserializeOrderListNetMessage(MessageEvent.Message, &State->Allocator);
+      order_list_net_message ListMessage = UnserializeOrderListNetMessage(Event.Message, &State->Allocator);
       if(ListMessage.List.Count != 0) {
         printf("Order list count: %d\n", ListMessage.List.Count);
         for(memsize I=0; I<ListMessage.List.Count; ++I) {
@@ -277,7 +276,8 @@ void UpdateGame(game_platform *Platform, chunk_list *NetEvents, chunk_list *NetC
         *Running = false;
         break;
       case net_event_type_message: {
-        ProcessMessageEvent(Event, State, NetCmds, Platform->Time);
+        message_net_event MessageEvent = UnserializeMessageNetEvent(Event);
+        ProcessMessageEvent(MessageEvent, State, NetCmds, Platform->Time);
         break;
       }
       default:
