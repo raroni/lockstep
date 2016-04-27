@@ -1,6 +1,7 @@
 #include "lib/assert.h"
 #include "lib/serialization.h"
 #include "common/conversion.h"
+#include "order_serialization.h"
 #include "net_messages.h"
 
 void WriteType(serializer *S, net_message_type Type) {
@@ -43,9 +44,16 @@ memsize SerializeReplyNetMessage(buffer Buffer) {
   return Writer.Position;
 }
 
-memsize SerializeOrderListNetMessage(buffer Out) {
+memsize SerializeOrderListNetMessage(simulation_order_list *List, linear_allocator *Allocator, buffer Out) {
   serializer W = CreateSerializer(Out);
   WriteType(&W, net_message_type_order_list);
+  SerializerWriteUI16(&W, List->Count);
+
+  for(memsize I=0; I<List->Count; ++I) {
+    buffer Order = SerializeOrder(List->Orders[I], Allocator);
+    SerializerWriteBuffer(&W, Order);
+  }
+
   return W.Position;
 }
 
@@ -97,13 +105,25 @@ start_net_message UnserializeStartNetMessage(buffer Buffer) {
   return Message;
 }
 
-order_list_net_message UnserializeOrderListNetMessage(buffer Input) {
+order_list_net_message UnserializeOrderListNetMessage(buffer Input, linear_allocator *Allocator) {
   serializer S = CreateSerializer(Input);
   net_message_type Type = (net_message_type)SerializerReadUI8(&S);
   Assert(Type == net_message_type_order_list);
 
   order_list_net_message Message;
-  Message.Count = 0;
+  Message.List.Count = SerializerReadUI16(&S);
+
+  if(Message.List.Count != 0) {
+    memsize OrdersSize = sizeof(simulation_order) * Message.List.Count;
+    Message.List.Orders = (simulation_order*)LinearAllocate(Allocator, OrdersSize);
+
+    for(memsize I=0; I<Message.List.Count; ++I) {
+      Message.List.Orders[I] = UnserializeOrderX(&S, Allocator);
+    }
+  }
+  else {
+    Message.List.Orders = NULL;
+  }
 
   return Message;
 }

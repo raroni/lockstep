@@ -11,12 +11,12 @@ OBJECTS_DIR = $(BUILD_DIR)/objects
 ROOT = $(realpath ./..)
 CODE_ROOT = $(ROOT)/code
 
-COMMON_SOURCES = code/common/memory.cpp code/common/posix_net.cpp code/lib/serialization.cpp code/lib/assert.cpp code/common/net_messages.cpp code/common/conversion.cpp code/lib/chunk_list.cpp code/common/simulation.cpp
+COMMON_SOURCES = code/common/memory.cpp code/common/posix_net.cpp code/lib/serialization.cpp code/lib/assert.cpp code/common/net_messages.cpp code/common/conversion.cpp code/lib/chunk_list.cpp code/common/simulation.cpp code/common/order_serialization.cpp
 COMMON_HEADER_INCLUDES = -iquote $(CODE_ROOT)
 
 SERVER_PRODUCT_DIR = $(PRODUCT_DIR)/LockstepServer.app
 SERVER_BINARY = $(SERVER_PRODUCT_DIR)/Contents/MacOS/LockstepServer
-SERVER_SOURCES = $(COMMON_SOURCES) code/server/osx_main.cpp code/server/posix_net.cpp code/server/posix_net_client_set.cpp code/server/net_events.cpp code/server/net_commands.cpp code/lib/chunk_ring_buffer.cpp code/lib/byte_ring_buffer.cpp code/server/game.cpp code/common/order_serialization.cpp
+SERVER_SOURCES = $(COMMON_SOURCES) code/server/osx_main.cpp code/server/posix_net.cpp code/server/posix_net_client_set.cpp code/server/net_events.cpp code/server/net_commands.cpp code/lib/chunk_ring_buffer.cpp code/lib/byte_ring_buffer.cpp code/server/game.cpp
 SERVER_OBJS = $(patsubst %.cpp, $(OBJECTS_DIR)/%.o, $(SERVER_SOURCES))
 SERVER_DEPS = $(sort $(patsubst %, %.deps, $(SERVER_OBJS)))
 

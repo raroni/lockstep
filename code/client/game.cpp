@@ -165,9 +165,22 @@ void ProcessMessageEvent(buffer Event, game_state *State, chunk_list *NetCmds, u
       ChunkListWrite(NetCmds, Command);
       break;
     }
-    case net_message_type_order_list:
-      // TODO: Handle
+    case net_message_type_order_list: {
+      linear_allocator_context LAContext = CreateLinearAllocatorContext(&State->Allocator);
+      order_list_net_message ListMessage = UnserializeOrderListNetMessage(MessageEvent.Message, &State->Allocator);
+      if(ListMessage.List.Count != 0) {
+        printf("Order list count: %d\n", ListMessage.List.Count);
+        for(memsize I=0; I<ListMessage.List.Count; ++I) {
+          simulation_order *Order = ListMessage.List.Orders + I;
+          printf("... Order PlayerID: %D, unit count: %d, target: %d, %d\n", Order->PlayerID, Order->UnitCount, Order->Target.X, Order->Target.Y);
+          for(memsize Y=0; Y<Order->UnitCount; ++Y) {
+            printf("...... UnitID: %d\n", Order->UnitIDs[Y]);
+          }
+        }
+      }
+      RestoreLinearAllocatorContext(LAContext);
       break;
+    }
     default:
       InvalidCodePath;
   }

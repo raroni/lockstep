@@ -182,8 +182,10 @@ void ProcessIncoming(posix_net_context *Context) {
         break;
       }
       case net_message_type_order_list: {
-        order_list_net_message ListMessage = UnserializeOrderListNetMessage(Message);
+        linear_allocator_context LAContext = CreateLinearAllocatorContext(&Context->Allocator);
+        order_list_net_message ListMessage = UnserializeOrderListNetMessage(Message, &Context->Allocator);
         Assert(ValidateOrderListNetMessage(ListMessage));
+        RestoreLinearAllocatorContext(LAContext);
         break;
       }
       default:

@@ -21,7 +21,7 @@ struct start_net_message {
 };
 
 struct order_list_net_message {
-  memsize Count;
+  simulation_order_list List;
 };
 
 struct order_net_message {
@@ -33,11 +33,11 @@ struct order_net_message {
 memsize SerializeStartNetMessage(memsize PlayerCount, memsize PlayerIndex, buffer Buffer);
 memsize SerializeOrderNetMessage(simulation_unit_id *UnitIDs, memsize UnitCount, ivec2 Target, buffer Out);
 memsize SerializeReplyNetMessage(buffer Buffer);
-memsize SerializeOrderListNetMessage(buffer Out);
+memsize SerializeOrderListNetMessage(simulation_order_list *List, linear_allocator *Allocator, buffer Out);
 net_message_type UnserializeNetMessageType(buffer Input);
 order_net_message UnserializeOrderNetMessage(buffer Input, linear_allocator *Allocator);
 start_net_message UnserializeStartNetMessage(buffer Input);
-order_list_net_message UnserializeOrderListNetMessage(buffer Input);
+order_list_net_message UnserializeOrderListNetMessage(buffer Input, linear_allocator *Allocator);
 bool ValidateStartNetMessage(start_net_message Message);
 bool ValidateOrderListNetMessage(order_list_net_message Message);
 bool ValidateOrderNetMessage(order_net_message Message);

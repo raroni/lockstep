@@ -217,14 +217,15 @@ void ProcessNetEvents(game_state *State, chunk_list *Events) {
   }
 }
 
-void BroadcastOrders(player_set *PlayerSet, simulation_order_list *OrderList, chunk_list *Commands) {
-  memsize Length = SerializeOrderListNetMessage(MessageOutBuffer);
+void BroadcastOrders(player_set *PlayerSet, simulation_order_list *OrderList, chunk_list *Commands, linear_allocator *Allocator) {
+  linear_allocator_context LAContext = CreateLinearAllocatorContext(Allocator);
+  memsize Length = SerializeOrderListNetMessage(OrderList, Allocator, MessageOutBuffer);
   buffer Message = {
     .Addr = MessageOutBuffer.Addr,
     .Length = Length
   };
-
   Broadcast(PlayerSet, Message, Commands);
+  RestoreLinearAllocatorContext(LAContext);
 }
 
 void UpdateGame(
@@ -286,7 +287,7 @@ void UpdateGame(
           OrderList.Orders[I] = UnserializeOrder(OrderBuffer, &State->Allocator);
         }
       }
-      BroadcastOrders(&State->PlayerSet, &OrderList, Commands);
+      BroadcastOrders(&State->PlayerSet, &OrderList, Commands, &State->Allocator);
       TickSimulation(&State->Sim, &OrderList);
       ResetChunkList(&State->OrderQueue);
       RestoreLinearAllocatorContext(LAContext);
