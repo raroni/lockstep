@@ -29,8 +29,7 @@ struct simulation_order_list {
 struct simulation_unit {
   simulation_player_id PlayerID;
   simulation_unit_id ID;
-  ui16 X;
-  ui16 Y;
+  ivec2 Pos;
 };
 
 struct simulation_player {

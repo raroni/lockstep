@@ -210,10 +210,10 @@ simulation_unit* FindUnit(simulation *Sim, ivec2 WorldPos) {
   for(memsize I=0; I<Sim->UnitCount; ++I) {
     simulation_unit *Unit = Sim->Units + I;
     if(
-      Unit->X - SIMULATION_UNIT_HALF_SIZE <= WorldPos.X &&
-      Unit->X + SIMULATION_UNIT_HALF_SIZE > WorldPos.X &&
-      Unit->Y - SIMULATION_UNIT_HALF_SIZE <= WorldPos.Y &&
-      Unit->Y + SIMULATION_UNIT_HALF_SIZE > WorldPos.Y
+      Unit->Pos.X - SIMULATION_UNIT_HALF_SIZE <= WorldPos.X &&
+      Unit->Pos.X + SIMULATION_UNIT_HALF_SIZE > WorldPos.X &&
+      Unit->Pos.Y - SIMULATION_UNIT_HALF_SIZE <= WorldPos.Y &&
+      Unit->Pos.Y + SIMULATION_UNIT_HALF_SIZE > WorldPos.Y
     ) {
       return Unit;
     }

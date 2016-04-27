@@ -11,7 +11,7 @@ OBJECTS_DIR = $(BUILD_DIR)/objects
 ROOT = $(realpath ./..)
 CODE_ROOT = $(ROOT)/code
 
-COMMON_SOURCES = code/common/memory.cpp code/common/posix_net.cpp code/lib/serialization.cpp code/lib/assert.cpp code/common/net_messages.cpp code/common/conversion.cpp code/lib/chunk_list.cpp code/common/simulation.cpp code/common/order_serialization.cpp
+COMMON_SOURCES = code/common/memory.cpp code/common/posix_net.cpp code/lib/serialization.cpp code/lib/assert.cpp code/common/net_messages.cpp code/common/conversion.cpp code/lib/chunk_list.cpp code/common/simulation.cpp code/common/order_serialization.cpp code/lib/math.cpp
 COMMON_HEADER_INCLUDES = -iquote $(CODE_ROOT)
 
 SERVER_PRODUCT_DIR = $(PRODUCT_DIR)/LockstepServer.app
@@ -27,7 +27,7 @@ CLIENT_INFO_PLIST = client_info.plist
 CLIENT_PRODUCT_DIR = $(PRODUCT_DIR)/LockstepClient.app
 CLIENT_CONTENTS_DIR = $(CLIENT_PRODUCT_DIR)/Contents
 CLIENT_BINARY = $(CLIENT_CONTENTS_DIR)/MacOS/LockstepClient
-CLIENT_CPP_SOURCES = $(COMMON_SOURCES) code/client/posix_net.cpp code/lib/chunk_ring_buffer.cpp code/lib/byte_ring_buffer.cpp code/client/net_events.cpp code/client/net_commands.cpp code/client/game.cpp code/client/opengl.cpp code/client/interpolation.cpp code/lib/int_seq.cpp code/lib/math.cpp
+CLIENT_CPP_SOURCES = $(COMMON_SOURCES) code/client/posix_net.cpp code/lib/chunk_ring_buffer.cpp code/lib/byte_ring_buffer.cpp code/client/net_events.cpp code/client/net_commands.cpp code/client/game.cpp code/client/opengl.cpp code/client/interpolation.cpp code/lib/int_seq.cpp
 CLIENT_OBJ_CPP_SOURCES = code/client/osx_main.mm
 CLIENT_CPP_OBJS = $(patsubst %.cpp, $(OBJECTS_DIR)/%.o, $(CLIENT_CPP_SOURCES))
 CLIENT_CPP_CPP_OBJS = $(patsubst %.mm, $(OBJECTS_DIR)/%.o, $(CLIENT_OBJ_CPP_SOURCES))

@@ -5,8 +5,7 @@ typedef simulation_unit sim_unit;
 static void CreateUnit(interpolation *Interpolation, sim_unit *Units, memsize I) {
   sim_unit *SimUnit = Units + I;
 
-  Interpolation->Positions[I].X = SimUnit->X;
-  Interpolation->Positions[I].Y = SimUnit->Y;
+  Interpolation->Positions[I] = SimUnit->Pos;
 
   Interpolation->Count++;
 }

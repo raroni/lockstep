@@ -8,13 +8,12 @@ typedef simulation_player_id player_id;
 typedef simulation_order_list order_list;
 typedef simulation_player player;
 
-void CreateUnit(simulation *Sim, memsize PlayerID, ui16 X, ui16 Y) {
+void CreateUnit(simulation *Sim, memsize PlayerID, ivec2 Pos) {
   unit *Unit = Sim->Units + Sim->UnitCount;
 
   Unit->ID = Sim->UnitCount;
   Unit->PlayerID = PlayerID;
-  Unit->X = X;
-  Unit->Y = Y;
+  Unit->Pos = Pos;
 
   Sim->UnitCount++;
 }
@@ -25,7 +24,8 @@ simulation_player_id SimulationCreatePlayer(simulation *Sim) {
   player *Player = Sim->Players + Sim->PlayerCount;
   Player->ID = Sim->PlayerCount;
   for(memsize U=0; U<UNITS_PER_PLAYER; ++U) {
-    CreateUnit(Sim, Player->ID, U*Displacement, U*Displacement/2 + Player->ID * 200);
+    ivec2 Pos = MakeIvec2(U*Displacement, U*Displacement/2 + Player->ID * 200);
+    CreateUnit(Sim, Player->ID, Pos);
   }
   Sim->PlayerCount++;
   return Player->ID;
