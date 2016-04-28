@@ -31,7 +31,7 @@ void InitChunkRingBuffer(
 }
 
 memsize GetChunkRingBufferUnreadCount(chunk_ring_buffer *Buffer) {
-  if(Buffer->WriteIndex > Buffer->ReadIndex) {
+  if(Buffer->WriteIndex >= Buffer->ReadIndex) {
     return Buffer->WriteIndex - Buffer->ReadIndex;
   }
   else {
