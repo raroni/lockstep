@@ -83,9 +83,9 @@ void InitPosixNet(posix_net_context *Context) {
 
   {
     memsize EventBufferLength = 1024*100;
-    Context->EventBufferAddr = malloc(EventBufferLength);
+    void *EventBufferAddr = LinearAllocate(&Context->Allocator, EventBufferLength);
     buffer EventBuffer = {
-      .Addr = Context->EventBufferAddr,
+      .Addr = EventBufferAddr,
       .Length = EventBufferLength
     };
     InitChunkRingBuffer(&Context->EventRing, 50, EventBuffer);
@@ -132,10 +132,7 @@ void TerminatePosixNet(posix_net_context *Context) {
   TerminatePosixNetClientSet(&Context->ClientSet);
 
   TerminateChunkRingBuffer(&Context->CommandRing);
-
   TerminateChunkRingBuffer(&Context->EventRing);
-  free(Context->EventBufferAddr);
-  Context->EventBufferAddr = NULL;
 
   TerminateMemory(Context);
 }
