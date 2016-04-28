@@ -16,6 +16,10 @@ void* LinearAllocate(linear_allocator *A, memsize Size) {
   return Result;
 }
 
+memsize GetLinearAllocatorFree(linear_allocator *A) {
+  return A->Capacity - A->Length;
+}
+
 void* GetLinearAllocatorHead(linear_allocator *A) {
   return (ui8*)A->Base + A->Length;
 }

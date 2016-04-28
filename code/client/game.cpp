@@ -149,28 +149,24 @@ void ProcessMessageEvent(message_net_event Event, game_state *State, chunk_list 
       Assert(State->PlayerID != SIMULATION_UNDEFINED_PLAYER_ID);
       InitInterpolation(&State->Interpolation, &State->Sim);
 
-      static ui8 TempBufferBlock[NET_MESSAGE_MAX_LENGTH];
-      buffer TempBuffer = {
-        .Addr = TempBufferBlock,
-        .Length = sizeof(TempBufferBlock)
-      };
-      memsize Length = SerializeReplyNetMessage(TempBuffer);
-      buffer ReplyMessage = {
-        .Addr = TempBuffer.Addr,
-        .Length = Length
-      };
+      linear_allocator_context LAContext = CreateLinearAllocatorContext(&State->Allocator);
+      Assert(GetLinearAllocatorFree(&State->Allocator) >= NET_MESSAGE_MAX_LENGTH);
+
+      buffer ReplyMessage = SerializeReplyNetMessage(&State->Allocator);
       printf("Starting game and replying...\n");
 
-      State->NextTickTime = Time + SimulationTickDuration*1000;
-      State->NextExtraTickTime = Time + SimulationTickDuration*1000;
-
-      Length = SerializeSendNetCommand(State->CommandSerializationBuffer, ReplyMessage);
+      // TODO: When/if this is changed to use dynamic linear allocator
+      // remember to add net command max size to free-assert above.
+      memsize Length = SerializeSendNetCommand(State->CommandSerializationBuffer, ReplyMessage);
       buffer Command = {
         .Addr = State->CommandSerializationBuffer.Addr,
         .Length = Length
       };
       ChunkListWrite(NetCmds, Command);
+      RestoreLinearAllocatorContext(LAContext);
 
+      State->NextTickTime = Time + SimulationTickDuration*1000;
+      State->NextExtraTickTime = Time + SimulationTickDuration*1000;
       State->Mode = game_mode_active;
       break;
     }
@@ -246,27 +242,22 @@ void ProcessMouse(simulation *Sim, linear_allocator *Allocator, simulation_playe
     }
     else if(UnitSelection->Count != 0) {
       linear_allocator_context AllocatorContext = CreateLinearAllocatorContext(Allocator);
+      Assert(GetLinearAllocatorFree(Allocator) >= NET_MESSAGE_MAX_LENGTH);
 
-      buffer MessageSerializationBuffer = {
-        .Addr = LinearAllocate(Allocator, NET_MESSAGE_MAX_LENGTH),
-        .Length = NET_MESSAGE_MAX_LENGTH
-      };
-      memsize Length = SerializeOrderNetMessage(
+      buffer OrderMessage = SerializeOrderNetMessage(
         UnitSelection->IDs,
         UnitSelection->Count,
         WorldPos,
-        MessageSerializationBuffer
+        Allocator
       );
-      buffer OrderMessage = {
-        .Addr = MessageSerializationBuffer.Addr,
-        .Length = Length
-      };
 
+      // TODO: Remember to add NETWORK_COMMAND_MAX_LENGTH to Free-assert() above
+      // when/if this is convered to use the new serialize format.
       buffer CommandSerializationBuffer = {
         .Addr = LinearAllocate(Allocator, NETWORK_COMMAND_MAX_LENGTH),
         .Length = NETWORK_COMMAND_MAX_LENGTH
       };
-      Length = SerializeSendNetCommand(CommandSerializationBuffer, OrderMessage);
+      memsize Length = SerializeSendNetCommand(CommandSerializationBuffer, OrderMessage);
       buffer Command = {
         .Addr = CommandSerializationBuffer.Addr,
         .Length = Length

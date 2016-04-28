@@ -8,13 +8,6 @@
 #include "net_commands.h"
 #include "game.h"
 
-#define MESSAGE_OUT_BUFFER_LENGTH 1024*10
-static ui8 MessageOutBufferBlock[MESSAGE_OUT_BUFFER_LENGTH];
-static buffer MessageOutBuffer = {
-  .Addr = &MessageOutBufferBlock,
-  .Length = sizeof(MessageOutBufferBlock)
-};
-
 struct player {
   simulation_player_id SimID;
   net_client_id ClientID;
@@ -134,18 +127,18 @@ void StartGame(game_state *State, chunk_list *NetCmds, uusec64 Time) {
   };
 
   for(memsize I=0; I<Set->Count; ++I) {
-    memsize Length = SerializeStartNetMessage(Set->Count, I, MessageOutBuffer);
-    buffer Message = {
-      .Addr = MessageOutBuffer.Addr,
-      .Length = Length
-    };
+    linear_allocator_context LAContext = CreateLinearAllocatorContext(&State->Allocator);
 
-    Length = SerializeSendNetCommand(Set->Players[I].ClientID, Message, TempWorkBuffer);
+    Assert(GetLinearAllocatorFree(&State->Allocator) >= NET_MESSAGE_MAX_LENGTH);
+    buffer Message = SerializeStartNetMessage(Set->Count, I, &State->Allocator);
+
+    memsize Length = SerializeSendNetCommand(Set->Players[I].ClientID, Message, TempWorkBuffer);
     buffer Command = {
       .Addr = TempWorkBuffer.Addr,
       .Length = Length
     };
     ChunkListWrite(NetCmds, Command);
+    RestoreLinearAllocatorContext(LAContext);
   }
 
   State->NextTickTime = Time + SimulationTickDuration*1000;
@@ -223,6 +216,8 @@ void ProcessNetEvents(game_state *State, chunk_list *Events) {
 
 void BroadcastOrders(player_set *PlayerSet, simulation_order_list *SimOrderList, chunk_list *Commands, linear_allocator *Allocator) {
   linear_allocator_context LAContext = CreateLinearAllocatorContext(Allocator);
+  // TODO: Calculate worst case memory consumption here.
+  // Assert(GetLinearAllocatorFree(Allocator) >= NET_MESSAGE_MAX_LENGTH);
 
   net_message_order *NetOrders = NULL;
   if(SimOrderList->Count != 0) {
@@ -243,11 +238,7 @@ void BroadcastOrders(player_set *PlayerSet, simulation_order_list *SimOrderList,
     }
   }
 
-  memsize Length = SerializeOrderListNetMessage(NetOrders, SimOrderList->Count, MessageOutBuffer);
-  buffer Message = {
-    .Addr = MessageOutBuffer.Addr,
-    .Length = Length
-  };
+  buffer Message = SerializeOrderListNetMessage(NetOrders, SimOrderList->Count, Allocator);
   Broadcast(PlayerSet, Message, Commands);
   RestoreLinearAllocatorContext(LAContext);
 }
