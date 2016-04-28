@@ -98,10 +98,12 @@ static void ExecuteRenderCommands(chunk_list *Commands) {
 }
 
 static void ReadNet(posix_net_context *Context, chunk_list *Events) {
-  static ui8 ReadBufferBlock[NET_EVENT_MAX_LENGTH];
-  static buffer ReadBuffer = {
-    .Addr = &ReadBufferBlock,
-    .Length = sizeof(ReadBufferBlock)
+  memory_arena_checkpoint ArenaCheckpoint = CreateMemoryArenaCheckpoint(&Context->Arena);
+  Assert(GetMemoryArenaFree(&Context->Arena) >= NET_EVENT_MAX_LENGTH);
+
+  buffer ReadBuffer = {
+    .Addr = MemoryArenaAllocate(&Context->Arena, NET_EVENT_MAX_LENGTH),
+    .Length = NET_EVENT_MAX_LENGTH
   };
   memsize Length;
   while((Length = ReadPosixNetEvent(Context, ReadBuffer))) {
@@ -111,6 +113,8 @@ static void ReadNet(posix_net_context *Context, chunk_list *Events) {
     };
     ChunkListWrite(Events, Event);
   }
+
+  ReleaseMemoryArenaCheckpoint(ArenaCheckpoint);
 }
 
 static void SetupOSXMenu() {
