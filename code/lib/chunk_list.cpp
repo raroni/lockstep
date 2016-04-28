@@ -1,5 +1,5 @@
 #include "lib/assert.h"
-#include "lib/serialization.h"
+#include "lib/buf_view.h"
 #include "chunk_list.h"
 
 buffer GetSubBuffer(chunk_list *List, memsize Pos) {
@@ -23,20 +23,20 @@ void ResetChunkList(chunk_list *List) {
 void ChunkListWrite(chunk_list *List, buffer Chunk) {
   Assert(List->Buffer.Length - List->WritePos >= Chunk.Length);
   buffer WriteBuffer = GetSubBuffer(List, List->WritePos);
-  serializer S = CreateSerializer(WriteBuffer);
-  SerializerWriteMemsize(&S, Chunk.Length);
-  SerializerWriteBuffer(&S, Chunk);
+  buf_view V = CreateBufView(WriteBuffer);
+  BufViewWriteMemsize(&V, Chunk.Length);
+  BufViewWriteBuffer(&V, Chunk);
   List->Count++;
-  List->WritePos += S.Position;
+  List->WritePos += V.Position;
 }
 
 void* ChunkListAllocate(chunk_list *List, memsize Length) {
   Assert(List->Buffer.Length - List->WritePos >= Length);
   buffer WriteBuffer = GetSubBuffer(List, List->WritePos);
-  serializer S = CreateSerializer(WriteBuffer);
-  SerializerWriteMemsize(&S, Length);
-  void *Result = (ui8*)WriteBuffer.Addr + S.Position;
-  List->WritePos += S.Position + Length;
+  buf_view V = CreateBufView(WriteBuffer);
+  BufViewWriteMemsize(&V, Length);
+  void *Result = (ui8*)WriteBuffer.Addr + V.Position;
+  List->WritePos += V.Position + Length;
   List->Count++;
   return Result;
 }
@@ -46,13 +46,13 @@ buffer ChunkListRead(chunk_list *List) {
   if(List->ReadPos != List->WritePos) {
     Assert(List->Count != 0);
     buffer ReadBuffer = GetSubBuffer(List, List->ReadPos);
-    serializer S = CreateSerializer(ReadBuffer);
-    memsize Length = SerializerReadMemsize(&S);
+    buf_view V = CreateBufView(ReadBuffer);
+    memsize Length = BufViewReadMemsize(&V);
 
-    Result.Addr = (ui8*)ReadBuffer.Addr + S.Position;
+    Result.Addr = (ui8*)ReadBuffer.Addr + V.Position;
     Result.Length = Length;
 
-    List->ReadPos += S.Position + Length;
+    List->ReadPos += V.Position + Length;
     List->Count--;
   }
   else {

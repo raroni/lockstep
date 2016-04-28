@@ -1,5 +1,5 @@
 #include "lib/assert.h"
-#include "lib/serialization.h"
+#include "lib/buf_view.h"
 #include "lib/seq_write.h"
 #include "net_commands.h"
 
@@ -37,28 +37,28 @@ buffer SerializeSendNetCommand(net_client_id ID, const buffer Message, linear_al
 }
 
 broadcast_net_command UnserializeBroadcastNetCommand(buffer Buffer) {
-  serializer S = CreateSerializer(Buffer);
-  net_command_type Type = *(net_command_type*)SerializerRead(&S, sizeof(net_command_type));
+  buf_view V = CreateBufView(Buffer);
+  net_command_type Type = *(net_command_type*)BufViewRead(&V, sizeof(net_command_type));
   Assert(Type == net_command_type_broadcast);
 
   broadcast_net_command Cmd;
-  Cmd.ClientIDCount = SerializerReadMemsize(&S);
-  Cmd.Message.Length = SerializerReadMemsize(&S);
-  Cmd.ClientIDs = (net_client_id*)SerializerRead(&S, sizeof(net_client_id)*Cmd.ClientIDCount);
-  Cmd.Message.Addr = SerializerRead(&S, Cmd.Message.Length);
+  Cmd.ClientIDCount = BufViewReadMemsize(&V);
+  Cmd.Message.Length = BufViewReadMemsize(&V);
+  Cmd.ClientIDs = (net_client_id*)BufViewRead(&V, sizeof(net_client_id)*Cmd.ClientIDCount);
+  Cmd.Message.Addr = BufViewRead(&V, Cmd.Message.Length);
 
   return Cmd;
 }
 
 send_net_command UnserializeSendNetCommand(buffer Buffer) {
-  serializer S = CreateSerializer(Buffer);
-  net_command_type Type = *(net_command_type*)SerializerRead(&S, sizeof(net_command_type));
+  buf_view V = CreateBufView(Buffer);
+  net_command_type Type = *(net_command_type*)BufViewRead(&V, sizeof(net_command_type));
   Assert(Type == net_command_type_send);
 
   send_net_command Cmd;
-  Cmd.ClientID = *(net_client_id*)SerializerRead(&S, sizeof(net_client_id));
-  Cmd.Message.Length = SerializerReadMemsize(&S);
-  Cmd.Message.Addr = SerializerRead(&S, Cmd.Message.Length);
+  Cmd.ClientID = *(net_client_id*)BufViewRead(&V, sizeof(net_client_id));
+  Cmd.Message.Length = BufViewReadMemsize(&V);
+  Cmd.Message.Addr = BufViewRead(&V, Cmd.Message.Length);
 
   return Cmd;
 }

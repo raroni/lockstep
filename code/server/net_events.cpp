@@ -1,5 +1,5 @@
 #include "lib/assert.h"
-#include "lib/serialization.h"
+#include "lib/buf_view.h"
 #include "lib/seq_write.h"
 #include "common/conversion.h"
 #include "net_events.h"
@@ -12,13 +12,13 @@ static void WriteType(seq_write *W, net_event_type Type) {
   SeqWriteUI8(W, TypeInt);
 }
 
-static net_event_type ReadType(serializer *S) {
-  ui8 TypeInt = SerializerReadUI8(S);
+static net_event_type ReadType(buf_view *V) {
+  ui8 TypeInt = BufViewReadUI8(V);
   return (net_event_type)TypeInt;
 }
 
-static net_client_id ReadClientID(serializer *S) {
-  ui8 IDInt = SerializerReadUI8(S);
+static net_client_id ReadClientID(buf_view *V) {
+  ui8 IDInt = BufViewReadUI8(V);
   return (net_client_id)IDInt;
 }
 
@@ -55,40 +55,40 @@ buffer SerializeMessageNetEvent(net_client_id ID, buffer Message, linear_allocat
 }
 
 net_event_type UnserializeNetEventType(buffer Input) {
-  serializer S = CreateSerializer(Input);
-  return ReadType(&S);
+  buf_view V = CreateBufView(Input);
+  return ReadType(&V);
 }
 
 connect_net_event UnserializeConnectNetEvent(buffer Input) {
   Assert(Input.Length == ClientIDLength + TypeLength);
   connect_net_event Event;
-  serializer S = CreateSerializer(Input);
-  net_event_type Type = ReadType(&S);
+  buf_view V = CreateBufView(Input);
+  net_event_type Type = ReadType(&V);
   Assert(Type == net_event_type_connect);
-  Event.ClientID = ReadClientID(&S);
+  Event.ClientID = ReadClientID(&V);
   return Event;
 }
 
 disconnect_net_event UnserializeDisconnectNetEvent(buffer Input) {
   Assert(Input.Length == ClientIDLength + TypeLength);
   disconnect_net_event Event;
-  serializer S = CreateSerializer(Input);
-  net_event_type Type = ReadType(&S);
+  buf_view V = CreateBufView(Input);
+  net_event_type Type = ReadType(&V);
   Assert(Type == net_event_type_disconnect);
-  Event.ClientID = ReadClientID(&S);
+  Event.ClientID = ReadClientID(&V);
   return Event;
 }
 
 message_net_event UnserializeMessageNetEvent(buffer Input) {
-  serializer S = CreateSerializer(Input);
+  buf_view V = CreateBufView(Input);
 
-  net_event_type Type = ReadType(&S);
+  net_event_type Type = ReadType(&V);
   Assert(Type == net_event_type_message);
 
   message_net_event Event;
-  Event.ClientID = ReadClientID(&S);
-  Event.Message.Length = SerializerReadMemsize(&S);
-  Event.Message.Addr = SerializerRead(&S, Event.Message.Length);
+  Event.ClientID = ReadClientID(&V);
+  Event.Message.Length = BufViewReadMemsize(&V);
+  Event.Message.Addr = BufViewRead(&V, Event.Message.Length);
 
   return Event;
 }

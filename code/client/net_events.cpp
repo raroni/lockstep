@@ -1,5 +1,5 @@
 #include "lib/assert.h"
-#include "lib/serialization.h"
+#include "lib/buf_view.h"
 #include "lib/seq_write.h"
 #include "common/conversion.h"
 #include "net_events.h"
@@ -9,8 +9,8 @@ static void WriteType(seq_write *W, net_event_type Type) {
   SeqWriteUI8(W, TypeInt);
 }
 
-static net_event_type ReadType(serializer *S) {
-  ui8 TypeInt = SerializerReadUI8(S);
+static net_event_type ReadType(buf_view *V) {
+  ui8 TypeInt = BufViewReadUI8(V);
   return (net_event_type)TypeInt;
 }
 
@@ -33,8 +33,8 @@ buffer SerializeConnectionFailedNetEvent(linear_allocator *Allocator) {
 }
 
 net_event_type UnserializeNetEventType(buffer Input) {
-  serializer S = CreateSerializer(Input);
-  return ReadType(&S);
+  buf_view V = CreateBufView(Input);
+  return ReadType(&V);
 }
 
 buffer SerializeMessageNetEvent(buffer Message, linear_allocator *Allocator) {
@@ -48,14 +48,14 @@ buffer SerializeMessageNetEvent(buffer Message, linear_allocator *Allocator) {
 }
 
 message_net_event UnserializeMessageNetEvent(buffer Event) {
-  serializer S = CreateSerializer(Event);
+  buf_view V = CreateBufView(Event);
 
-  net_event_type Type = ReadType(&S);
+  net_event_type Type = ReadType(&V);
   Assert(Type == net_event_type_message);
 
   message_net_event MessageEvent;
-  MessageEvent.Message.Length = SerializerReadMemsize(&S);
-  MessageEvent.Message.Addr = SerializerRead(&S, MessageEvent.Message.Length);
+  MessageEvent.Message.Length = BufViewReadMemsize(&V);
+  MessageEvent.Message.Addr = BufViewRead(&V, MessageEvent.Message.Length);
 
   return MessageEvent;
 }

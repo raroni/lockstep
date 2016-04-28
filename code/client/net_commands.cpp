@@ -1,5 +1,5 @@
 #include "lib/assert.h"
-#include "lib/serialization.h"
+#include "lib/buf_view.h"
 #include "lib/seq_write.h"
 #include "net_commands.h"
 
@@ -24,13 +24,13 @@ buffer SerializeSendNetCommand(buffer Message, linear_allocator *Allocator) {
 }
 
 send_net_command UnserializeSendNetCommand(buffer Input) {
-  serializer S = CreateSerializer(Input);
-  net_command_type Type = *(net_command_type*)SerializerRead(&S, sizeof(net_command_type));
+  buf_view V = CreateBufView(Input);
+  net_command_type Type = *(net_command_type*)BufViewRead(&V, sizeof(net_command_type));
   Assert(Type == net_command_type_send);
 
-  memsize MessageLength = GetRemainingSize(&S);
+  memsize MessageLength = GetRemainingSize(&V);
   send_net_command Command;
-  Command.Message.Addr = SerializerRead(&S, MessageLength);
+  Command.Message.Addr = BufViewRead(&V, MessageLength);
   Command.Message.Length = MessageLength;
 
   return Command;

@@ -1,5 +1,5 @@
 #include "lib/assert.h"
-#include "lib/serialization.h"
+#include "lib/buf_view.h"
 #include "lib/seq_write.h"
 #include "common/conversion.h"
 #include "net_messages.h"
@@ -9,14 +9,14 @@ void WriteType(seq_write *W, net_message_type Type) {
   SeqWriteUI8(W, TypeUI8);
 }
 
-static order_net_message UnserializeOrderHeader(serializer *S) {
-  net_message_type Type = (net_message_type)SerializerReadUI8(S);
+static order_net_message UnserializeOrderHeader(buf_view *V) {
+  net_message_type Type = (net_message_type)BufViewReadUI8(V);
   Assert(Type == net_message_type_order);
 
   order_net_message Message;
-  Message.UnitCount = SerializerReadUI16(S);
-  Message.Target.X = SerializerReadSI16(S);
-  Message.Target.Y = SerializerReadSI16(S);
+  Message.UnitCount = BufViewReadUI16(V);
+  Message.Target.X = BufViewReadSI16(V);
+  Message.Target.Y = BufViewReadSI16(V);
   Message.UnitIDs = NULL;
 
   return Message;
@@ -86,43 +86,43 @@ buffer SerializeOrderNetMessage(ui16 *UnitIDs, memsize UnitCount, ivec2 Target, 
 }
 
 net_message_type UnserializeNetMessageType(buffer Input) {
-  serializer S = CreateSerializer(Input);
-  net_message_type Type = (net_message_type)SerializerReadUI8(&S);
+  buf_view V = CreateBufView(Input);
+  net_message_type Type = (net_message_type)BufViewReadUI8(&V);
   return Type;
 }
 
 order_net_message UnserializeOrderNetMessage(buffer Input, linear_allocator *Allocator) {
-  serializer S = CreateSerializer(Input);
-  order_net_message Message = UnserializeOrderHeader(&S);
+  buf_view V = CreateBufView(Input);
+  order_net_message Message = UnserializeOrderHeader(&V);
 
   memsize IDsSize = sizeof(ui16) * Message.UnitCount;
   Message.UnitIDs = (ui16*)LinearAllocate(Allocator, IDsSize);
   for(memsize I=0; I<Message.UnitCount; ++I) {
-    Message.UnitIDs[I] = SerializerReadUI16(&S);
+    Message.UnitIDs[I] = BufViewReadUI16(&V);
   }
 
   return Message;
 }
 
 start_net_message UnserializeStartNetMessage(buffer Buffer) {
-  serializer S = CreateSerializer(Buffer);
-  net_message_type Type = (net_message_type)SerializerReadUI8(&S);
+  buf_view V = CreateBufView(Buffer);
+  net_message_type Type = (net_message_type)BufViewReadUI8(&V);
   Assert(Type == net_message_type_start);
 
   start_net_message Message;
-  Message.PlayerCount = SerializerReadUI8(&S);
-  Message.PlayerIndex = SerializerReadUI8(&S);
+  Message.PlayerCount = BufViewReadUI8(&V);
+  Message.PlayerIndex = BufViewReadUI8(&V);
 
   return Message;
 }
 
 order_list_net_message UnserializeOrderListNetMessage(buffer Input, linear_allocator *Allocator) {
-  serializer S = CreateSerializer(Input);
-  net_message_type Type = (net_message_type)SerializerReadUI8(&S);
+  buf_view V = CreateBufView(Input);
+  net_message_type Type = (net_message_type)BufViewReadUI8(&V);
   Assert(Type == net_message_type_order_list);
 
   order_list_net_message Message;
-  Message.Count = SerializerReadUI16(&S);
+  Message.Count = BufViewReadUI16(&V);
 
   if(Message.Count != 0) {
     memsize OrdersSize = sizeof(net_message_order) * Message.Count;
@@ -130,15 +130,15 @@ order_list_net_message UnserializeOrderListNetMessage(buffer Input, linear_alloc
 
     for(memsize I=0; I<Message.Count; ++I) {
       net_message_order *O = Message.Orders + I;
-      O->PlayerID = SerializerReadUI8(&S);
-      O->UnitCount = SerializerReadUI16(&S);
-      O->Target.X = SerializerReadUI16(&S);
-      O->Target.Y = SerializerReadUI16(&S);
+      O->PlayerID = BufViewReadUI8(&V);
+      O->UnitCount = BufViewReadUI16(&V);
+      O->Target.X = BufViewReadUI16(&V);
+      O->Target.Y = BufViewReadUI16(&V);
 
       memsize UnitIDsSize = sizeof(ui16) * O->UnitCount;
       O->UnitIDs = (ui16*)LinearAllocate(Allocator, UnitIDsSize);
       for(memsize U=0; U<O->UnitCount; ++U) {
-        O->UnitIDs[U] = SerializerReadUI16(&S);
+        O->UnitIDs[U] = BufViewReadUI16(&V);
       }
     }
   }
