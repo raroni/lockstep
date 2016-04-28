@@ -21,7 +21,7 @@ void ResetChunkList(chunk_list *List) {
 }
 
 void ChunkListWrite(chunk_list *List, buffer Chunk) {
-  Assert(List->Buffer.Length - List->WritePos >= Chunk.Length);
+  Assert(List->Buffer.Length - List->WritePos >= Chunk.Length + sizeof(memsize));
   buffer WriteBuffer = GetSubBuffer(List, List->WritePos);
   buf_view V = CreateBufView(WriteBuffer);
   BufViewWriteMemsize(&V, Chunk.Length);
@@ -31,7 +31,7 @@ void ChunkListWrite(chunk_list *List, buffer Chunk) {
 }
 
 void* ChunkListAllocate(chunk_list *List, memsize Length) {
-  Assert(List->Buffer.Length - List->WritePos >= Length);
+  Assert(List->Buffer.Length - List->WritePos >= Length + sizeof(memsize));
   buffer WriteBuffer = GetSubBuffer(List, List->WritePos);
   buf_view V = CreateBufView(WriteBuffer);
   BufViewWriteMemsize(&V, Length);
