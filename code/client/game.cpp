@@ -199,12 +199,7 @@ void ProcessMessageEvent(message_net_event Event, game_state *State, chunk_list 
         }
       }
 
-      // TODO: In theory, this could overflow. Set up some kind of
-      // general max size policy for order lists.
-      buffer SimOrderListBuffer;
-      SimOrderListBuffer.Length = 1024*200;
-      SimOrderListBuffer.Addr = LinearAllocate(&State->Allocator, SimOrderListBuffer.Length);
-      SimOrderListBuffer.Length = SerializeOrderList(&SimOrderList, SimOrderListBuffer);
+      buffer SimOrderListBuffer = SerializeOrderList(&SimOrderList, &State->Allocator);
       ChunkRingBufferWrite(&State->OrderListRing, SimOrderListBuffer);
 
       RestoreLinearAllocatorContext(LAContext);

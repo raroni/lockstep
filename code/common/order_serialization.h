@@ -2,7 +2,7 @@
 #include "common/memory.h"
 #include "simulation.h"
 
-memsize SerializeOrder(simulation_order Order, buffer Output);
+buffer SerializeOrder(simulation_order Order, linear_allocator *Allocator);
 simulation_order UnserializeOrder(buffer Order, linear_allocator *Allocator);
-memsize SerializeOrderList(simulation_order_list *List, buffer Output);
+buffer SerializeOrderList(simulation_order_list *List, linear_allocator *Allocator);
 simulation_order_list UnserializeOrderList(buffer ListBuffer, linear_allocator *Allocator);

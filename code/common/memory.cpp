@@ -11,9 +11,13 @@ void InitLinearAllocator(linear_allocator *A, void *Base, memsize Capacity) {
 void* LinearAllocate(linear_allocator *A, memsize Size) {
   Assert(Size != 0);
   Assert(A->Capacity >= A->Length+Size);
-  void *Result = (ui8*)A->Base + A->Length;
+  void *Result = GetLinearAllocatorHead(A);
   A->Length += Size;
   return Result;
+}
+
+void* GetLinearAllocatorHead(linear_allocator *A) {
+  return (ui8*)A->Base + A->Length;
 }
 
 void TerminateLinearAllocator(linear_allocator *A) {

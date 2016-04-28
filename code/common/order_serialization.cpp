@@ -1,16 +1,17 @@
 #include "common/conversion.h"
 #include "order_serialization.h"
+#include "lib/data_writer.h"
 
-static void WriterOrder(simulation_order Order, serializer *W) {
+static void WriterOrder(simulation_order Order, data_writer *W) {
   ui16 PlayerIDUI8 = SafeCastIntToUI8(Order.PlayerID);
 
-  SerializerWriteUI8(W, PlayerIDUI8);
-  SerializerWriteUI16(W, Order.UnitCount);
-  SerializerWriteSI16(W, Order.Target.X);
-  SerializerWriteSI16(W, Order.Target.Y);
+  WriteUI8(W, PlayerIDUI8);
+  WriteUI16(W, Order.UnitCount);
+  WriteSI16(W, Order.Target.X);
+  WriteSI16(W, Order.Target.Y);
   for(memsize I=0; I<Order.UnitCount; ++I) {
     ui16 UnitIDUI16 = SafeCastIntToUI16(Order.UnitIDs[I]);
-    SerializerWriteUI16(W, UnitIDUI16);
+    WriteUI16(W, UnitIDUI16);
   }
 }
 
@@ -31,10 +32,10 @@ static simulation_order ReadOrder(serializer *S, linear_allocator *Allocator) {
   return Order;
 }
 
-memsize SerializeOrder(simulation_order Order, buffer Out) {
-  serializer W = CreateSerializer(Out);
+buffer SerializeOrder(simulation_order Order, linear_allocator *Allocator) {
+  data_writer W = CreateDataWriter(Allocator);
   WriterOrder(Order, &W);
-  return W.Position;
+  return W.Buffer;
 }
 
 simulation_order UnserializeOrder(buffer OrderBuffer, linear_allocator *Allocator) {
@@ -42,15 +43,15 @@ simulation_order UnserializeOrder(buffer OrderBuffer, linear_allocator *Allocato
   return ReadOrder(&W, Allocator);
 }
 
-memsize SerializeOrderList(simulation_order_list *List, buffer Output) {
-  serializer W = CreateSerializer(Output);
-  SerializerWriteUI16(&W, List->Count);
+buffer SerializeOrderList(simulation_order_list *List, linear_allocator *Allocator) {
+  data_writer W = CreateDataWriter(Allocator);
+  WriteUI16(&W, List->Count);
 
   for(memsize I=0; I<List->Count; ++I) {
     WriterOrder(List->Orders[I], &W);
   }
 
-  return W.Position;
+  return W.Buffer;
 }
 
 simulation_order_list UnserializeOrderList(buffer ListBuffer, linear_allocator *Allocator) {
