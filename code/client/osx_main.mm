@@ -5,8 +5,8 @@
 #include <Foundation/Foundation.h>
 #include <AppKit/AppKit.h>
 #include "lib/assert.h"
+#include "lib/memory.h"
 #include "common/net_messages.h"
-#include "common/memory.h"
 #include "common/posix_time.h"
 #include "net_commands.h"
 #include "net_events.h"

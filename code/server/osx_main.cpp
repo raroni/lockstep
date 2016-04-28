@@ -5,7 +5,7 @@
 #include <unistd.h>
 #include "lib/assert.h"
 #include "lib/chunk_list.h"
-#include "common/memory.h"
+#include "lib/memory.h"
 #include "common/posix_time.h"
 #include "net_commands.h"
 #include "net_events.h"

@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include "lib/assert.h"
-#include "common/memory.h"
+#include "lib/memory.h"
 #include "common/net_messages.h"
 #include "common/simulation.h"
 #include "net_events.h"

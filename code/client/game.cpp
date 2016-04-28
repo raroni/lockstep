@@ -4,7 +4,7 @@
 #include "lib/assert.h"
 #include "lib/int_seq.h"
 #include "lib/chunk_ring_buffer.h"
-#include "common/memory.h"
+#include "lib/memory.h"
 #include "common/net_messages.h"
 #include "common/simulation.h"
 #include "common/order_serialization.h"

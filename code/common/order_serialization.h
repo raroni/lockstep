@@ -1,5 +1,5 @@
 #include "lib/buf_view.h"
-#include "common/memory.h"
+#include "lib/memory.h"
 #include "simulation.h"
 
 buffer SerializeOrder(simulation_order Order, linear_allocator *Allocator);

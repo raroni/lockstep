@@ -1,5 +1,5 @@
 #include "lib/def.h"
-#include "common/memory.h"
+#include "lib/memory.h"
 
 struct seq_write {
   linear_allocator *Allocator;

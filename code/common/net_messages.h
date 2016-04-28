@@ -2,7 +2,7 @@
 
 #include "lib/def.h"
 #include "lib/math.h"
-#include "common/memory.h"
+#include "lib/memory.h"
 
 #define NET_MESSAGE_MAX_LENGTH 1024
 

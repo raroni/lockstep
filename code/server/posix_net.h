@@ -2,7 +2,7 @@
 
 #include "lib/def.h"
 #include "lib/chunk_ring_buffer.h"
-#include "common/memory.h"
+#include "lib/memory.h"
 #include "posix_net_client_set.h"
 
 enum posix_net_mode {

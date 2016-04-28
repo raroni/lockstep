@@ -1,7 +1,7 @@
 #pragma once
 
 #include "lib/def.h"
-#include "common/memory.h"
+#include "lib/memory.h"
 
 #define NET_EVENT_MAX_LENGTH 512
 

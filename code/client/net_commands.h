@@ -1,6 +1,6 @@
 #pragma once
 
-#include "common/memory.h"
+#include "lib/memory.h"
 
 #define NET_COMMAND_MAX_LENGTH 512
 
