@@ -5,6 +5,7 @@
 #include "lib/int_seq.h"
 #include "lib/chunk_ring_buffer.h"
 #include "lib/memory_arena.h"
+#include "lib/min_max.h"
 #include "common/net_messages.h"
 #include "common/simulation.h"
 #include "common/order_serialization.h"
@@ -323,6 +324,7 @@ void UpdateGame(game_platform *Platform, chunk_list *NetEvents, chunk_list *NetC
       uusec64 TimeUntilNextTick = State->NextTickTime - Platform->Time;
       uusec64 TimeSpentInCurrentTick = TickDuration - TimeUntilNextTick;
       TickProgress = (r32)TimeSpentInCurrentTick / (r32)TickDuration;
+      TickProgress = MinR32(TickProgress, 1.0f);
     }
     UpdateInterpolation(&State->Interpolation, &State->Sim, TickProgress);
     Render(&State->Sim, &State->Interpolation, &State->UnitSelection, RenderCmds, Platform->Resolution);
