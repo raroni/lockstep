@@ -162,22 +162,3 @@ int main() {
   printf("Gracefully terminated.\n");
   return 0;
 }
-
-
-
-
-// clude <unistd.h>
-// clude <sys/time.h>
-// clude "SysTime/SysTime.h"
-
-// namespace SysTime {
-//   USecond64 get() {
-//     struct timeval tv;
-//     gettimeofday(&tv, NULL);
-//     return (tv.tv_sec*1000000+tv.tv_usec);
-//   }
-
-//   void sleep(USecond64 duration) {
-//     usleep(static_cast<useconds_t>(duration));
-//   }
-// }
