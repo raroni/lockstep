@@ -10,20 +10,20 @@ seq_write CreateSeqWrite(linear_allocator *Allocator) {
   return Writer;
 }
 
-static void Write(seq_write *Writer, void *DataAddr, memsize DataLength) {
+void SeqWrite(seq_write *Writer, void *DataAddr, memsize DataLength) {
   void *Destination = LinearAllocate(Writer->Allocator, DataLength);
   memcpy(Destination, DataAddr, DataLength);
   Writer->Buffer.Length += DataLength;
 }
 
 void SeqWriteUI8(seq_write *Writer, ui8 Int) {
-  Write(Writer, &Int, sizeof(Int));
+  SeqWrite(Writer, &Int, sizeof(Int));
 }
 
 void SeqWriteUI16(seq_write *Writer, ui16 Int) {
-  Write(Writer, &Int, sizeof(Int));
+  SeqWrite(Writer, &Int, sizeof(Int));
 }
 
 void SeqWriteSI16(seq_write *Writer, si16 Int) {
-  Write(Writer, &Int, sizeof(Int));
+  SeqWrite(Writer, &Int, sizeof(Int));
 }

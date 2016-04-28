@@ -7,6 +7,7 @@ struct seq_write {
 };
 
 seq_write CreateSeqWrite(linear_allocator *Allocator);
+void SeqWrite(seq_write *Writer, void *DataAddr, memsize DataLength);
 void SeqWriteUI8(seq_write *Writer, ui8 Int);
 void SeqWriteUI16(seq_write *Writer, ui16 Int);
 void SeqWriteSI16(seq_write *Writer, si16 Int);
