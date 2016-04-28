@@ -1,6 +1,6 @@
 #include "lib/assert.h"
 #include "lib/serialization.h"
-#include "lib/data_writer.h"
+#include "lib/seq_write.h"
 #include "common/conversion.h"
 #include "net_messages.h"
 
@@ -9,9 +9,9 @@ void WriteType(serializer *S, net_message_type Type) {
   SerializerWriteUI8(S, TypeUI8);
 }
 
-void WriteType(data_writer *W, net_message_type Type) {
+void WriteType(seq_write *W, net_message_type Type) {
   ui8 TypeUI8 = SafeCastIntToUI8(Type);
-  WriteUI8(W, TypeUI8);
+  SeqWriteUI8(W, TypeUI8);
 }
 
 static order_net_message UnserializeOrderHeader(serializer *S) {
@@ -28,41 +28,41 @@ static order_net_message UnserializeOrderHeader(serializer *S) {
 }
 
 buffer SerializeStartNetMessage(memsize PlayerCount, memsize PlayerIndex, linear_allocator *Allocator) {
-  data_writer W = CreateDataWriter(Allocator);
+  seq_write W = CreateSeqWrite(Allocator);
 
   ui8 TypeUI8 = SafeCastIntToUI8(net_message_type_start);
-  WriteUI8(&W, TypeUI8);
+  SeqWriteUI8(&W, TypeUI8);
 
   ui8 PlayerCountUI8 = SafeCastIntToUI8(PlayerCount);
-  WriteUI8(&W, PlayerCountUI8);
+  SeqWriteUI8(&W, PlayerCountUI8);
 
   ui8 PlayerIndexUI8 = SafeCastIntToUI8(PlayerIndex);
-  WriteUI8(&W, PlayerIndexUI8);
+  SeqWriteUI8(&W, PlayerIndexUI8);
 
   return W.Buffer;
 }
 
 buffer SerializeReplyNetMessage(linear_allocator *Allocator) {
   ui8 TypeInt = SafeCastIntToUI8(net_message_type_reply);
-  data_writer W = CreateDataWriter(Allocator);
-  WriteUI8(&W, TypeInt);
+  seq_write W = CreateSeqWrite(Allocator);
+  SeqWriteUI8(&W, TypeInt);
   return W.Buffer;
 }
 
 buffer SerializeOrderListNetMessage(net_message_order *Orders, ui16 OrderCount, linear_allocator *Allocator) {
-  data_writer W = CreateDataWriter(Allocator);
+  seq_write W = CreateSeqWrite(Allocator);
   WriteType(&W, net_message_type_order_list);
-  WriteUI16(&W, OrderCount);
+  SeqWriteUI16(&W, OrderCount);
 
   for(memsize I=0; I<OrderCount; ++I) {
     net_message_order *O = Orders + I;
-    WriteUI8(&W, O->PlayerID);
-    WriteUI16(&W, O->UnitCount);
-    WriteUI16(&W, O->Target.X);
-    WriteUI16(&W, O->Target.Y);
+    SeqWriteUI8(&W, O->PlayerID);
+    SeqWriteUI16(&W, O->UnitCount);
+    SeqWriteUI16(&W, O->Target.X);
+    SeqWriteUI16(&W, O->Target.Y);
 
     for(memsize U=0; U<O->UnitCount; ++U) {
-      WriteUI16(&W, O->UnitIDs[U]);
+      SeqWriteUI16(&W, O->UnitIDs[U]);
     }
   }
 
@@ -72,17 +72,17 @@ buffer SerializeOrderListNetMessage(net_message_order *Orders, ui16 OrderCount, 
 buffer SerializeOrderNetMessage(ui16 *UnitIDs, memsize UnitCount, ivec2 Target, linear_allocator *Allocator) {
   Assert(GetLinearAllocatorFree(Allocator) >= NET_MESSAGE_MAX_LENGTH);
 
-  data_writer W = CreateDataWriter(Allocator);
+  seq_write W = CreateSeqWrite(Allocator);
   WriteType(&W, net_message_type_order);
   ui16 UnitCountUI16 = SafeCastIntToUI16(UnitCount);
-  WriteUI16(&W, UnitCountUI16);
+  SeqWriteUI16(&W, UnitCountUI16);
 
-  WriteSI16(&W, Target.X);
-  WriteSI16(&W, Target.Y);
+  SeqWriteSI16(&W, Target.X);
+  SeqWriteSI16(&W, Target.Y);
 
   for(memsize I=0; I<UnitCount; ++I) {
     ui16 IDUI16 = SafeCastIntToUI16(UnitIDs[I]);
-    WriteUI16(&W, IDUI16);
+    SeqWriteUI16(&W, IDUI16);
   }
 
   Assert(W.Buffer.Length <= NET_MESSAGE_MAX_LENGTH);

@@ -1,17 +1,17 @@
 #include "common/conversion.h"
 #include "order_serialization.h"
-#include "lib/data_writer.h"
+#include "lib/seq_write.h"
 
-static void WriterOrder(simulation_order Order, data_writer *W) {
+static void WriterOrder(simulation_order Order, seq_write *W) {
   ui16 PlayerIDUI8 = SafeCastIntToUI8(Order.PlayerID);
 
-  WriteUI8(W, PlayerIDUI8);
-  WriteUI16(W, Order.UnitCount);
-  WriteSI16(W, Order.Target.X);
-  WriteSI16(W, Order.Target.Y);
+  SeqWriteUI8(W, PlayerIDUI8);
+  SeqWriteUI16(W, Order.UnitCount);
+  SeqWriteSI16(W, Order.Target.X);
+  SeqWriteSI16(W, Order.Target.Y);
   for(memsize I=0; I<Order.UnitCount; ++I) {
     ui16 UnitIDUI16 = SafeCastIntToUI16(Order.UnitIDs[I]);
-    WriteUI16(W, UnitIDUI16);
+    SeqWriteUI16(W, UnitIDUI16);
   }
 }
 
@@ -33,7 +33,7 @@ static simulation_order ReadOrder(serializer *S, linear_allocator *Allocator) {
 }
 
 buffer SerializeOrder(simulation_order Order, linear_allocator *Allocator) {
-  data_writer W = CreateDataWriter(Allocator);
+  seq_write W = CreateSeqWrite(Allocator);
   WriterOrder(Order, &W);
   return W.Buffer;
 }
@@ -44,8 +44,8 @@ simulation_order UnserializeOrder(buffer OrderBuffer, linear_allocator *Allocato
 }
 
 buffer SerializeOrderList(simulation_order_list *List, linear_allocator *Allocator) {
-  data_writer W = CreateDataWriter(Allocator);
-  WriteUI16(&W, List->Count);
+  seq_write W = CreateSeqWrite(Allocator);
+  SeqWriteUI16(&W, List->Count);
 
   for(memsize I=0; I<List->Count; ++I) {
     WriterOrder(List->Orders[I], &W);
