@@ -65,8 +65,8 @@ void InitGame(buffer Memory) {
 
   {
     buffer *B = &State->CommandSerializationBuffer;
-    B->Addr = LinearAllocate(&State->Allocator, NETWORK_COMMAND_MAX_LENGTH);
-    B->Length = NETWORK_COMMAND_MAX_LENGTH;
+    B->Addr = LinearAllocate(&State->Allocator, NET_COMMAND_MAX_LENGTH);
+    B->Length = NET_COMMAND_MAX_LENGTH;
   }
 
   {
@@ -150,7 +150,7 @@ void ProcessMessageEvent(message_net_event Event, game_state *State, chunk_list 
       InitInterpolation(&State->Interpolation, &State->Sim);
 
       linear_allocator_checkpoint MemCheckpoint = CreateLinearAllocatorCheckpoint(&State->Allocator);
-      Assert(GetLinearAllocatorFree(&State->Allocator) >= NET_MESSAGE_MAX_LENGTH + NETWORK_COMMAND_MAX_LENGTH);
+      Assert(GetLinearAllocatorFree(&State->Allocator) >= NET_MESSAGE_MAX_LENGTH + NET_COMMAND_MAX_LENGTH);
 
       buffer ReplyMessage = SerializeReplyNetMessage(&State->Allocator);
       printf("Starting game and replying...\n");
@@ -236,7 +236,7 @@ void ProcessMouse(simulation *Sim, linear_allocator *Allocator, simulation_playe
     }
     else if(UnitSelection->Count != 0) {
       linear_allocator_checkpoint MemCheckpoint = CreateLinearAllocatorCheckpoint(Allocator);
-      Assert(GetLinearAllocatorFree(Allocator) >= NET_MESSAGE_MAX_LENGTH + NETWORK_COMMAND_MAX_LENGTH);
+      Assert(GetLinearAllocatorFree(Allocator) >= NET_MESSAGE_MAX_LENGTH + NET_COMMAND_MAX_LENGTH);
 
       buffer OrderMessage = SerializeOrderNetMessage(
         UnitSelection->IDs,
@@ -324,7 +324,7 @@ void UpdateGame(game_platform *Platform, chunk_list *NetEvents, chunk_list *NetC
     printf("Requesting net shutdown...\n");
 
     linear_allocator_checkpoint MemCheckpoint = CreateLinearAllocatorCheckpoint(&State->Allocator);
-    Assert(GetLinearAllocatorFree(&State->Allocator) >= NETWORK_COMMAND_MAX_LENGTH);
+    Assert(GetLinearAllocatorFree(&State->Allocator) >= NET_COMMAND_MAX_LENGTH);
     buffer Command = SerializeShutdownNetCommand(&State->Allocator);
     ChunkListWrite(NetCmds, Command);
     ReleaseLinearAllocatorCheckpoint(MemCheckpoint);

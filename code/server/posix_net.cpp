@@ -93,8 +93,8 @@ void InitPosixNet(posix_net_context *Context) {
 
   Context->ReceiveBuffer = CreateBuffer(1024*10);
   Context->EventOutBuffer = CreateBuffer(NET_EVENT_MAX_LENGTH);
-  Context->CommandSerializationBuffer = CreateBuffer(NETWORK_COMMAND_MAX_LENGTH);
-  Context->CommandReadBuffer = CreateBuffer(NETWORK_COMMAND_MAX_LENGTH);
+  Context->CommandSerializationBuffer = CreateBuffer(NET_COMMAND_MAX_LENGTH);
+  Context->CommandReadBuffer = CreateBuffer(NET_COMMAND_MAX_LENGTH);
   Context->IncomingReadBuffer = CreateBuffer(NET_MESSAGE_MAX_LENGTH);
 
   InitPosixNetClientSet(&Context->ClientSet);
@@ -146,7 +146,7 @@ void TerminatePosixNet(posix_net_context *Context) {
 
 void ShutdownPosixNet(posix_net_context *Context) {
   linear_allocator_checkpoint MemCheckpoint = CreateLinearAllocatorCheckpoint(&Context->Allocator);
-  Assert(GetLinearAllocatorFree(&Context->Allocator) >= NETWORK_COMMAND_MAX_LENGTH);
+  Assert(GetLinearAllocatorFree(&Context->Allocator) >= NET_COMMAND_MAX_LENGTH);
 
   buffer Command = SerializeShutdownNetCommand(&Context->Allocator);
   ChunkRingBufferWrite(&Context->CommandRing, Command);
@@ -204,7 +204,7 @@ memsize ReadPosixNetEvent(posix_net_context *Context, buffer Buffer) {
 
 void PosixNetBroadcast(posix_net_context *Context, net_client_id *IDs, memsize IDCount, buffer Message) {
   linear_allocator_checkpoint MemCheckpoint = CreateLinearAllocatorCheckpoint(&Context->Allocator);
-  Assert(GetLinearAllocatorFree(&Context->Allocator) >= NETWORK_COMMAND_MAX_LENGTH);
+  Assert(GetLinearAllocatorFree(&Context->Allocator) >= NET_COMMAND_MAX_LENGTH);
   buffer Command = SerializeBroadcastNetCommand(
     IDs,
     IDCount,
@@ -219,7 +219,7 @@ void PosixNetBroadcast(posix_net_context *Context, net_client_id *IDs, memsize I
 
 void PosixNetSend(posix_net_context *Context, net_client_id ID, buffer Message) {
   linear_allocator_checkpoint MemCheckpoint = CreateLinearAllocatorCheckpoint(&Context->Allocator);
-  Assert(GetLinearAllocatorFree(&Context->Allocator) >= NETWORK_COMMAND_MAX_LENGTH);
+  Assert(GetLinearAllocatorFree(&Context->Allocator) >= NET_COMMAND_MAX_LENGTH);
 
   buffer Command = SerializeSendNetCommand(ID, Message, &Context->Allocator);
   ChunkRingBufferWrite(&Context->CommandRing, Command);

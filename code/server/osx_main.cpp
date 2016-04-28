@@ -94,7 +94,7 @@ int main() {
 
   {
     buffer Buffer;
-    Buffer.Length = NETWORK_COMMAND_MAX_LENGTH*100;
+    Buffer.Length = NET_COMMAND_MAX_LENGTH*100;
     Buffer.Addr = LinearAllocate(&State.Allocator, Buffer.Length);
     InitChunkList(&State.NetCommandList, Buffer);
   }

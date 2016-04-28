@@ -102,8 +102,8 @@ void InitPosixNet(posix_net_context *Context) {
     InitByteRingBuffer(&Context->IncomingRing, Buffer);
   }
 
-  Context->CommandSerializationBuffer = CreateBuffer(NETWORK_COMMAND_MAX_LENGTH);
-  Context->CommandReadBuffer = CreateBuffer(NETWORK_COMMAND_MAX_LENGTH);
+  Context->CommandSerializationBuffer = CreateBuffer(NET_COMMAND_MAX_LENGTH);
+  Context->CommandReadBuffer = CreateBuffer(NET_COMMAND_MAX_LENGTH);
   Context->ReceiveBuffer = CreateBuffer(1024*10);
   Context->IncomingReadBuffer = CreateBuffer(NET_MESSAGE_MAX_LENGTH);
 
@@ -284,7 +284,7 @@ void* RunPosixNet(void *VoidContext) {
 
 void ShutdownPosixNet(posix_net_context *Context) {
   linear_allocator_checkpoint MemCheckpoint = CreateLinearAllocatorCheckpoint(&Context->Allocator);
-  Assert(GetLinearAllocatorFree(&Context->Allocator) >= NETWORK_COMMAND_MAX_LENGTH);
+  Assert(GetLinearAllocatorFree(&Context->Allocator) >= NET_COMMAND_MAX_LENGTH);
 
   buffer Command = SerializeShutdownNetCommand(&Context->Allocator);
   ChunkRingBufferWrite(&Context->CommandRing, Command);
@@ -295,7 +295,7 @@ void ShutdownPosixNet(posix_net_context *Context) {
 
 void PosixNetSend(posix_net_context *Context, buffer Message) {
   linear_allocator_checkpoint MemCheckpoint = CreateLinearAllocatorCheckpoint(&Context->Allocator);
-  Assert(GetLinearAllocatorFree(&Context->Allocator) >= NETWORK_COMMAND_MAX_LENGTH);
+  Assert(GetLinearAllocatorFree(&Context->Allocator) >= NET_COMMAND_MAX_LENGTH);
   buffer Command = SerializeSendNetCommand(Message, &Context->Allocator);
   ChunkRingBufferWrite(&Context->CommandRing, Command);
   ReleaseLinearAllocatorCheckpoint(MemCheckpoint);

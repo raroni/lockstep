@@ -73,7 +73,7 @@ static void Broadcast(const player_set *Set, const buffer Message, chunk_list *C
   }
 
   linear_allocator_checkpoint MemCheckpoint = CreateLinearAllocatorCheckpoint(Allocator);
-  Assert(GetLinearAllocatorFree(Allocator) >= NETWORK_COMMAND_MAX_LENGTH);
+  Assert(GetLinearAllocatorFree(Allocator) >= NET_COMMAND_MAX_LENGTH);
   buffer Command = SerializeBroadcastNetCommand(IDs, Set->Count, Message, Allocator);
   ChunkListWrite(Commands, Command);
   ReleaseLinearAllocatorCheckpoint(MemCheckpoint);
@@ -116,7 +116,7 @@ void StartGame(game_state *State, chunk_list *NetCmds, uusec64 Time) {
   for(memsize I=0; I<Set->Count; ++I) {
     linear_allocator_checkpoint MemCheckpoint = CreateLinearAllocatorCheckpoint(&State->Allocator);
 
-    Assert(GetLinearAllocatorFree(&State->Allocator) >= NET_MESSAGE_MAX_LENGTH + NETWORK_COMMAND_MAX_LENGTH);
+    Assert(GetLinearAllocatorFree(&State->Allocator) >= NET_MESSAGE_MAX_LENGTH + NET_COMMAND_MAX_LENGTH);
     buffer Message = SerializeStartNetMessage(Set->Count, I, &State->Allocator);
     buffer Command = SerializeSendNetCommand(Set->Players[I].ClientID, Message, &State->Allocator);
     ChunkListWrite(NetCmds, Command);
@@ -242,7 +242,7 @@ void UpdateGame(
     State->Mode = game_mode_disconnecting;
 
     linear_allocator_checkpoint MemCheckpoint = CreateLinearAllocatorCheckpoint(&State->Allocator);
-    Assert(GetLinearAllocatorFree(&State->Allocator) >= NETWORK_COMMAND_MAX_LENGTH);
+    Assert(GetLinearAllocatorFree(&State->Allocator) >= NET_COMMAND_MAX_LENGTH);
     buffer Command = SerializeShutdownNetCommand(&State->Allocator);
     ChunkListWrite(Commands, Command);
     ReleaseLinearAllocatorCheckpoint(MemCheckpoint);
@@ -251,7 +251,7 @@ void UpdateGame(
     printf("All players has left. Stopping game.\n");
     if(State->Mode != game_mode_disconnecting) {
       linear_allocator_checkpoint MemCheckpoint = CreateLinearAllocatorCheckpoint(&State->Allocator);
-      Assert(GetLinearAllocatorFree(&State->Allocator) >= NETWORK_COMMAND_MAX_LENGTH);
+      Assert(GetLinearAllocatorFree(&State->Allocator) >= NET_COMMAND_MAX_LENGTH);
       buffer Command = SerializeShutdownNetCommand(&State->Allocator);
       ChunkListWrite(Commands, Command);
       ReleaseLinearAllocatorCheckpoint(MemCheckpoint);

@@ -3,7 +3,7 @@
 #include "common/memory.h"
 #include "net.h"
 
-#define NETWORK_COMMAND_MAX_LENGTH 512
+#define NET_COMMAND_MAX_LENGTH 512
 
 enum net_command_type {
   net_command_type_shutdown,
