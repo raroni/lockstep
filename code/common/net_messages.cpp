@@ -4,11 +4,6 @@
 #include "common/conversion.h"
 #include "net_messages.h"
 
-void WriteType(serializer *S, net_message_type Type) {
-  ui8 TypeUI8 = SafeCastIntToUI8(Type);
-  SerializerWriteUI8(S, TypeUI8);
-}
-
 void WriteType(seq_write *W, net_message_type Type) {
   ui8 TypeUI8 = SafeCastIntToUI8(Type);
   SeqWriteUI8(W, TypeUI8);
