@@ -1,12 +1,12 @@
 #include "lib/def.h"
-#include "lib/memory.h"
+#include "lib/memory_arena.h"
 
 struct seq_write {
-  linear_allocator *Allocator;
+  memory_arena *Arena;
   buffer Buffer;
 };
 
-seq_write CreateSeqWrite(linear_allocator *Allocator);
+seq_write CreateSeqWrite(memory_arena *Arena);
 void SeqWrite(seq_write *Writer, const void *DataAddr, memsize DataLength);
 void SeqWriteUI8(seq_write *Writer, ui8 Int);
 void SeqWriteUI16(seq_write *Writer, ui16 Int);

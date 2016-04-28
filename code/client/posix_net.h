@@ -13,7 +13,7 @@ enum posix_net_state {
 
 struct posix_net_context {
   void *Memory;
-  linear_allocator Allocator;
+  memory_arena Arena;
   chunk_ring_buffer EventRing;
   chunk_ring_buffer CommandRing;
   byte_ring_buffer IncomingRing;

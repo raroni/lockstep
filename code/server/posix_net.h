@@ -2,7 +2,7 @@
 
 #include "lib/def.h"
 #include "lib/chunk_ring_buffer.h"
-#include "lib/memory.h"
+#include "lib/memory_arena.h"
 #include "posix_net_client_set.h"
 
 enum posix_net_mode {
@@ -17,7 +17,7 @@ struct posix_net_context {
   int WakeWriteFD;
   int ReadFDMax;
   void *Memory;
-  linear_allocator Allocator;
+  memory_arena Arena;
   chunk_ring_buffer CommandRing;
   chunk_ring_buffer EventRing;
   posix_net_client_set ClientSet;

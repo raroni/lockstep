@@ -3,9 +3,9 @@
 #include "lib/seq_write.h"
 #include "net_commands.h"
 
-buffer SerializeShutdownNetCommand(linear_allocator *Allocator) {
+buffer SerializeShutdownNetCommand(memory_arena *Arena) {
   net_command_type Type = net_command_type_shutdown;
-  seq_write S = CreateSeqWrite(Allocator);
+  seq_write S = CreateSeqWrite(Arena);
   SeqWrite(&S, &Type, sizeof(Type));
   return S.Buffer;
 }
@@ -15,9 +15,9 @@ net_command_type UnserializeNetCommandType(buffer Buffer) {
   return *(net_command_type*)Buffer.Addr;
 }
 
-buffer SerializeSendNetCommand(buffer Message, linear_allocator *Allocator) {
+buffer SerializeSendNetCommand(buffer Message, memory_arena *Arena) {
   net_command_type Type = net_command_type_send;
-  seq_write S = CreateSeqWrite(Allocator);
+  seq_write S = CreateSeqWrite(Arena);
   SeqWrite(&S, &Type, sizeof(Type));
   SeqWriteBuffer(&S, Message);
   return S.Buffer;

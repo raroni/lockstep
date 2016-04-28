@@ -3,9 +3,9 @@
 #include "lib/seq_write.h"
 #include "net_commands.h"
 
-buffer SerializeShutdownNetCommand(linear_allocator *Allocator) {
+buffer SerializeShutdownNetCommand(memory_arena *Arena) {
   net_command_type Type = net_command_type_shutdown;
-  seq_write S = CreateSeqWrite(Allocator);
+  seq_write S = CreateSeqWrite(Arena);
   SeqWrite(&S, &Type, sizeof(Type));
   return S.Buffer;
 }
@@ -15,8 +15,8 @@ net_command_type UnserializeNetCommandType(buffer Buffer) {
   return *(net_command_type*)Buffer.Addr;
 }
 
-buffer SerializeBroadcastNetCommand(const net_client_id *IDs, memsize IDCount, const buffer Message, linear_allocator *Allocator) {
-  seq_write S = CreateSeqWrite(Allocator);
+buffer SerializeBroadcastNetCommand(const net_client_id *IDs, memsize IDCount, const buffer Message, memory_arena *Arena) {
+  seq_write S = CreateSeqWrite(Arena);
   net_command_type Type = net_command_type_broadcast;
   SeqWrite(&S, &Type, sizeof(Type));
   SeqWriteMemsize(&S, IDCount);
@@ -26,8 +26,8 @@ buffer SerializeBroadcastNetCommand(const net_client_id *IDs, memsize IDCount, c
   return S.Buffer;
 }
 
-buffer SerializeSendNetCommand(net_client_id ID, const buffer Message, linear_allocator *Allocator) {
-  seq_write S = CreateSeqWrite(Allocator);
+buffer SerializeSendNetCommand(net_client_id ID, const buffer Message, memory_arena *Arena) {
+  seq_write S = CreateSeqWrite(Arena);
   net_command_type Type = net_command_type_send;
   SeqWrite(&S, &Type, sizeof(Type));
   SeqWrite(&S, &ID, sizeof(ID));

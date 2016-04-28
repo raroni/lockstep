@@ -14,20 +14,20 @@ static net_event_type ReadType(buf_view *V) {
   return (net_event_type)TypeInt;
 }
 
-buffer SerializeConnectionEstablishedNetEvent(linear_allocator *Allocator) {
-  seq_write W = CreateSeqWrite(Allocator);
+buffer SerializeConnectionEstablishedNetEvent(memory_arena *Arena) {
+  seq_write W = CreateSeqWrite(Arena);
   WriteType(&W, net_event_type_connection_established);
   return W.Buffer;
 }
 
-buffer SerializeConnectionLostNetEvent(linear_allocator *Allocator) {
-  seq_write W = CreateSeqWrite(Allocator);
+buffer SerializeConnectionLostNetEvent(memory_arena *Arena) {
+  seq_write W = CreateSeqWrite(Arena);
   WriteType(&W, net_event_type_connection_lost);
   return W.Buffer;
 }
 
-buffer SerializeConnectionFailedNetEvent(linear_allocator *Allocator) {
-  seq_write W = CreateSeqWrite(Allocator);
+buffer SerializeConnectionFailedNetEvent(memory_arena *Arena) {
+  seq_write W = CreateSeqWrite(Arena);
   WriteType(&W, net_event_type_connection_failed);
   return W.Buffer;
 }
@@ -37,8 +37,8 @@ net_event_type UnserializeNetEventType(buffer Input) {
   return ReadType(&V);
 }
 
-buffer SerializeMessageNetEvent(buffer Message, linear_allocator *Allocator) {
-  seq_write W = CreateSeqWrite(Allocator);
+buffer SerializeMessageNetEvent(buffer Message, memory_arena *Arena) {
+  seq_write W = CreateSeqWrite(Arena);
 
   WriteType(&W, net_event_type_message);
   SeqWriteMemsize(&W, Message.Length);

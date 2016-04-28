@@ -1,17 +1,17 @@
 #include <string.h>
 #include "seq_write.h"
 
-seq_write CreateSeqWrite(linear_allocator *Allocator) {
+seq_write CreateSeqWrite(memory_arena *Arena) {
   seq_write Writer;
 
-  Writer.Allocator = Allocator;
-  Writer.Buffer.Addr = GetLinearAllocatorHead(Allocator);
+  Writer.Arena = Arena;
+  Writer.Buffer.Addr = GetMemoryArenaHead(Arena);
   Writer.Buffer.Length = 0;
   return Writer;
 }
 
 void SeqWrite(seq_write *Writer, const void *DataAddr, memsize DataLength) {
-  void *Destination = LinearAllocate(Writer->Allocator, DataLength);
+  void *Destination = MemoryArenaAllocate(Writer->Arena, DataLength);
   memcpy(Destination, DataAddr, DataLength);
   Writer->Buffer.Length += DataLength;
 }

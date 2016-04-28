@@ -29,22 +29,22 @@ static void WriteClientID(seq_write *W, net_client_id ID) {
 }
 
 
-buffer SerializeDisconnectNetEvent(net_client_id ID, linear_allocator *Allocator) {
-  seq_write W = CreateSeqWrite(Allocator);
+buffer SerializeDisconnectNetEvent(net_client_id ID, memory_arena *Arena) {
+  seq_write W = CreateSeqWrite(Arena);
   WriteType(&W, net_event_type_disconnect);
   WriteClientID(&W, ID);
   return W.Buffer;
 }
 
-buffer SerializeConnectNetEvent(net_client_id ID, linear_allocator *Allocator) {
-  seq_write W = CreateSeqWrite(Allocator);
+buffer SerializeConnectNetEvent(net_client_id ID, memory_arena *Arena) {
+  seq_write W = CreateSeqWrite(Arena);
   WriteType(&W, net_event_type_connect);
   WriteClientID(&W, ID);
   return W.Buffer;
 }
 
-buffer SerializeMessageNetEvent(net_client_id ID, buffer Message, linear_allocator *Allocator) {
-  seq_write W = CreateSeqWrite(Allocator);
+buffer SerializeMessageNetEvent(net_client_id ID, buffer Message, memory_arena *Arena) {
+  seq_write W = CreateSeqWrite(Arena);
 
   WriteType(&W, net_event_type_message);
   WriteClientID(&W, ID);

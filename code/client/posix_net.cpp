@@ -39,11 +39,11 @@ static void DestroyBuffer(buffer *B) {
 static void InitMemory(posix_net_context *Context) {
   memsize MemorySize = 1024*1024*5;
   Context->Memory = malloc(MemorySize);
-  InitLinearAllocator(&Context->Allocator, Context->Memory, MemorySize);
+  InitMemoryArena(&Context->Arena, Context->Memory, MemorySize);
 }
 
 static void TerminateMemory(posix_net_context *Context) {
-  TerminateLinearAllocator(&Context->Allocator);
+  TerminateMemoryArena(&Context->Arena);
   free(Context->Memory);
   Context->Memory = NULL;
 }
@@ -74,7 +74,7 @@ void InitPosixNet(posix_net_context *Context) {
 
   {
     memsize Length = 1024*100;
-    void *EventBufferAddr = LinearAllocate(&Context->Allocator, Length);
+    void *EventBufferAddr = MemoryArenaAllocate(&Context->Arena, Length);
     buffer Buffer = {
       .Addr = EventBufferAddr,
       .Length = Length
@@ -84,7 +84,7 @@ void InitPosixNet(posix_net_context *Context) {
 
   {
     memsize Length = 1024*100;
-    void *CommandBufferAddr = LinearAllocate(&Context->Allocator, Length);
+    void *CommandBufferAddr = MemoryArenaAllocate(&Context->Arena, Length);
     buffer Buffer = {
       .Addr = CommandBufferAddr,
       .Length = Length
@@ -94,7 +94,7 @@ void InitPosixNet(posix_net_context *Context) {
 
   {
     memsize Length = 1024*100;
-    void *IncomingBufferAddr = LinearAllocate(&Context->Allocator, Length);
+    void *IncomingBufferAddr = MemoryArenaAllocate(&Context->Arena, Length);
     buffer Buffer = {
       .Addr = IncomingBufferAddr,
       .Length = Length
@@ -180,22 +180,22 @@ void ProcessIncoming(posix_net_context *Context) {
         break;
       }
       case net_message_type_order_list: {
-        linear_allocator_checkpoint MemCheckpoint = CreateLinearAllocatorCheckpoint(&Context->Allocator);
-        order_list_net_message ListMessage = UnserializeOrderListNetMessage(Message, &Context->Allocator);
+        memory_arena_checkpoint ArenaCheckpoint = CreateMemoryArenaCheckpoint(&Context->Arena);
+        order_list_net_message ListMessage = UnserializeOrderListNetMessage(Message, &Context->Arena);
         Assert(ValidateOrderListNetMessage(ListMessage));
-        ReleaseLinearAllocatorCheckpoint(MemCheckpoint);
+        ReleaseMemoryArenaCheckpoint(ArenaCheckpoint);
         break;
       }
       default:
         InvalidCodePath;
     }
 
-    linear_allocator_checkpoint MemCheckpoint = CreateLinearAllocatorCheckpoint(&Context->Allocator);
-    Assert(GetLinearAllocatorFree(&Context->Allocator) >= NET_EVENT_MAX_LENGTH);
-    buffer Event = SerializeMessageNetEvent(Message, &Context->Allocator);
+    memory_arena_checkpoint ArenaCheckpoint = CreateMemoryArenaCheckpoint(&Context->Arena);
+    Assert(GetMemoryArenaFree(&Context->Arena) >= NET_EVENT_MAX_LENGTH);
+    buffer Event = SerializeMessageNetEvent(Message, &Context->Arena);
     ChunkRingBufferWrite(&Context->EventRing, Event);
     ByteRingBufferReadAdvance(&Context->IncomingRing, POSIX_PACKET_HEADER_SIZE + Message.Length);
-    ReleaseLinearAllocatorCheckpoint(MemCheckpoint);
+    ReleaseMemoryArenaCheckpoint(ArenaCheckpoint);
   }
 }
 
@@ -228,22 +228,22 @@ void* RunPosixNet(void *VoidContext) {
         if(OptionValue == 0) {
           Context->State = posix_net_state_connected;
 
-          linear_allocator_checkpoint MemCheckpoint = CreateLinearAllocatorCheckpoint(&Context->Allocator);
-          Assert(GetLinearAllocatorFree(&Context->Allocator) >= NET_EVENT_MAX_LENGTH);
-          buffer Event = SerializeConnectionEstablishedNetEvent(&Context->Allocator);
+          memory_arena_checkpoint ArenaCheckpoint = CreateMemoryArenaCheckpoint(&Context->Arena);
+          Assert(GetMemoryArenaFree(&Context->Arena) >= NET_EVENT_MAX_LENGTH);
+          buffer Event = SerializeConnectionEstablishedNetEvent(&Context->Arena);
           ChunkRingBufferWrite(&Context->EventRing, Event);
-          ReleaseLinearAllocatorCheckpoint(MemCheckpoint);
+          ReleaseMemoryArenaCheckpoint(ArenaCheckpoint);
 
           printf("Connected.\n");
         }
         else {
           printf("Connection failed.\n");
 
-          linear_allocator_checkpoint MemCheckpoint = CreateLinearAllocatorCheckpoint(&Context->Allocator);
-          Assert(GetLinearAllocatorFree(&Context->Allocator) >= NET_EVENT_MAX_LENGTH);
-          buffer Event = SerializeConnectionFailedNetEvent(&Context->Allocator);
+          memory_arena_checkpoint ArenaCheckpoint = CreateMemoryArenaCheckpoint(&Context->Arena);
+          Assert(GetMemoryArenaFree(&Context->Arena) >= NET_EVENT_MAX_LENGTH);
+          buffer Event = SerializeConnectionFailedNetEvent(&Context->Arena);
           ChunkRingBufferWrite(&Context->EventRing, Event);
-          ReleaseLinearAllocatorCheckpoint(MemCheckpoint);
+          ReleaseMemoryArenaCheckpoint(ArenaCheckpoint);
 
           Context->State = posix_net_state_stopped;
         }
@@ -255,11 +255,11 @@ void* RunPosixNet(void *VoidContext) {
 
           ByteRingBufferReset(&Context->IncomingRing);
 
-          linear_allocator_checkpoint MemCheckpoint = CreateLinearAllocatorCheckpoint(&Context->Allocator);
-          Assert(GetLinearAllocatorFree(&Context->Allocator) >= NET_EVENT_MAX_LENGTH);
-          buffer Event = SerializeConnectionLostNetEvent(&Context->Allocator);
+          memory_arena_checkpoint ArenaCheckpoint = CreateMemoryArenaCheckpoint(&Context->Arena);
+          Assert(GetMemoryArenaFree(&Context->Arena) >= NET_EVENT_MAX_LENGTH);
+          buffer Event = SerializeConnectionLostNetEvent(&Context->Arena);
           ChunkRingBufferWrite(&Context->EventRing, Event);
-          ReleaseLinearAllocatorCheckpoint(MemCheckpoint);
+          ReleaseMemoryArenaCheckpoint(ArenaCheckpoint);
 
           Context->State = posix_net_state_stopped;
           continue;
@@ -282,22 +282,22 @@ void* RunPosixNet(void *VoidContext) {
 }
 
 void ShutdownPosixNet(posix_net_context *Context) {
-  linear_allocator_checkpoint MemCheckpoint = CreateLinearAllocatorCheckpoint(&Context->Allocator);
-  Assert(GetLinearAllocatorFree(&Context->Allocator) >= NET_COMMAND_MAX_LENGTH);
+  memory_arena_checkpoint ArenaCheckpoint = CreateMemoryArenaCheckpoint(&Context->Arena);
+  Assert(GetMemoryArenaFree(&Context->Arena) >= NET_COMMAND_MAX_LENGTH);
 
-  buffer Command = SerializeShutdownNetCommand(&Context->Allocator);
+  buffer Command = SerializeShutdownNetCommand(&Context->Arena);
   ChunkRingBufferWrite(&Context->CommandRing, Command);
-  ReleaseLinearAllocatorCheckpoint(MemCheckpoint);
+  ReleaseMemoryArenaCheckpoint(ArenaCheckpoint);
 
   RequestWake(Context);
 }
 
 void PosixNetSend(posix_net_context *Context, buffer Message) {
-  linear_allocator_checkpoint MemCheckpoint = CreateLinearAllocatorCheckpoint(&Context->Allocator);
-  Assert(GetLinearAllocatorFree(&Context->Allocator) >= NET_COMMAND_MAX_LENGTH);
-  buffer Command = SerializeSendNetCommand(Message, &Context->Allocator);
+  memory_arena_checkpoint ArenaCheckpoint = CreateMemoryArenaCheckpoint(&Context->Arena);
+  Assert(GetMemoryArenaFree(&Context->Arena) >= NET_COMMAND_MAX_LENGTH);
+  buffer Command = SerializeSendNetCommand(Message, &Context->Arena);
   ChunkRingBufferWrite(&Context->CommandRing, Command);
-  ReleaseLinearAllocatorCheckpoint(MemCheckpoint);
+  ReleaseMemoryArenaCheckpoint(ArenaCheckpoint);
 
   RequestWake(Context);
 }

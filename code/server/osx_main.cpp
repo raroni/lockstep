@@ -5,7 +5,7 @@
 #include <unistd.h>
 #include "lib/assert.h"
 #include "lib/chunk_list.h"
-#include "lib/memory.h"
+#include "lib/memory_arena.h"
 #include "common/posix_time.h"
 #include "net_commands.h"
 #include "net_events.h"
@@ -22,7 +22,7 @@ struct osx_state {
   buffer ServerMemory;
   bool Running;
   void *Memory;
-  linear_allocator Allocator;
+  memory_arena Arena;
 };
 
 static void HandleSignal(int signum) {
@@ -32,11 +32,11 @@ static void HandleSignal(int signum) {
 static void InitMemory(osx_state *State) {
   memsize MemorySize = 1024*1024*5;
   State->Memory = malloc(MemorySize);
-  InitLinearAllocator(&State->Allocator, State->Memory, MemorySize);
+  InitMemoryArena(&State->Arena, State->Memory, MemorySize);
 }
 
 static void TerminateMemory(osx_state *State) {
-  TerminateLinearAllocator(&State->Allocator);
+  TerminateMemoryArena(&State->Arena);
   free(State->Memory);
   State->Memory = NULL;
 
@@ -95,21 +95,21 @@ int main() {
   {
     buffer Buffer;
     Buffer.Length = NET_COMMAND_MAX_LENGTH*100;
-    Buffer.Addr = LinearAllocate(&State.Allocator, Buffer.Length);
+    Buffer.Addr = MemoryArenaAllocate(&State.Arena, Buffer.Length);
     InitChunkList(&State.NetCommandList, Buffer);
   }
 
   {
     buffer Buffer;
     Buffer.Length = NET_EVENT_MAX_LENGTH*100;
-    Buffer.Addr = LinearAllocate(&State.Allocator, Buffer.Length);
+    Buffer.Addr = MemoryArenaAllocate(&State.Arena, Buffer.Length);
     InitChunkList(&State.NetEventList, Buffer);
   }
 
   {
     buffer *B = &State.ServerMemory;
     B->Length = 1024*1024;
-    B->Addr = LinearAllocate(&State.Allocator, B->Length);
+    B->Addr = MemoryArenaAllocate(&State.Arena, B->Length);
   }
   InitGame(State.ServerMemory);
 

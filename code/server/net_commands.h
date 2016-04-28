@@ -1,6 +1,6 @@
 #pragma once
 
-#include "lib/memory.h"
+#include "lib/memory_arena.h"
 #include "net.h"
 
 #define NET_COMMAND_MAX_LENGTH 512
@@ -22,9 +22,9 @@ struct send_net_command {
   buffer Message;
 };
 
-buffer SerializeShutdownNetCommand(linear_allocator *Allocator);
-buffer SerializeBroadcastNetCommand(const net_client_id *IDs, memsize IDCount, const buffer Message, linear_allocator *Allocator);
-buffer SerializeSendNetCommand(net_client_id ID, const buffer Message, linear_allocator *Allocator);
+buffer SerializeShutdownNetCommand(memory_arena *Arena);
+buffer SerializeBroadcastNetCommand(const net_client_id *IDs, memsize IDCount, const buffer Message, memory_arena *Arena);
+buffer SerializeSendNetCommand(net_client_id ID, const buffer Message, memory_arena *Arena);
 net_command_type UnserializeNetCommandType(buffer Buffer);
 broadcast_net_command UnserializeBroadcastNetCommand(buffer Buffer);
 send_net_command UnserializeSendNetCommand(buffer Buffer);

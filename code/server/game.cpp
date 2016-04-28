@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include "lib/assert.h"
-#include "lib/memory.h"
+#include "lib/memory_arena.h"
 #include "common/net_messages.h"
 #include "common/simulation.h"
 #include "net_events.h"
@@ -28,7 +28,7 @@ enum game_mode {
 
 struct game_state {
   game_mode Mode;
-  linear_allocator Allocator;
+  memory_arena Arena;
   player_set PlayerSet;
   chunk_list OrderQueue;
   uusec64 NextTickTime;
@@ -66,17 +66,17 @@ static void AddPlayer(player_set *Set, net_client_id NetID) {
   Set->Count++;
 }
 
-static void Broadcast(const player_set *Set, const buffer Message, chunk_list *Commands, linear_allocator *Allocator) {
+static void Broadcast(const player_set *Set, const buffer Message, chunk_list *Commands, memory_arena *Arena) {
   net_client_id IDs[Set->Count];
   for(memsize I=0; I<Set->Count; ++I) {
     IDs[I] = Set->Players[I].ClientID;
   }
 
-  linear_allocator_checkpoint MemCheckpoint = CreateLinearAllocatorCheckpoint(Allocator);
-  Assert(GetLinearAllocatorFree(Allocator) >= NET_COMMAND_MAX_LENGTH);
-  buffer Command = SerializeBroadcastNetCommand(IDs, Set->Count, Message, Allocator);
+  memory_arena_checkpoint ArenaCheckpoint = CreateMemoryArenaCheckpoint(Arena);
+  Assert(GetMemoryArenaFree(Arena) >= NET_COMMAND_MAX_LENGTH);
+  buffer Command = SerializeBroadcastNetCommand(IDs, Set->Count, Message, Arena);
   ChunkListWrite(Commands, Command);
-  ReleaseLinearAllocatorCheckpoint(MemCheckpoint);
+  ReleaseMemoryArenaCheckpoint(ArenaCheckpoint);
 }
 
 static void RemovePlayer(player_set *Set, memsize Index) {
@@ -89,12 +89,12 @@ void InitGame(buffer Memory) {
   {
     void *Base = (ui8*)Memory.Addr + sizeof(game_state);
     memsize Length = Memory.Length - sizeof(game_state);
-    InitLinearAllocator(&State->Allocator, Base, Length);
+    InitMemoryArena(&State->Arena, Base, Length);
   }
 
   {
     memsize Length = 1024*20;
-    void *Storage = LinearAllocate(&State->Allocator, Length);
+    void *Storage = MemoryArenaAllocate(&State->Arena, Length);
     buffer Buffer = {
       .Addr = Storage,
       .Length = Length
@@ -114,13 +114,13 @@ void StartGame(game_state *State, chunk_list *NetCmds, uusec64 Time) {
   }
 
   for(memsize I=0; I<Set->Count; ++I) {
-    linear_allocator_checkpoint MemCheckpoint = CreateLinearAllocatorCheckpoint(&State->Allocator);
+    memory_arena_checkpoint ArenaCheckpoint = CreateMemoryArenaCheckpoint(&State->Arena);
 
-    Assert(GetLinearAllocatorFree(&State->Allocator) >= NET_MESSAGE_MAX_LENGTH + NET_COMMAND_MAX_LENGTH);
-    buffer Message = SerializeStartNetMessage(Set->Count, I, &State->Allocator);
-    buffer Command = SerializeSendNetCommand(Set->Players[I].ClientID, Message, &State->Allocator);
+    Assert(GetMemoryArenaFree(&State->Arena) >= NET_MESSAGE_MAX_LENGTH + NET_COMMAND_MAX_LENGTH);
+    buffer Message = SerializeStartNetMessage(Set->Count, I, &State->Arena);
+    buffer Command = SerializeSendNetCommand(Set->Players[I].ClientID, Message, &State->Arena);
     ChunkListWrite(NetCmds, Command);
-    ReleaseLinearAllocatorCheckpoint(MemCheckpoint);
+    ReleaseMemoryArenaCheckpoint(ArenaCheckpoint);
   }
 
   State->NextTickTime = Time + SimulationTickDuration*1000;
@@ -129,15 +129,15 @@ void StartGame(game_state *State, chunk_list *NetCmds, uusec64 Time) {
   State->Mode = game_mode_active;
 }
 
-void ProcessMessageEvent(message_net_event Event, player_set *PlayerSet, linear_allocator *Allocator, chunk_list *OrderQueue) {
+void ProcessMessageEvent(message_net_event Event, player_set *PlayerSet, memory_arena *Arena, chunk_list *OrderQueue) {
   net_message_type Type = UnserializeNetMessageType(Event.Message);
   switch(Type) {
     case net_message_type_reply:
       printf("Received reply.\n");
       break;
     case net_message_type_order: {
-      linear_allocator_checkpoint MemCheckpoint = CreateLinearAllocatorCheckpoint(Allocator);
-      order_net_message Message = UnserializeOrderNetMessage(Event.Message, Allocator);
+      memory_arena_checkpoint ArenaCheckpoint = CreateMemoryArenaCheckpoint(Arena);
+      order_net_message Message = UnserializeOrderNetMessage(Event.Message, Arena);
 
       simulation_order Order;
       Order.PlayerID = FindSimIDByClientID(PlayerSet, Event.ClientID);
@@ -146,11 +146,11 @@ void ProcessMessageEvent(message_net_event Event, player_set *PlayerSet, linear_
         Order.UnitCount = Message.UnitCount;
         Order.Target = Message.Target;
 
-        buffer OrderBuffer = SerializeOrder(Order, Allocator);
+        buffer OrderBuffer = SerializeOrder(Order, Arena);
         ChunkListWrite(OrderQueue, OrderBuffer);
       }
 
-      ReleaseLinearAllocatorCheckpoint(MemCheckpoint);
+      ReleaseMemoryArenaCheckpoint(ArenaCheckpoint);
       break;
     }
     default:
@@ -187,7 +187,7 @@ void ProcessNetEvents(game_state *State, chunk_list *Events) {
       case net_event_type_message: {
         message_net_event MessageEvent = UnserializeMessageNetEvent(Event);
         printf("Got message from client %zu of length %zu\n", MessageEvent.ClientID, MessageEvent.Message.Length);
-        ProcessMessageEvent(MessageEvent, &State->PlayerSet, &State->Allocator, &State->OrderQueue);
+        ProcessMessageEvent(MessageEvent, &State->PlayerSet, &State->Arena, &State->OrderQueue);
         break;
       }
       default:
@@ -196,15 +196,15 @@ void ProcessNetEvents(game_state *State, chunk_list *Events) {
   }
 }
 
-void BroadcastOrders(player_set *PlayerSet, simulation_order_list *SimOrderList, chunk_list *Commands, linear_allocator *Allocator) {
-  linear_allocator_checkpoint MemCheckpoint = CreateLinearAllocatorCheckpoint(Allocator);
+void BroadcastOrders(player_set *PlayerSet, simulation_order_list *SimOrderList, chunk_list *Commands, memory_arena *Arena) {
+  memory_arena_checkpoint ArenaCheckpoint = CreateMemoryArenaCheckpoint(Arena);
   // TODO: Calculate worst case memory consumption here.
-  // Assert(GetLinearAllocatorFree(Allocator) >= NET_MESSAGE_MAX_LENGTH);
+  // Assert(GetMemoryArenaFree(Arena) >= NET_MESSAGE_MAX_LENGTH);
 
   net_message_order *NetOrders = NULL;
   if(SimOrderList->Count != 0) {
     memsize NetOrdersSize = sizeof(net_message_order) * SimOrderList->Count;
-    NetOrders = (net_message_order*)LinearAllocate(Allocator, NetOrdersSize);
+    NetOrders = (net_message_order*)MemoryArenaAllocate(Arena, NetOrdersSize);
     for(memsize I=0; I<SimOrderList->Count; ++I) {
       net_message_order *NetOrder = NetOrders + I;
       simulation_order *SimOrder = SimOrderList->Orders + I;
@@ -213,16 +213,16 @@ void BroadcastOrders(player_set *PlayerSet, simulation_order_list *SimOrderList,
       NetOrder->Target = SimOrder->Target;
 
       memsize NetOrderUnitIDsSize = sizeof(ui16) * NetOrder->UnitCount;
-      NetOrder->UnitIDs = (ui16*)LinearAllocate(Allocator, NetOrderUnitIDsSize);
+      NetOrder->UnitIDs = (ui16*)MemoryArenaAllocate(Arena, NetOrderUnitIDsSize);
       for(memsize U=0; U<NetOrder->UnitCount; ++U) {
         NetOrder->UnitIDs[U] = SimOrder->UnitIDs[U];
       }
     }
   }
 
-  buffer Message = SerializeOrderListNetMessage(NetOrders, SimOrderList->Count, Allocator);
-  Broadcast(PlayerSet, Message, Commands, Allocator);
-  ReleaseLinearAllocatorCheckpoint(MemCheckpoint);
+  buffer Message = SerializeOrderListNetMessage(NetOrders, SimOrderList->Count, Arena);
+  Broadcast(PlayerSet, Message, Commands, Arena);
+  ReleaseMemoryArenaCheckpoint(ArenaCheckpoint);
 }
 
 void UpdateGame(
@@ -241,20 +241,20 @@ void UpdateGame(
   if(State->Mode != game_mode_disconnecting && TerminationRequested) {
     State->Mode = game_mode_disconnecting;
 
-    linear_allocator_checkpoint MemCheckpoint = CreateLinearAllocatorCheckpoint(&State->Allocator);
-    Assert(GetLinearAllocatorFree(&State->Allocator) >= NET_COMMAND_MAX_LENGTH);
-    buffer Command = SerializeShutdownNetCommand(&State->Allocator);
+    memory_arena_checkpoint ArenaCheckpoint = CreateMemoryArenaCheckpoint(&State->Arena);
+    Assert(GetMemoryArenaFree(&State->Arena) >= NET_COMMAND_MAX_LENGTH);
+    buffer Command = SerializeShutdownNetCommand(&State->Arena);
     ChunkListWrite(Commands, Command);
-    ReleaseLinearAllocatorCheckpoint(MemCheckpoint);
+    ReleaseMemoryArenaCheckpoint(ArenaCheckpoint);
   }
   else if(State->Mode != game_mode_waiting_for_clients && State->PlayerSet.Count == 0) {
     printf("All players has left. Stopping game.\n");
     if(State->Mode != game_mode_disconnecting) {
-      linear_allocator_checkpoint MemCheckpoint = CreateLinearAllocatorCheckpoint(&State->Allocator);
-      Assert(GetLinearAllocatorFree(&State->Allocator) >= NET_COMMAND_MAX_LENGTH);
-      buffer Command = SerializeShutdownNetCommand(&State->Allocator);
+      memory_arena_checkpoint ArenaCheckpoint = CreateMemoryArenaCheckpoint(&State->Arena);
+      Assert(GetMemoryArenaFree(&State->Arena) >= NET_COMMAND_MAX_LENGTH);
+      buffer Command = SerializeShutdownNetCommand(&State->Arena);
       ChunkListWrite(Commands, Command);
-      ReleaseLinearAllocatorCheckpoint(MemCheckpoint);
+      ReleaseMemoryArenaCheckpoint(ArenaCheckpoint);
     }
     *Running = false;
     State->Mode = game_mode_stopped;
@@ -264,24 +264,24 @@ void UpdateGame(
   }
   else if(State->Mode == game_mode_active) {
     if(Time >= State->NextTickTime) {
-      linear_allocator_checkpoint MemCheckpoint = CreateLinearAllocatorCheckpoint(&State->Allocator);
+      memory_arena_checkpoint ArenaCheckpoint = CreateMemoryArenaCheckpoint(&State->Arena);
 
       simulation_order_list OrderList;
       OrderList.Count = State->OrderQueue.Count;
       OrderList.Orders = NULL;
       if(OrderList.Count != 0) {
         memsize OrderListSize = sizeof(simulation_order) * State->OrderQueue.Count;
-        OrderList.Orders = (simulation_order*)LinearAllocate(&State->Allocator, OrderListSize);
+        OrderList.Orders = (simulation_order*)MemoryArenaAllocate(&State->Arena, OrderListSize);
 
         for(memsize I=0; I<State->OrderQueue.Count; ++I) {
           buffer OrderBuffer = ChunkListRead(&State->OrderQueue);
-          OrderList.Orders[I] = UnserializeOrder(OrderBuffer, &State->Allocator);
+          OrderList.Orders[I] = UnserializeOrder(OrderBuffer, &State->Arena);
         }
       }
-      BroadcastOrders(&State->PlayerSet, &OrderList, Commands, &State->Allocator);
+      BroadcastOrders(&State->PlayerSet, &OrderList, Commands, &State->Arena);
       TickSimulation(&State->Sim, &OrderList);
       ResetChunkList(&State->OrderQueue);
-      ReleaseLinearAllocatorCheckpoint(MemCheckpoint);
+      ReleaseMemoryArenaCheckpoint(ArenaCheckpoint);
       State->NextTickTime += SimulationTickDuration*1000;
     }
   }
