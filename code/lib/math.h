@@ -9,6 +9,7 @@ struct ivec2 {
 
 ivec2 MakeIvec2(ui16 X, ui16 Y);
 ivec2 operator+(ivec2 A, ivec2 B);
+ivec2 operator-(ivec2 A, ivec2 B);
 
 struct rvec2 {
   r32 X;

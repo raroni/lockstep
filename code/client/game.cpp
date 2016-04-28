@@ -116,16 +116,16 @@ void Render(simulation *Sim, interpolation *Interpolation, unit_selection *UnitS
     // TODO: Proper unit find based on ID (instead of index)
     // simulation_unit *Unit = GetSimulationUnit(UnitID);
     draw_square_render_command *Command = AddRenderCommand(Commands, draw_square);
-    Command->X = Interpolation->Positions[UnitID].X;
-    Command->Y = Interpolation->Positions[UnitID].Y;
+    Command->X = Interpolation->Pos[UnitID].X;
+    Command->Y = Interpolation->Pos[UnitID].Y;
     Command->Color = White;
     Command->HalfSize = SIMULATION_UNIT_HALF_SIZE + 10;
   }
 
   for(memsize I=0; I<Sim->UnitCount; ++I) {
     draw_square_render_command *Command = AddRenderCommand(Commands, draw_square);
-    Command->X = Interpolation->Positions[I].X;
-    Command->Y = Interpolation->Positions[I].Y;
+    Command->X = Interpolation->Pos[I].X;
+    Command->Y = Interpolation->Pos[I].Y;
     Command->Color = PlayerColors[Sim->Units[I].PlayerID];
     Command->HalfSize = SIMULATION_UNIT_HALF_SIZE;
   }
@@ -311,12 +311,20 @@ void UpdateGame(game_platform *Platform, chunk_list *NetEvents, chunk_list *NetC
           }
         }
 
-        // TODO: Notify interpolation about new tick
+        ReloadInterpolation(&State->Interpolation, &State->Sim);
 
         State->NextTickTime += SimulationTickDuration*1000;
       }
     }
-    UpdateInterpolation(&State->Interpolation, &State->Sim);
+
+    r32 TickProgress;
+    {
+      uusec64 TickDuration = SimulationTickDuration*1000;
+      uusec64 TimeUntilNextTick = State->NextTickTime - Platform->Time;
+      uusec64 TimeSpentInCurrentTick = TickDuration - TimeUntilNextTick;
+      TickProgress = (r32)TimeSpentInCurrentTick / (r32)TickDuration;
+    }
+    UpdateInterpolation(&State->Interpolation, &State->Sim, TickProgress);
     Render(&State->Sim, &State->Interpolation, &State->UnitSelection, RenderCmds, Platform->Resolution);
   }
 
