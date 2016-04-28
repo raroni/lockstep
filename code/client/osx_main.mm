@@ -92,11 +92,6 @@ static void ExecuteNetCommands(posix_net_context *Context, chunk_list *Cmds) {
   ResetChunkList(Cmds);
 }
 
-static void ExecuteRenderCommands(chunk_list *Commands) {
-  DisplayOpenGL(Commands);
-  ResetChunkList(Commands);
-}
-
 static void ReadNet(posix_net_context *Context, chunk_list *Events) {
   memory_arena_checkpoint ArenaCheckpoint = CreateMemoryArenaCheckpoint(&Context->Arena);
   Assert(GetMemoryArenaFree(&Context->Arena) >= NET_EVENT_MAX_LENGTH);
@@ -315,8 +310,15 @@ int main() {
     );
     ResetChunkList(&State.NetEventList);
     ExecuteNetCommands(&State.NetContext, &State.NetCommandList);
-    ExecuteRenderCommands(&State.RenderCommandList);
-    [State.OGLContext flushBuffer];
+
+    if(State.Window.occlusionState & NSWindowOcclusionStateVisible) {
+      DisplayOpenGL(&State.RenderCommandList);
+      [State.OGLContext flushBuffer];
+    }
+    else {
+      usleep(10000);
+    }
+    ResetChunkList(&State.RenderCommandList);
   }
 
   {
