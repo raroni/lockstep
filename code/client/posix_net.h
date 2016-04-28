@@ -17,7 +17,6 @@ struct posix_net_context {
   chunk_ring_buffer EventRing;
   chunk_ring_buffer CommandRing;
   byte_ring_buffer IncomingRing;
-  buffer CommandSerializationBuffer;
   buffer CommandReadBuffer;
   buffer ReceiveBuffer;
   buffer IncomingReadBuffer;

@@ -24,8 +24,6 @@ struct posix_net_context {
   posix_net_client_set ClientSet;
   posix_net_mode Mode;
   buffer ReceiveBuffer;
-  buffer EventOutBuffer;
-  buffer CommandSerializationBuffer;
   buffer CommandReadBuffer;
   buffer IncomingReadBuffer;
 };

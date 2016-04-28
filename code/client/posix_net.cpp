@@ -102,7 +102,6 @@ void InitPosixNet(posix_net_context *Context) {
     InitByteRingBuffer(&Context->IncomingRing, Buffer);
   }
 
-  Context->CommandSerializationBuffer = CreateBuffer(NET_COMMAND_MAX_LENGTH);
   Context->CommandReadBuffer = CreateBuffer(NET_COMMAND_MAX_LENGTH);
   Context->ReceiveBuffer = CreateBuffer(1024*10);
   Context->IncomingReadBuffer = CreateBuffer(NET_MESSAGE_MAX_LENGTH);
@@ -313,7 +312,6 @@ void TerminatePosixNet(posix_net_context *Context) {
   Assert(Result == 0);
 
   DestroyBuffer(&Context->IncomingReadBuffer);
-  DestroyBuffer(&Context->CommandSerializationBuffer);
   DestroyBuffer(&Context->CommandReadBuffer);
   DestroyBuffer(&Context->ReceiveBuffer);
 
