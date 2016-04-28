@@ -1,12 +1,13 @@
 #include "lib/assert.h"
-#include "lib/serialization.h"
+#include "lib/buf_view.h"
+#include "lib/seq_write.h"
 #include "net_commands.h"
 
-memsize SerializeShutdownNetCommand(buffer Buffer) {
+buffer SerializeShutdownNetCommand(linear_allocator *Allocator) {
   net_command_type Type = net_command_type_shutdown;
-  serializer S = CreateSerializer(Buffer);
-  SerializerWrite(&S, &Type, sizeof(Type));
-  return sizeof(Type);
+  seq_write S = CreateSeqWrite(Allocator);
+  SeqWrite(&S, &Type, sizeof(Type));
+  return S.Buffer;
 }
 
 net_command_type UnserializeNetCommandType(buffer Buffer) {
@@ -14,22 +15,22 @@ net_command_type UnserializeNetCommandType(buffer Buffer) {
   return *(net_command_type*)Buffer.Addr;
 }
 
-memsize SerializeSendNetCommand(buffer Output, buffer Message) {
+buffer SerializeSendNetCommand(buffer Message, linear_allocator *Allocator) {
   net_command_type Type = net_command_type_send;
-  serializer S = CreateSerializer(Output);
-  SerializerWrite(&S, &Type, sizeof(Type));
-  SerializerWrite(&S, Message.Addr, Message.Length);
-  return S.Position;
+  seq_write S = CreateSeqWrite(Allocator);
+  SeqWrite(&S, &Type, sizeof(Type));
+  SeqWriteBuffer(&S, Message);
+  return S.Buffer;
 }
 
 send_net_command UnserializeSendNetCommand(buffer Input) {
-  serializer S = CreateSerializer(Input);
-  net_command_type Type = *(net_command_type*)SerializerRead(&S, sizeof(net_command_type));
+  buf_view V = CreateBufView(Input);
+  net_command_type Type = *(net_command_type*)BufViewRead(&V, sizeof(net_command_type));
   Assert(Type == net_command_type_send);
 
-  memsize MessageLength = GetRemainingSize(&S);
+  memsize MessageLength = GetRemainingSize(&V);
   send_net_command Command;
-  Command.Message.Addr = SerializerRead(&S, MessageLength);
+  Command.Message.Addr = BufViewRead(&V, MessageLength);
   Command.Message.Length = MessageLength;
 
   return Command;

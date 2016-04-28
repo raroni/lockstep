@@ -21,7 +21,6 @@ struct posix_net_context {
   buffer CommandReadBuffer;
   buffer ReceiveBuffer;
   buffer IncomingReadBuffer;
-  buffer EventSerializationBuffer;
   posix_net_state State;
   int WakeReadFD;
   int WakeWriteFD;

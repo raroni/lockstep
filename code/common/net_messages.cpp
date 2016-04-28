@@ -1,123 +1,128 @@
 #include "lib/assert.h"
-#include "lib/serialization.h"
+#include "lib/buf_view.h"
+#include "lib/seq_write.h"
 #include "common/conversion.h"
 #include "net_messages.h"
 
-void WriteType(serializer *S, net_message_type Type) {
+void WriteType(seq_write *W, net_message_type Type) {
   ui8 TypeUI8 = SafeCastIntToUI8(Type);
-  SerializerWriteUI8(S, TypeUI8);
+  SeqWriteUI8(W, TypeUI8);
 }
 
-static order_net_message UnserializeOrderHeader(serializer *S) {
-  net_message_type Type = (net_message_type)SerializerReadUI8(S);
+static order_net_message UnserializeOrderHeader(buf_view *V) {
+  net_message_type Type = (net_message_type)BufViewReadUI8(V);
   Assert(Type == net_message_type_order);
 
   order_net_message Message;
-  Message.UnitCount = SerializerReadUI16(S);
-  Message.Target.X = SerializerReadSI16(S);
-  Message.Target.Y = SerializerReadSI16(S);
+  Message.UnitCount = BufViewReadUI16(V);
+  Message.Target.X = BufViewReadSI16(V);
+  Message.Target.Y = BufViewReadSI16(V);
   Message.UnitIDs = NULL;
 
   return Message;
 }
 
-memsize SerializeStartNetMessage(memsize PlayerCount, memsize PlayerIndex, buffer Buffer) {
-  serializer Writer = CreateSerializer(Buffer);
+buffer SerializeStartNetMessage(memsize PlayerCount, memsize PlayerIndex, linear_allocator *Allocator) {
+  seq_write W = CreateSeqWrite(Allocator);
 
   ui8 TypeUI8 = SafeCastIntToUI8(net_message_type_start);
-  SerializerWriteUI8(&Writer, TypeUI8);
+  SeqWriteUI8(&W, TypeUI8);
 
   ui8 PlayerCountUI8 = SafeCastIntToUI8(PlayerCount);
-  SerializerWriteUI8(&Writer, PlayerCountUI8);
+  SeqWriteUI8(&W, PlayerCountUI8);
 
   ui8 PlayerIndexUI8 = SafeCastIntToUI8(PlayerIndex);
-  SerializerWriteUI8(&Writer, PlayerIndexUI8);
+  SeqWriteUI8(&W, PlayerIndexUI8);
 
-  return Writer.Position;
+  return W.Buffer;
 }
 
-memsize SerializeReplyNetMessage(buffer Buffer) {
+buffer SerializeReplyNetMessage(linear_allocator *Allocator) {
   ui8 TypeInt = SafeCastIntToUI8(net_message_type_reply);
-  serializer Writer = CreateSerializer(Buffer);
-  SerializerWriteUI8(&Writer, TypeInt);
-  return Writer.Position;
+  seq_write W = CreateSeqWrite(Allocator);
+  SeqWriteUI8(&W, TypeInt);
+  return W.Buffer;
 }
 
-memsize SerializeOrderListNetMessage(net_message_order *Orders, ui16 OrderCount, buffer Out) {
-  serializer W = CreateSerializer(Out);
+buffer SerializeOrderListNetMessage(net_message_order *Orders, ui16 OrderCount, linear_allocator *Allocator) {
+  seq_write W = CreateSeqWrite(Allocator);
   WriteType(&W, net_message_type_order_list);
-  SerializerWriteUI16(&W, OrderCount);
+  SeqWriteUI16(&W, OrderCount);
 
   for(memsize I=0; I<OrderCount; ++I) {
     net_message_order *O = Orders + I;
-    SerializerWriteUI8(&W, O->PlayerID);
-    SerializerWriteUI16(&W, O->UnitCount);
-    SerializerWriteUI16(&W, O->Target.X);
-    SerializerWriteUI16(&W, O->Target.Y);
+    SeqWriteUI8(&W, O->PlayerID);
+    SeqWriteUI16(&W, O->UnitCount);
+    SeqWriteUI16(&W, O->Target.X);
+    SeqWriteUI16(&W, O->Target.Y);
 
     for(memsize U=0; U<O->UnitCount; ++U) {
-      SerializerWriteUI16(&W, O->UnitIDs[U]);
+      SeqWriteUI16(&W, O->UnitIDs[U]);
     }
   }
 
-  return W.Position;
+  return W.Buffer;
 }
 
-memsize SerializeOrderNetMessage(ui16 *UnitIDs, memsize UnitCount, ivec2 Target, buffer Out) {
-  serializer W = CreateSerializer(Out);
+buffer SerializeOrderNetMessage(ui16 *UnitIDs, memsize UnitCount, ivec2 Target, linear_allocator *Allocator) {
+  Assert(GetLinearAllocatorFree(Allocator) >= NET_MESSAGE_MAX_LENGTH);
+
+  seq_write W = CreateSeqWrite(Allocator);
   WriteType(&W, net_message_type_order);
   ui16 UnitCountUI16 = SafeCastIntToUI16(UnitCount);
-  SerializerWriteUI16(&W, UnitCountUI16);
+  SeqWriteUI16(&W, UnitCountUI16);
 
-  SerializerWriteSI16(&W, Target.X);
-  SerializerWriteSI16(&W, Target.Y);
+  SeqWriteSI16(&W, Target.X);
+  SeqWriteSI16(&W, Target.Y);
 
   for(memsize I=0; I<UnitCount; ++I) {
     ui16 IDUI16 = SafeCastIntToUI16(UnitIDs[I]);
-    SerializerWriteUI16(&W, IDUI16);
+    SeqWriteUI16(&W, IDUI16);
   }
 
-  return W.Position;
+  Assert(W.Buffer.Length <= NET_MESSAGE_MAX_LENGTH);
+
+  return W.Buffer;
 }
 
 net_message_type UnserializeNetMessageType(buffer Input) {
-  serializer S = CreateSerializer(Input);
-  net_message_type Type = (net_message_type)SerializerReadUI8(&S);
+  buf_view V = CreateBufView(Input);
+  net_message_type Type = (net_message_type)BufViewReadUI8(&V);
   return Type;
 }
 
 order_net_message UnserializeOrderNetMessage(buffer Input, linear_allocator *Allocator) {
-  serializer S = CreateSerializer(Input);
-  order_net_message Message = UnserializeOrderHeader(&S);
+  buf_view V = CreateBufView(Input);
+  order_net_message Message = UnserializeOrderHeader(&V);
 
   memsize IDsSize = sizeof(ui16) * Message.UnitCount;
   Message.UnitIDs = (ui16*)LinearAllocate(Allocator, IDsSize);
   for(memsize I=0; I<Message.UnitCount; ++I) {
-    Message.UnitIDs[I] = SerializerReadUI16(&S);
+    Message.UnitIDs[I] = BufViewReadUI16(&V);
   }
 
   return Message;
 }
 
 start_net_message UnserializeStartNetMessage(buffer Buffer) {
-  serializer S = CreateSerializer(Buffer);
-  net_message_type Type = (net_message_type)SerializerReadUI8(&S);
+  buf_view V = CreateBufView(Buffer);
+  net_message_type Type = (net_message_type)BufViewReadUI8(&V);
   Assert(Type == net_message_type_start);
 
   start_net_message Message;
-  Message.PlayerCount = SerializerReadUI8(&S);
-  Message.PlayerIndex = SerializerReadUI8(&S);
+  Message.PlayerCount = BufViewReadUI8(&V);
+  Message.PlayerIndex = BufViewReadUI8(&V);
 
   return Message;
 }
 
 order_list_net_message UnserializeOrderListNetMessage(buffer Input, linear_allocator *Allocator) {
-  serializer S = CreateSerializer(Input);
-  net_message_type Type = (net_message_type)SerializerReadUI8(&S);
+  buf_view V = CreateBufView(Input);
+  net_message_type Type = (net_message_type)BufViewReadUI8(&V);
   Assert(Type == net_message_type_order_list);
 
   order_list_net_message Message;
-  Message.Count = SerializerReadUI16(&S);
+  Message.Count = BufViewReadUI16(&V);
 
   if(Message.Count != 0) {
     memsize OrdersSize = sizeof(net_message_order) * Message.Count;
@@ -125,15 +130,15 @@ order_list_net_message UnserializeOrderListNetMessage(buffer Input, linear_alloc
 
     for(memsize I=0; I<Message.Count; ++I) {
       net_message_order *O = Message.Orders + I;
-      O->PlayerID = SerializerReadUI8(&S);
-      O->UnitCount = SerializerReadUI16(&S);
-      O->Target.X = SerializerReadUI16(&S);
-      O->Target.Y = SerializerReadUI16(&S);
+      O->PlayerID = BufViewReadUI8(&V);
+      O->UnitCount = BufViewReadUI16(&V);
+      O->Target.X = BufViewReadUI16(&V);
+      O->Target.Y = BufViewReadUI16(&V);
 
       memsize UnitIDsSize = sizeof(ui16) * O->UnitCount;
       O->UnitIDs = (ui16*)LinearAllocate(Allocator, UnitIDsSize);
       for(memsize U=0; U<O->UnitCount; ++U) {
-        O->UnitIDs[U] = SerializerReadUI16(&S);
+        O->UnitIDs[U] = BufViewReadUI16(&V);
       }
     }
   }

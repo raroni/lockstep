@@ -11,7 +11,7 @@ OBJECTS_DIR = $(BUILD_DIR)/objects
 ROOT = $(realpath ./..)
 CODE_ROOT = $(ROOT)/code
 
-COMMON_SOURCES = code/common/memory.cpp code/common/posix_net.cpp code/lib/serialization.cpp code/lib/assert.cpp code/common/net_messages.cpp code/common/conversion.cpp code/lib/chunk_list.cpp code/common/simulation.cpp code/common/order_serialization.cpp code/lib/math.cpp
+COMMON_SOURCES = code/common/memory.cpp code/common/posix_net.cpp code/lib/buf_view.cpp code/lib/assert.cpp code/common/net_messages.cpp code/common/conversion.cpp code/lib/chunk_list.cpp code/common/simulation.cpp code/common/order_serialization.cpp code/lib/math.cpp code/lib/seq_write.cpp
 COMMON_HEADER_INCLUDES = -iquote $(CODE_ROOT)
 
 SERVER_PRODUCT_DIR = $(PRODUCT_DIR)/LockstepServer.app
@@ -51,7 +51,7 @@ TEST_SOURCES =\
 	code/lib/byte_ring_buffer.cpp\
 	code/lib/chunk_list.cpp\
 	code/lib/chunk_ring_buffer.cpp\
-	code/lib/serialization.cpp\
+	code/lib/buf_view.cpp\
 	code/server/posix_net_client_set.cpp
 TEST_OBJS = $(patsubst %.cpp, $(OBJECTS_DIR)/%.o, $(TEST_SOURCES))
 TEST_DEPS = $(sort $(patsubst %, %.deps, $(TEST_OBJS)))

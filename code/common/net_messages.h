@@ -37,10 +37,10 @@ struct order_net_message {
   ivec2 Target;
 };
 
-memsize SerializeStartNetMessage(memsize PlayerCount, memsize PlayerIndex, buffer Buffer);
-memsize SerializeOrderNetMessage(ui16 *UnitIDs, memsize UnitCount, ivec2 Target, buffer Out);
-memsize SerializeReplyNetMessage(buffer Buffer);
-memsize SerializeOrderListNetMessage(net_message_order *Orders, ui16 OrderCount, buffer Out);
+buffer SerializeStartNetMessage(memsize PlayerCount, memsize PlayerIndex, linear_allocator *Allocator);
+buffer SerializeOrderNetMessage(ui16 *UnitIDs, memsize UnitCount, ivec2 Target, linear_allocator *Allocator);
+buffer SerializeReplyNetMessage(linear_allocator *Allocator);
+buffer SerializeOrderListNetMessage(net_message_order *Orders, ui16 OrderCount, linear_allocator *Allocator);
 net_message_type UnserializeNetMessageType(buffer Input);
 order_net_message UnserializeOrderNetMessage(buffer Input, linear_allocator *Allocator);
 start_net_message UnserializeStartNetMessage(buffer Input);
