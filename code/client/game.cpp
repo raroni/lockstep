@@ -149,7 +149,7 @@ void ProcessMessageEvent(message_net_event Event, game_state *State, chunk_list 
       Assert(State->PlayerID != SIMULATION_UNDEFINED_PLAYER_ID);
       InitInterpolation(&State->Interpolation, &State->Sim);
 
-      linear_allocator_context LAContext = CreateLinearAllocatorContext(&State->Allocator);
+      linear_allocator_checkpoint MemCheckpoint = CreateLinearAllocatorCheckpoint(&State->Allocator);
       Assert(GetLinearAllocatorFree(&State->Allocator) >= NET_MESSAGE_MAX_LENGTH + NETWORK_COMMAND_MAX_LENGTH);
 
       buffer ReplyMessage = SerializeReplyNetMessage(&State->Allocator);
@@ -157,7 +157,7 @@ void ProcessMessageEvent(message_net_event Event, game_state *State, chunk_list 
 
       buffer Command = SerializeSendNetCommand(ReplyMessage, &State->Allocator);
       ChunkListWrite(NetCmds, Command);
-      RestoreLinearAllocatorContext(LAContext);
+      ReleaseLinearAllocatorCheckpoint(MemCheckpoint);
 
       State->NextTickTime = Time + SimulationTickDuration*1000;
       State->NextExtraTickTime = Time + SimulationTickDuration*1000;
@@ -165,7 +165,7 @@ void ProcessMessageEvent(message_net_event Event, game_state *State, chunk_list 
       break;
     }
     case net_message_type_order_list: {
-      linear_allocator_context LAContext = CreateLinearAllocatorContext(&State->Allocator);
+      linear_allocator_checkpoint MemCheckpoint = CreateLinearAllocatorCheckpoint(&State->Allocator);
       order_list_net_message ListMessage = UnserializeOrderListNetMessage(Event.Message, &State->Allocator);
 
       simulation_order_list SimOrderList;
@@ -192,7 +192,7 @@ void ProcessMessageEvent(message_net_event Event, game_state *State, chunk_list 
       buffer SimOrderListBuffer = SerializeOrderList(&SimOrderList, &State->Allocator);
       ChunkRingBufferWrite(&State->OrderListRing, SimOrderListBuffer);
 
-      RestoreLinearAllocatorContext(LAContext);
+      ReleaseLinearAllocatorCheckpoint(MemCheckpoint);
       break;
     }
     default:
@@ -235,7 +235,7 @@ void ProcessMouse(simulation *Sim, linear_allocator *Allocator, simulation_playe
       ToggleUnitSelection(UnitSelection, Unit->ID);
     }
     else if(UnitSelection->Count != 0) {
-      linear_allocator_context AllocatorContext = CreateLinearAllocatorContext(Allocator);
+      linear_allocator_checkpoint MemCheckpoint = CreateLinearAllocatorCheckpoint(Allocator);
       Assert(GetLinearAllocatorFree(Allocator) >= NET_MESSAGE_MAX_LENGTH + NETWORK_COMMAND_MAX_LENGTH);
 
       buffer OrderMessage = SerializeOrderNetMessage(
@@ -246,7 +246,7 @@ void ProcessMouse(simulation *Sim, linear_allocator *Allocator, simulation_playe
       );
       buffer Command = SerializeSendNetCommand(OrderMessage, Allocator);
       ChunkListWrite(NetCmds, Command);
-      RestoreLinearAllocatorContext(AllocatorContext);
+      ReleaseLinearAllocatorCheckpoint(MemCheckpoint);
     }
   }
 }
@@ -323,11 +323,11 @@ void UpdateGame(game_platform *Platform, chunk_list *NetEvents, chunk_list *NetC
   if(Platform->TerminationRequested) {
     printf("Requesting net shutdown...\n");
 
-    linear_allocator_context LAContext = CreateLinearAllocatorContext(&State->Allocator);
+    linear_allocator_checkpoint MemCheckpoint = CreateLinearAllocatorCheckpoint(&State->Allocator);
     Assert(GetLinearAllocatorFree(&State->Allocator) >= NETWORK_COMMAND_MAX_LENGTH);
     buffer Command = SerializeShutdownNetCommand(&State->Allocator);
     ChunkListWrite(NetCmds, Command);
-    RestoreLinearAllocatorContext(LAContext);
+    ReleaseLinearAllocatorCheckpoint(MemCheckpoint);
 
     *Running = false;
   }

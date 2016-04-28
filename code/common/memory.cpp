@@ -5,6 +5,7 @@
 void InitLinearAllocator(linear_allocator *A, void *Base, memsize Capacity) {
   A->Base = Base;
   A->Length = 0;
+  A->CheckpointCount = 0;
   A->Capacity = Capacity;
 }
 
@@ -30,14 +31,19 @@ void TerminateLinearAllocator(linear_allocator *A) {
   A->Capacity = 0;
 }
 
-linear_allocator_context CreateLinearAllocatorContext(linear_allocator *Allocator) {
-  linear_allocator_context C;
-  C.Allocator = Allocator;
-  C.Length = Allocator->Length;
-  return C;
+linear_allocator_checkpoint CreateLinearAllocatorCheckpoint(linear_allocator *Allocator) {
+  linear_allocator_checkpoint CP;
+  CP.Allocator = Allocator;
+  CP.Length = Allocator->Length;
+  Allocator->CheckpointCount++;
+  return CP;
 }
 
-void RestoreLinearAllocatorContext(linear_allocator_context Context) {
-  Assert(Context.Length <= Context.Allocator->Length);
-  Context.Allocator->Length = Context.Length;
+void ReleaseLinearAllocatorCheckpoint(linear_allocator_checkpoint CP) {
+  Assert(CP.Length <= CP.Allocator->Length);
+  CP.Allocator->CheckpointCount--;
+
+  if(CP.Allocator->CheckpointCount == 0) {
+    CP.Allocator->Length = CP.Length;
+  }
 }

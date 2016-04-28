@@ -145,12 +145,12 @@ void TerminatePosixNet(posix_net_context *Context) {
 }
 
 void ShutdownPosixNet(posix_net_context *Context) {
-  linear_allocator_context LAContext = CreateLinearAllocatorContext(&Context->Allocator);
+  linear_allocator_checkpoint MemCheckpoint = CreateLinearAllocatorCheckpoint(&Context->Allocator);
   Assert(GetLinearAllocatorFree(&Context->Allocator) >= NETWORK_COMMAND_MAX_LENGTH);
 
   buffer Command = SerializeShutdownNetCommand(&Context->Allocator);
   ChunkRingBufferWrite(&Context->CommandRing, Command);
-  RestoreLinearAllocatorContext(LAContext);
+  ReleaseLinearAllocatorCheckpoint(MemCheckpoint);
 
   RequestWake(Context);
 }
@@ -203,7 +203,7 @@ memsize ReadPosixNetEvent(posix_net_context *Context, buffer Buffer) {
 }
 
 void PosixNetBroadcast(posix_net_context *Context, net_client_id *IDs, memsize IDCount, buffer Message) {
-  linear_allocator_context LAContext = CreateLinearAllocatorContext(&Context->Allocator);
+  linear_allocator_checkpoint MemCheckpoint = CreateLinearAllocatorCheckpoint(&Context->Allocator);
   Assert(GetLinearAllocatorFree(&Context->Allocator) >= NETWORK_COMMAND_MAX_LENGTH);
   buffer Command = SerializeBroadcastNetCommand(
     IDs,
@@ -212,18 +212,18 @@ void PosixNetBroadcast(posix_net_context *Context, net_client_id *IDs, memsize I
     &Context->Allocator
   );
   ChunkRingBufferWrite(&Context->CommandRing, Command);
-  RestoreLinearAllocatorContext(LAContext);
+  ReleaseLinearAllocatorCheckpoint(MemCheckpoint);
 
   RequestWake(Context);
 }
 
 void PosixNetSend(posix_net_context *Context, net_client_id ID, buffer Message) {
-  linear_allocator_context LAContext = CreateLinearAllocatorContext(&Context->Allocator);
+  linear_allocator_checkpoint MemCheckpoint = CreateLinearAllocatorCheckpoint(&Context->Allocator);
   Assert(GetLinearAllocatorFree(&Context->Allocator) >= NETWORK_COMMAND_MAX_LENGTH);
 
   buffer Command = SerializeSendNetCommand(ID, Message, &Context->Allocator);
   ChunkRingBufferWrite(&Context->CommandRing, Command);
-  RestoreLinearAllocatorContext(LAContext);
+  ReleaseLinearAllocatorCheckpoint(MemCheckpoint);
 
   RequestWake(Context);
 }
@@ -249,10 +249,10 @@ void ProcessIncoming(posix_net_context *Context, posix_net_client *Client) {
         break;
       }
       case net_message_type_order: {
-        linear_allocator_context LAContext = CreateLinearAllocatorContext(&Context->Allocator);
+        linear_allocator_checkpoint MemCheckpoint = CreateLinearAllocatorCheckpoint(&Context->Allocator);
         order_net_message OrderMessage = UnserializeOrderNetMessage(Message, &Context->Allocator);
         Assert(ValidateOrderNetMessage(OrderMessage));
-        RestoreLinearAllocatorContext(LAContext);
+        ReleaseLinearAllocatorCheckpoint(MemCheckpoint);
         break;
       }
       default:
