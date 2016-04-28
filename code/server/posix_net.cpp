@@ -259,12 +259,12 @@ void ProcessIncoming(posix_net_context *Context, posix_net_client *Client) {
         InvalidCodePath;
     }
 
-    memsize Length = SerializeMessageNetEvent(Client->ID, Message, Context->EventOutBuffer);
-    buffer Event = {
-      .Addr = Context->EventOutBuffer.Addr,
-      .Length = Length
-    };
+    linear_allocator_checkpoint MemCheckpoint = CreateLinearAllocatorCheckpoint(&Context->Allocator);
+    Assert(GetLinearAllocatorFree(&Context->Allocator) >= NET_EVENT_MAX_LENGTH);
+    buffer Event = SerializeMessageNetEvent(Client->ID, Message, &Context->Allocator);
     ChunkRingBufferWrite(&Context->EventRing, Event);
+    ReleaseLinearAllocatorCheckpoint(MemCheckpoint);
+
     ByteRingBufferReadAdvance(&Client->InBuffer, POSIX_PACKET_HEADER_SIZE + Message.Length);
   }
 }
@@ -298,12 +298,12 @@ void* RunPosixNet(void *Data) {
             int Result = close(Client->FD);
             Assert(Result != -1);
             DestroyClient(&Iterator);
-            memsize Length = SerializeDisconnectNetEvent(Client->ID, Context->EventOutBuffer);
-            buffer Event = {
-              .Addr = Context->EventOutBuffer.Addr,
-              .Length = Length
-            };
+
+            linear_allocator_checkpoint MemCheckpoint = CreateLinearAllocatorCheckpoint(&Context->Allocator);
+            Assert(GetLinearAllocatorFree(&Context->Allocator) >= NET_EVENT_MAX_LENGTH);
+            buffer Event = SerializeDisconnectNetEvent(Client->ID, &Context->Allocator);
             ChunkRingBufferWrite(&Context->EventRing, Event);
+            ReleaseLinearAllocatorCheckpoint(MemCheckpoint);
             printf("A client disconnected.\n");
           }
           else {
@@ -334,12 +334,12 @@ void* RunPosixNet(void *Data) {
       Assert(ClientFD != -1);
       posix_net_client *Client = CreateClient(&Context->ClientSet, ClientFD);
       CheckNewReadFD(Context, ClientFD);
-      memsize Length = SerializeConnectNetEvent(Client->ID, Context->EventOutBuffer);
-      buffer Event = {
-        .Addr = Context->EventOutBuffer.Addr,
-        .Length = Length
-      };
+
+      linear_allocator_checkpoint MemCheckpoint = CreateLinearAllocatorCheckpoint(&Context->Allocator);
+      Assert(GetLinearAllocatorFree(&Context->Allocator) >= NET_EVENT_MAX_LENGTH);
+      buffer Event = SerializeConnectNetEvent(Client->ID, &Context->Allocator);
       ChunkRingBufferWrite(&Context->EventRing, Event);
+      ReleaseLinearAllocatorCheckpoint(MemCheckpoint);
     }
 
     if(Context->Mode == net_mode_disconnecting) {
