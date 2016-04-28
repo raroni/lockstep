@@ -288,22 +288,23 @@ void* RunPosixNet(void *VoidContext) {
 }
 
 void ShutdownPosixNet(posix_net_context *Context) {
-  memsize Length = SerializeShutdownNetCommand(Context->CommandSerializationBuffer);
-  buffer Command = {
-    .Addr = Context->CommandSerializationBuffer.Addr,
-    .Length = Length
-  };
+  linear_allocator_context LAContext = CreateLinearAllocatorContext(&Context->Allocator);
+  Assert(GetLinearAllocatorFree(&Context->Allocator) >= NETWORK_COMMAND_MAX_LENGTH);
+
+  buffer Command = SerializeShutdownNetCommand(&Context->Allocator);
   ChunkRingBufferWrite(&Context->CommandRing, Command);
+  RestoreLinearAllocatorContext(LAContext);
+
   RequestWake(Context);
 }
 
 void PosixNetSend(posix_net_context *Context, buffer Message) {
-  memsize Length = SerializeSendNetCommand(Context->CommandSerializationBuffer, Message);
-  buffer Command = {
-    .Addr = Context->CommandSerializationBuffer.Addr,
-    .Length = Length
-  };
+  linear_allocator_context LAContext = CreateLinearAllocatorContext(&Context->Allocator);
+  Assert(GetLinearAllocatorFree(&Context->Allocator) >= NETWORK_COMMAND_MAX_LENGTH);
+  buffer Command = SerializeSendNetCommand(Message, &Context->Allocator);
   ChunkRingBufferWrite(&Context->CommandRing, Command);
+  RestoreLinearAllocatorContext(LAContext);
+
   RequestWake(Context);
 }
 

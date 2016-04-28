@@ -16,6 +16,10 @@ void SeqWrite(seq_write *Writer, void *DataAddr, memsize DataLength) {
   Writer->Buffer.Length += DataLength;
 }
 
+void SeqWriteBuffer(seq_write *Writer, buffer Buffer) {
+  SeqWrite(Writer, Buffer.Addr, Buffer.Length);
+}
+
 void SeqWriteUI8(seq_write *Writer, ui8 Int) {
   SeqWrite(Writer, &Int, sizeof(Int));
 }

@@ -150,18 +150,12 @@ void ProcessMessageEvent(message_net_event Event, game_state *State, chunk_list 
       InitInterpolation(&State->Interpolation, &State->Sim);
 
       linear_allocator_context LAContext = CreateLinearAllocatorContext(&State->Allocator);
-      Assert(GetLinearAllocatorFree(&State->Allocator) >= NET_MESSAGE_MAX_LENGTH);
+      Assert(GetLinearAllocatorFree(&State->Allocator) >= NET_MESSAGE_MAX_LENGTH + NETWORK_COMMAND_MAX_LENGTH);
 
       buffer ReplyMessage = SerializeReplyNetMessage(&State->Allocator);
       printf("Starting game and replying...\n");
 
-      // TODO: When/if this is changed to use dynamic linear allocator
-      // remember to add net command max size to free-assert above.
-      memsize Length = SerializeSendNetCommand(State->CommandSerializationBuffer, ReplyMessage);
-      buffer Command = {
-        .Addr = State->CommandSerializationBuffer.Addr,
-        .Length = Length
-      };
+      buffer Command = SerializeSendNetCommand(ReplyMessage, &State->Allocator);
       ChunkListWrite(NetCmds, Command);
       RestoreLinearAllocatorContext(LAContext);
 
@@ -242,7 +236,7 @@ void ProcessMouse(simulation *Sim, linear_allocator *Allocator, simulation_playe
     }
     else if(UnitSelection->Count != 0) {
       linear_allocator_context AllocatorContext = CreateLinearAllocatorContext(Allocator);
-      Assert(GetLinearAllocatorFree(Allocator) >= NET_MESSAGE_MAX_LENGTH);
+      Assert(GetLinearAllocatorFree(Allocator) >= NET_MESSAGE_MAX_LENGTH + NETWORK_COMMAND_MAX_LENGTH);
 
       buffer OrderMessage = SerializeOrderNetMessage(
         UnitSelection->IDs,
@@ -250,18 +244,7 @@ void ProcessMouse(simulation *Sim, linear_allocator *Allocator, simulation_playe
         WorldPos,
         Allocator
       );
-
-      // TODO: Remember to add NETWORK_COMMAND_MAX_LENGTH to Free-assert() above
-      // when/if this is convered to use the new serialize format.
-      buffer CommandSerializationBuffer = {
-        .Addr = LinearAllocate(Allocator, NETWORK_COMMAND_MAX_LENGTH),
-        .Length = NETWORK_COMMAND_MAX_LENGTH
-      };
-      memsize Length = SerializeSendNetCommand(CommandSerializationBuffer, OrderMessage);
-      buffer Command = {
-        .Addr = CommandSerializationBuffer.Addr,
-        .Length = Length
-      };
+      buffer Command = SerializeSendNetCommand(OrderMessage, Allocator);
       ChunkListWrite(NetCmds, Command);
       RestoreLinearAllocatorContext(AllocatorContext);
     }
@@ -340,12 +323,11 @@ void UpdateGame(game_platform *Platform, chunk_list *NetEvents, chunk_list *NetC
   if(Platform->TerminationRequested) {
     printf("Requesting net shutdown...\n");
 
-    memsize Length = SerializeShutdownNetCommand(State->CommandSerializationBuffer);
-    buffer Command = {
-      .Addr = State->CommandSerializationBuffer.Addr,
-      .Length = Length
-    };
+    linear_allocator_context LAContext = CreateLinearAllocatorContext(&State->Allocator);
+    Assert(GetLinearAllocatorFree(&State->Allocator) >= NETWORK_COMMAND_MAX_LENGTH);
+    buffer Command = SerializeShutdownNetCommand(&State->Allocator);
     ChunkListWrite(NetCmds, Command);
+    RestoreLinearAllocatorContext(LAContext);
 
     *Running = false;
   }
