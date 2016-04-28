@@ -1,15 +1,12 @@
 #include "lib/assert.h"
 #include "lib/serialization.h"
+#include "lib/seq_write.h"
 #include "common/conversion.h"
 #include "net_events.h"
 
-static void WriteType(serializer *S, net_event_type Type) {
-  // Int casting is only to silence warning:
-  // tautological-constant-out-of-range-compare
-  Assert((int)Type < 256);
-
-  ui8 TypeInt = (ui8)Type;
-  SerializerWriteUI8(S, TypeInt);
+static void WriteType(seq_write *W, net_event_type Type) {
+  ui8 TypeInt = SafeCastIntToUI8(Type);
+  SeqWriteUI8(W, TypeInt);
 }
 
 static net_event_type ReadType(serializer *S) {
@@ -17,22 +14,22 @@ static net_event_type ReadType(serializer *S) {
   return (net_event_type)TypeInt;
 }
 
-memsize SerializeConnectionEstablishedNetEvent(buffer Out) {
-  serializer S = CreateSerializer(Out);
-  WriteType(&S, net_event_type_connection_established);
-  return S.Position;
+buffer SerializeConnectionEstablishedNetEvent(linear_allocator *Allocator) {
+  seq_write W = CreateSeqWrite(Allocator);
+  WriteType(&W, net_event_type_connection_established);
+  return W.Buffer;
 }
 
-memsize SerializeConnectionLostNetEvent(buffer Out) {
-  serializer S = CreateSerializer(Out);
-  WriteType(&S, net_event_type_connection_lost);
-  return S.Position;
+buffer SerializeConnectionLostNetEvent(linear_allocator *Allocator) {
+  seq_write W = CreateSeqWrite(Allocator);
+  WriteType(&W, net_event_type_connection_lost);
+  return W.Buffer;
 }
 
-memsize SerializeConnectionFailedNetEvent(buffer Out) {
-  serializer S = CreateSerializer(Out);
-  WriteType(&S, net_event_type_connection_failed);
-  return S.Position;
+buffer SerializeConnectionFailedNetEvent(linear_allocator *Allocator) {
+  seq_write W = CreateSeqWrite(Allocator);
+  WriteType(&W, net_event_type_connection_failed);
+  return W.Buffer;
 }
 
 net_event_type UnserializeNetEventType(buffer Input) {
@@ -40,14 +37,14 @@ net_event_type UnserializeNetEventType(buffer Input) {
   return ReadType(&S);
 }
 
-memsize SerializeMessageNetEvent(buffer Message, buffer Out) {
-  serializer S = CreateSerializer(Out);
+buffer SerializeMessageNetEvent(buffer Message, linear_allocator *Allocator) {
+  seq_write W = CreateSeqWrite(Allocator);
 
-  WriteType(&S, net_event_type_message);
-  SerializerWriteMemsize(&S, Message.Length);
-  SerializerWriteBuffer(&S, Message);
+  WriteType(&W, net_event_type_message);
+  SeqWriteMemsize(&W, Message.Length);
+  SeqWriteBuffer(&W, Message);
 
-  return S.Position;
+  return W.Buffer;
 }
 
 message_net_event UnserializeMessageNetEvent(buffer Event) {

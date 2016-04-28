@@ -1,6 +1,7 @@
 #pragma once
 
 #include "lib/def.h"
+#include "common/memory.h"
 
 #define NET_EVENT_MAX_LENGTH 512
 
@@ -15,9 +16,9 @@ struct message_net_event {
   buffer Message;
 };
 
-memsize SerializeConnectionEstablishedNetEvent(buffer Out);
-memsize SerializeConnectionLostNetEvent(buffer Out);
-memsize SerializeConnectionFailedNetEvent(buffer Out);
-memsize SerializeMessageNetEvent(buffer Message, buffer Out);
+buffer SerializeConnectionEstablishedNetEvent(linear_allocator *Allocator);
+buffer SerializeConnectionLostNetEvent(linear_allocator *Allocator);
+buffer SerializeConnectionFailedNetEvent(linear_allocator *Allocator);
+buffer SerializeMessageNetEvent(buffer Message, linear_allocator *Allocator);
 message_net_event UnserializeMessageNetEvent(buffer Event);
 net_event_type UnserializeNetEventType(buffer Input);

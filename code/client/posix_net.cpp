@@ -105,7 +105,6 @@ void InitPosixNet(posix_net_context *Context) {
   Context->CommandSerializationBuffer = CreateBuffer(NETWORK_COMMAND_MAX_LENGTH);
   Context->CommandReadBuffer = CreateBuffer(NETWORK_COMMAND_MAX_LENGTH);
   Context->ReceiveBuffer = CreateBuffer(1024*10);
-  Context->EventSerializationBuffer = CreateBuffer(NET_EVENT_MAX_LENGTH);
   Context->IncomingReadBuffer = CreateBuffer(NET_MESSAGE_MAX_LENGTH);
 
   Context->State = posix_net_state_inactive;
@@ -192,13 +191,12 @@ void ProcessIncoming(posix_net_context *Context) {
         InvalidCodePath;
     }
 
-    memsize Length = SerializeMessageNetEvent(Message, Context->EventSerializationBuffer);
-    buffer Event = {
-      .Addr = Context->EventSerializationBuffer.Addr,
-      .Length = Length
-    };
+    linear_allocator_checkpoint MemCheckpoint = CreateLinearAllocatorCheckpoint(&Context->Allocator);
+    Assert(GetLinearAllocatorFree(&Context->Allocator) >= NET_EVENT_MAX_LENGTH);
+    buffer Event = SerializeMessageNetEvent(Message, &Context->Allocator);
     ChunkRingBufferWrite(&Context->EventRing, Event);
     ByteRingBufferReadAdvance(&Context->IncomingRing, POSIX_PACKET_HEADER_SIZE + Message.Length);
+    ReleaseLinearAllocatorCheckpoint(MemCheckpoint);
   }
 }
 
@@ -231,24 +229,22 @@ void* RunPosixNet(void *VoidContext) {
         if(OptionValue == 0) {
           Context->State = posix_net_state_connected;
 
-          memsize Length = SerializeConnectionEstablishedNetEvent(Context->EventSerializationBuffer);
-          buffer Event = {
-            .Addr = Context->EventSerializationBuffer.Addr,
-            .Length = Length
-          };
+          linear_allocator_checkpoint MemCheckpoint = CreateLinearAllocatorCheckpoint(&Context->Allocator);
+          Assert(GetLinearAllocatorFree(&Context->Allocator) >= NET_EVENT_MAX_LENGTH);
+          buffer Event = SerializeConnectionEstablishedNetEvent(&Context->Allocator);
           ChunkRingBufferWrite(&Context->EventRing, Event);
+          ReleaseLinearAllocatorCheckpoint(MemCheckpoint);
 
           printf("Connected.\n");
         }
         else {
           printf("Connection failed.\n");
 
-          memsize Length = SerializeConnectionFailedNetEvent(Context->EventSerializationBuffer);
-          buffer Event = {
-            .Addr = Context->EventSerializationBuffer.Addr,
-            .Length = Length
-          };
+          linear_allocator_checkpoint MemCheckpoint = CreateLinearAllocatorCheckpoint(&Context->Allocator);
+          Assert(GetLinearAllocatorFree(&Context->Allocator) >= NET_EVENT_MAX_LENGTH);
+          buffer Event = SerializeConnectionFailedNetEvent(&Context->Allocator);
           ChunkRingBufferWrite(&Context->EventRing, Event);
+          ReleaseLinearAllocatorCheckpoint(MemCheckpoint);
 
           Context->State = posix_net_state_stopped;
         }
@@ -260,12 +256,11 @@ void* RunPosixNet(void *VoidContext) {
 
           ByteRingBufferReset(&Context->IncomingRing);
 
-          memsize Length = SerializeConnectionLostNetEvent(Context->EventSerializationBuffer);
-          buffer Event = {
-            .Addr = Context->EventSerializationBuffer.Addr,
-            .Length = Length
-          };
+          linear_allocator_checkpoint MemCheckpoint = CreateLinearAllocatorCheckpoint(&Context->Allocator);
+          Assert(GetLinearAllocatorFree(&Context->Allocator) >= NET_EVENT_MAX_LENGTH);
+          buffer Event = SerializeConnectionLostNetEvent(&Context->Allocator);
           ChunkRingBufferWrite(&Context->EventRing, Event);
+          ReleaseLinearAllocatorCheckpoint(MemCheckpoint);
 
           Context->State = posix_net_state_stopped;
           continue;
@@ -321,7 +316,6 @@ void TerminatePosixNet(posix_net_context *Context) {
   DestroyBuffer(&Context->CommandSerializationBuffer);
   DestroyBuffer(&Context->CommandReadBuffer);
   DestroyBuffer(&Context->ReceiveBuffer);
-  DestroyBuffer(&Context->EventSerializationBuffer);
 
   TerminateChunkRingBuffer(&Context->EventRing);
   TerminateChunkRingBuffer(&Context->CommandRing);
