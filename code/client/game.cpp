@@ -142,7 +142,7 @@ void ProcessMessageEvent(message_net_event Event, game_state *State, chunk_list 
       InitSimulation(&State->Sim);
       for(memsize I=0; I<StartMessage.PlayerCount; ++I) {
         simulation_player_id PlayerID = SimulationCreatePlayer(&State->Sim);
-        if(I == 0) {
+        if(I == StartMessage.PlayerIndex) {
           State->PlayerID = PlayerID;
         }
       }
