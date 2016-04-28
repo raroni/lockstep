@@ -66,24 +66,17 @@ static void AddPlayer(player_set *Set, net_client_id NetID) {
   Set->Count++;
 }
 
-static void Broadcast(const player_set *Set, const buffer Message, chunk_list *Commands) {
+static void Broadcast(const player_set *Set, const buffer Message, chunk_list *Commands, linear_allocator *Allocator) {
   net_client_id IDs[Set->Count];
   for(memsize I=0; I<Set->Count; ++I) {
     IDs[I] = Set->Players[I].ClientID;
   }
 
-  static ui8 TempWorkBufferBlock[1024*1024];
-  buffer TempWorkBuffer = {
-    .Addr = TempWorkBufferBlock,
-    .Length = sizeof(TempWorkBufferBlock)
-  };
-
-  memsize Length = SerializeBroadcastNetCommand(IDs, Set->Count, Message, TempWorkBuffer);
-  buffer Command = {
-    .Addr = TempWorkBuffer.Addr,
-    .Length = Length
-  };
+  linear_allocator_context LAContext = CreateLinearAllocatorContext(Allocator);
+  Assert(GetLinearAllocatorFree(Allocator) >= NETWORK_COMMAND_MAX_LENGTH);
+  buffer Command = SerializeBroadcastNetCommand(IDs, Set->Count, Message, Allocator);
   ChunkListWrite(Commands, Command);
+  RestoreLinearAllocatorContext(LAContext);
 }
 
 static void RemovePlayer(player_set *Set, memsize Index) {
@@ -120,23 +113,12 @@ void StartGame(game_state *State, chunk_list *NetCmds, uusec64 Time) {
     Set->Players[I].SimID = SimulationCreatePlayer(&State->Sim);
   }
 
-  static ui8 TempWorkBufferBlock[1024*1024];
-  buffer TempWorkBuffer = {
-    .Addr = TempWorkBufferBlock,
-    .Length = sizeof(TempWorkBufferBlock)
-  };
-
   for(memsize I=0; I<Set->Count; ++I) {
     linear_allocator_context LAContext = CreateLinearAllocatorContext(&State->Allocator);
 
-    Assert(GetLinearAllocatorFree(&State->Allocator) >= NET_MESSAGE_MAX_LENGTH);
+    Assert(GetLinearAllocatorFree(&State->Allocator) >= NET_MESSAGE_MAX_LENGTH + NETWORK_COMMAND_MAX_LENGTH);
     buffer Message = SerializeStartNetMessage(Set->Count, I, &State->Allocator);
-
-    memsize Length = SerializeSendNetCommand(Set->Players[I].ClientID, Message, TempWorkBuffer);
-    buffer Command = {
-      .Addr = TempWorkBuffer.Addr,
-      .Length = Length
-    };
+    buffer Command = SerializeSendNetCommand(Set->Players[I].ClientID, Message, &State->Allocator);
     ChunkListWrite(NetCmds, Command);
     RestoreLinearAllocatorContext(LAContext);
   }
@@ -239,7 +221,7 @@ void BroadcastOrders(player_set *PlayerSet, simulation_order_list *SimOrderList,
   }
 
   buffer Message = SerializeOrderListNetMessage(NetOrders, SimOrderList->Count, Allocator);
-  Broadcast(PlayerSet, Message, Commands);
+  Broadcast(PlayerSet, Message, Commands, Allocator);
   RestoreLinearAllocatorContext(LAContext);
 }
 
@@ -254,32 +236,25 @@ void UpdateGame(
 ) {
   game_state *State = (game_state*)Memory.Addr;
 
-  static ui8 TempWorkBufferBlock[1024*1024*5];
-  buffer TempWorkBuffer = {
-    .Addr = TempWorkBufferBlock,
-    .Length = sizeof(TempWorkBufferBlock)
-  };
-
   ProcessNetEvents(State, Events);
 
   if(State->Mode != game_mode_disconnecting && TerminationRequested) {
     State->Mode = game_mode_disconnecting;
-    memsize Length = SerializeShutdownNetCommand(TempWorkBuffer);
-    buffer Command = {
-      .Addr = TempWorkBuffer.Addr,
-      .Length = Length
-    };
+
+    linear_allocator_context LAContext = CreateLinearAllocatorContext(&State->Allocator);
+    Assert(GetLinearAllocatorFree(&State->Allocator) >= NETWORK_COMMAND_MAX_LENGTH);
+    buffer Command = SerializeShutdownNetCommand(&State->Allocator);
     ChunkListWrite(Commands, Command);
+    RestoreLinearAllocatorContext(LAContext);
   }
   else if(State->Mode != game_mode_waiting_for_clients && State->PlayerSet.Count == 0) {
     printf("All players has left. Stopping game.\n");
     if(State->Mode != game_mode_disconnecting) {
-      memsize Length = SerializeShutdownNetCommand(TempWorkBuffer);
-      buffer Command = {
-        .Addr = TempWorkBuffer.Addr,
-        .Length = Length
-      };
+      linear_allocator_context LAContext = CreateLinearAllocatorContext(&State->Allocator);
+      Assert(GetLinearAllocatorFree(&State->Allocator) >= NETWORK_COMMAND_MAX_LENGTH);
+      buffer Command = SerializeShutdownNetCommand(&State->Allocator);
       ChunkListWrite(Commands, Command);
+      RestoreLinearAllocatorContext(LAContext);
     }
     *Running = false;
     State->Mode = game_mode_stopped;

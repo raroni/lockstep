@@ -10,10 +10,14 @@ seq_write CreateSeqWrite(linear_allocator *Allocator) {
   return Writer;
 }
 
-void SeqWrite(seq_write *Writer, void *DataAddr, memsize DataLength) {
+void SeqWrite(seq_write *Writer, const void *DataAddr, memsize DataLength) {
   void *Destination = LinearAllocate(Writer->Allocator, DataLength);
   memcpy(Destination, DataAddr, DataLength);
   Writer->Buffer.Length += DataLength;
+}
+
+void SeqWriteMemsize(seq_write *Writer, memsize Int) {
+  SeqWrite(Writer, &Int, sizeof(Int));
 }
 
 void SeqWriteBuffer(seq_write *Writer, buffer Buffer) {

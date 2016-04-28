@@ -145,12 +145,13 @@ void TerminatePosixNet(posix_net_context *Context) {
 }
 
 void ShutdownPosixNet(posix_net_context *Context) {
-  memsize Length = SerializeShutdownNetCommand(Context->CommandSerializationBuffer);
-  buffer Command = {
-    .Addr = Context->CommandSerializationBuffer.Addr,
-    .Length = Length
-  };
+  linear_allocator_context LAContext = CreateLinearAllocatorContext(&Context->Allocator);
+  Assert(GetLinearAllocatorFree(&Context->Allocator) >= NETWORK_COMMAND_MAX_LENGTH);
+
+  buffer Command = SerializeShutdownNetCommand(&Context->Allocator);
   ChunkRingBufferWrite(&Context->CommandRing, Command);
+  RestoreLinearAllocatorContext(LAContext);
+
   RequestWake(Context);
 }
 
@@ -202,27 +203,28 @@ memsize ReadPosixNetEvent(posix_net_context *Context, buffer Buffer) {
 }
 
 void PosixNetBroadcast(posix_net_context *Context, net_client_id *IDs, memsize IDCount, buffer Message) {
-  memsize Length = SerializeBroadcastNetCommand(
+  linear_allocator_context LAContext = CreateLinearAllocatorContext(&Context->Allocator);
+  Assert(GetLinearAllocatorFree(&Context->Allocator) >= NETWORK_COMMAND_MAX_LENGTH);
+  buffer Command = SerializeBroadcastNetCommand(
     IDs,
     IDCount,
     Message,
-    Context->CommandSerializationBuffer
+    &Context->Allocator
   );
-  buffer Command = {
-    .Addr = Context->CommandSerializationBuffer.Addr,
-    .Length = Length
-  };
   ChunkRingBufferWrite(&Context->CommandRing, Command);
+  RestoreLinearAllocatorContext(LAContext);
+
   RequestWake(Context);
 }
 
 void PosixNetSend(posix_net_context *Context, net_client_id ID, buffer Message) {
-  memsize Length = SerializeSendNetCommand(ID, Message, Context->CommandSerializationBuffer);
-  buffer Command = {
-    .Addr = Context->CommandSerializationBuffer.Addr,
-    .Length = Length
-  };
+  linear_allocator_context LAContext = CreateLinearAllocatorContext(&Context->Allocator);
+  Assert(GetLinearAllocatorFree(&Context->Allocator) >= NETWORK_COMMAND_MAX_LENGTH);
+
+  buffer Command = SerializeSendNetCommand(ID, Message, &Context->Allocator);
   ChunkRingBufferWrite(&Context->CommandRing, Command);
+  RestoreLinearAllocatorContext(LAContext);
+
   RequestWake(Context);
 }
 
