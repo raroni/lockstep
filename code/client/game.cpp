@@ -16,14 +16,17 @@
 #include "render_commands.h"
 #include "game.h"
 
-static const ui32 Red = 0x00FF0000;
-static const ui32 Blue = 0x000000FF;
-static const ui32 White = 0x00FFFFFF;
-static const ui32 DarkGreen = 0x00005500;
+static const ui32 DarkBlueColor = 0x002D3E50;
+static const ui32 RedColor = 0x00E64E42;
+static const ui32 BlueColor = 0x002F81B8;
+static const ui32 PurpleColor = 0x008D48AB;
+static const ui32 OrangeColor = 0x00E57F31;
+static const ui32 WhiteColor = 0x00FFFFFF;
+static const ui32 GreenColor = 0x0030AD63;
 static const r32 Zoom = 1.0 / 1000.0;
 
 static const ui32 PlayerColors[] = {
-  Red, Blue
+  RedColor, OrangeColor, BlueColor, PurpleColor
 };
 
 #define UNIT_SELECTION_MAX 8;
@@ -109,7 +112,7 @@ void* _AddRenderCommand(chunk_list *List, render_command_type Type, memsize Leng
 void Render(simulation *Sim, interpolation *Interpolation, unit_selection *UnitSelection, chunk_list *Commands, ivec2 Resolution) {
   {
     clear_color_render_command *Command = AddRenderCommand(Commands, clear_color);
-    Command->Color = White;
+    Command->Color = DarkBlueColor;
   }
 
   {
@@ -125,7 +128,7 @@ void Render(simulation *Sim, interpolation *Interpolation, unit_selection *UnitS
     draw_square_render_command *Command = AddRenderCommand(Commands, draw_square);
     Command->X = Interpolation->Pos[UnitID].X;
     Command->Y = Interpolation->Pos[UnitID].Y;
-    Command->Color = White;
+    Command->Color = WhiteColor;
     Command->HalfSize = SIMULATION_UNIT_HALF_SIZE + 10;
   }
 
@@ -141,7 +144,7 @@ void Render(simulation *Sim, interpolation *Interpolation, unit_selection *UnitS
     draw_square_render_command *Command = AddRenderCommand(Commands, draw_square);
     Command->X = Sim->Trees[I].Pos.X;
     Command->Y = Sim->Trees[I].Pos.Y;
-    Command->Color = DarkGreen;
+    Command->Color = GreenColor;
     Command->HalfSize = SIMULATION_TREE_HALF_SIZE;
   }
 }
