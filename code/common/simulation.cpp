@@ -2,7 +2,7 @@
 #include "lib/math.h"
 #include "simulation.h"
 
-#define UNITS_PER_PLAYER 5
+#define UNITS_PER_PLAYER 4
 
 typedef simulation_unit unit;
 typedef simulation_player_id player_id;
@@ -12,10 +12,10 @@ typedef simulation_tree tree;
 
 static const ivec2 UndefinedTarget = { .X = INT16_MIN, .Y = INT16_MIN };
 static const ivec2 StartPositions[] = {
-  { -450, 400 },
-  { 450, -400 },
-  { -450, -400 },
-  { 450, 400 }
+  { -700, 500 },
+  { 700, -500 },
+  { -700, -500 },
+  { 700, 500 }
 };
 
 
@@ -32,16 +32,16 @@ void CreateUnit(simulation *Sim, memsize PlayerID, ivec2 Pos) {
 
 simulation_player_id SimulationCreatePlayer(simulation *Sim) {
   Assert(Sim->PlayerCount != SIMULATION_PLAYER_MAX);
-  ui16 Displacement = 260;
+  ui16 Displacement = 160;
   player *Player = Sim->Players + Sim->PlayerCount;
   Player->ID = Sim->PlayerCount;
   memsize StartPositionCount = sizeof(StartPositions) / sizeof(StartPositions[0]);
   ivec2 Base = StartPositions[Player->ID % StartPositionCount];
   for(memsize U=0; U<UNITS_PER_PLAYER; ++U) {
     ivec2 Pos;
-    r32 Spread = 2.0f * (r32)U / (r32)(UNITS_PER_PLAYER-1) - 1.0f;
-    Pos.X = Base.X + Spread * Displacement;
-    Pos.Y = Base.Y + Spread * Displacement;
+    memsize Layer = U % (UNITS_PER_PLAYER / 2);
+    Pos.X = (r32)Base.X + (r32(Layer) - 0.5f) * Displacement;
+    Pos.Y = Base.Y + ((r32)(U/2)-0.5f) * Displacement;
     CreateUnit(Sim, Player->ID, Pos);
   }
   Sim->PlayerCount++;
@@ -76,9 +76,9 @@ void InitSimulation(simulation *Sim) {
 
   for(memsize I=0; I<SIMULATION_TREE_COUNT; ++I) {
     tree *Tree = Sim->Trees + I;
-    memsize LineIndex = I % 8;
-    Tree->Pos.X = -950 + LineIndex * 150 + I * 50;
-    Tree->Pos.Y = -450 + LineIndex * 150;
+    memsize LineIndex = I % 6;
+    Tree->Pos.X = -750 + LineIndex * 150 + I * 50;
+    Tree->Pos.Y = -350 + LineIndex * 150;
   }
 }
 
