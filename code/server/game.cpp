@@ -81,6 +81,7 @@ static void Broadcast(const player_set *Set, const buffer Message, chunk_list *C
 }
 
 static void RemovePlayer(player_set *Set, memsize Index) {
+  Set->Players[Index] = Set->Players[Set->Count-1];
   Set->Count--;
 }
 
