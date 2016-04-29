@@ -8,6 +8,9 @@ typedef simulation_unit unit;
 typedef simulation_player_id player_id;
 typedef simulation_order_list order_list;
 typedef simulation_player player;
+typedef simulation_tree tree;
+
+static const ivec2 UndefinedTarget = { .X = INT16_MIN, .Y = INT16_MIN };
 
 void CreateUnit(simulation *Sim, memsize PlayerID, ivec2 Pos) {
   unit *Unit = Sim->Units + Sim->UnitCount;
@@ -15,7 +18,7 @@ void CreateUnit(simulation *Sim, memsize PlayerID, ivec2 Pos) {
   Unit->ID = Sim->UnitCount;
   Unit->PlayerID = PlayerID;
   Unit->Pos = Pos;
-  Unit->Target = Pos;
+  Unit->Target = UndefinedTarget;
 
   Sim->UnitCount++;
 }
@@ -36,6 +39,9 @@ simulation_player_id SimulationCreatePlayer(simulation *Sim) {
 static void UpdateUnits(simulation *Sim) {
   for(memsize I=0; I<Sim->UnitCount; ++I) {
     simulation_unit *Unit = Sim->Units + I;
+    if(Unit->Target == UndefinedTarget) {
+      continue;
+    }
     rvec2 Pos = ConvertIvec2ToRvec2(Unit->Pos);
     rvec2 Target = ConvertIvec2ToRvec2(Unit->Target);
     rvec2 Difference = Target - Pos;
@@ -55,6 +61,41 @@ static void UpdateUnits(simulation *Sim) {
 void InitSimulation(simulation *Sim) {
   Sim->UnitCount = 0;
   Sim->PlayerCount = 0;
+
+  for(memsize I=0; I<SIMULATION_TREE_COUNT; ++I) {
+    tree *Tree = Sim->Trees + I;
+    Tree->Pos.X = I * 200;
+    Tree->Pos.Y = -100;
+  }
+}
+
+void PerformCollisions(simulation *Sim) {
+  memsize SquaredUnitHalfSize = SIMULATION_UNIT_HALF_SIZE * SIMULATION_UNIT_HALF_SIZE;
+  memsize SquaredTreeHalfSize = SIMULATION_TREE_HALF_SIZE * SIMULATION_TREE_HALF_SIZE;
+
+  for(memsize U1=0; U1<Sim->UnitCount; ++U1) {
+    for(memsize U2=0; U2<Sim->UnitCount; ++U2) {
+      if(U1 == U2) {
+        continue;
+      }
+      rvec2 PosDif = ConvertIvec2ToRvec2(Sim->Units[U1].Pos - Sim->Units[U2].Pos);
+      r32 SquaredDistance = CalcRvec2SquaredMagnitude(PosDif);
+      if(SquaredDistance < SquaredUnitHalfSize*2) {
+        rvec2 HalfPosDif = PosDif * 0.501f;
+        Sim->Units[U1].Pos += ConvertRvec2ToIvec2(HalfPosDif);
+        Sim->Units[U2].Pos -= ConvertRvec2ToIvec2(HalfPosDif);
+      }
+    }
+
+    for(memsize T=0; T<SIMULATION_TREE_COUNT; ++T) {
+      rvec2 PosDif = ConvertIvec2ToRvec2(Sim->Units[U1].Pos - Sim->Trees[T].Pos);
+      r32 SquaredDistance = CalcRvec2SquaredMagnitude(PosDif);
+      if(SquaredDistance < SquaredUnitHalfSize + SquaredTreeHalfSize) {
+        rvec2 Bounce = PosDif * 1.01;
+        Sim->Units[U1].Pos += ConvertRvec2ToIvec2(Bounce);
+      }
+    }
+  }
 }
 
 void TickSimulation(simulation *Sim, order_list *OrderList) {
@@ -68,4 +109,5 @@ void TickSimulation(simulation *Sim, order_list *OrderList) {
     }
   }
   UpdateUnits(Sim);
+  PerformCollisions(Sim);
 }

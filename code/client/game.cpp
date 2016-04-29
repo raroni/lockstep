@@ -19,6 +19,7 @@
 static const ui32 Red = 0x00FF0000;
 static const ui32 Blue = 0x000000FF;
 static const ui32 White = 0x00FFFFFF;
+static const ui32 DarkGreen = 0x00005500;
 static const r32 Zoom = 1.0 / 1000.0;
 
 static const ui32 PlayerColors[] = {
@@ -129,6 +130,14 @@ void Render(simulation *Sim, interpolation *Interpolation, unit_selection *UnitS
     Command->Y = Interpolation->Pos[I].Y;
     Command->Color = PlayerColors[Sim->Units[I].PlayerID];
     Command->HalfSize = SIMULATION_UNIT_HALF_SIZE;
+  }
+
+  for(memsize I=0; I<SIMULATION_TREE_COUNT; ++I) {
+    draw_square_render_command *Command = AddRenderCommand(Commands, draw_square);
+    Command->X = Sim->Trees[I].Pos.X;
+    Command->Y = Sim->Trees[I].Pos.Y;
+    Command->Color = DarkGreen;
+    Command->HalfSize = SIMULATION_TREE_HALF_SIZE;
   }
 }
 

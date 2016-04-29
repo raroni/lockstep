@@ -5,7 +5,9 @@
 
 #define SIMULATION_PLAYER_MAX 8
 #define SIMULATION_UNIT_MAX 4096
+#define SIMULATION_TREE_COUNT 10
 #define SIMULATION_UNIT_HALF_SIZE 50
+#define SIMULATION_TREE_HALF_SIZE 50
 #define SIMULATION_UNDEFINED_PLAYER_ID SIMULATION_PLAYER_MAX
 #define SIMULATION_UNDEFINED_UNIT_ID SIMULATION_PLAYER_MAX
 
@@ -33,12 +35,17 @@ struct simulation_unit {
   ivec2 Target;
 };
 
+struct simulation_tree {
+  ivec2 Pos;
+};
+
 struct simulation_player {
   simulation_player_id ID;
 };
 
 struct simulation {
   simulation_unit Units[SIMULATION_UNIT_MAX];
+  simulation_tree Trees[SIMULATION_TREE_COUNT];
   simulation_player Players[SIMULATION_PLAYER_MAX];
   ui16 UnitCount;
   ui8 PlayerCount;

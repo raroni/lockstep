@@ -20,11 +20,25 @@ ivec2 operator+(ivec2 A, ivec2 B) {
   return Result;
 }
 
+ivec2& operator+=(ivec2 &A, ivec2 B) {
+  A = A + B;
+  return A;
+}
+
+ivec2& operator-=(ivec2 &A, ivec2 B) {
+  A = A - B;
+  return A;
+}
+
 ivec2 operator-(ivec2 A, ivec2 B) {
   ivec2 Result;
   Result.X = A.X - B.X;
   Result.Y = A.Y - B.Y;
   return Result;
+}
+
+bool operator==(const ivec2 &A, const ivec2 &B) {
+  return A.X == B.X && A.Y == B.Y;
 }
 
 rvec2 MakeRvec2(r32 X, r32 Y) {
@@ -46,6 +60,11 @@ rvec2 operator+(rvec2 V, r32 S) {
   Result.X = V.X + S;
   Result.Y = V.Y + S;
   return Result;
+}
+
+rvec2& operator+=(rvec2 &A, rvec2 B) {
+  A = A + B;
+  return A;
 }
 
 rvec2 operator-(rvec2 A, rvec2 B) {
@@ -83,8 +102,12 @@ rvec2 operator/(rvec2 V, r32 S) {
   return Result;
 }
 
+r32 CalcRvec2SquaredMagnitude(rvec2 V) {
+  return V.X * V.X + V.Y * V.Y;
+}
+
 r32 CalcRvec2Magnitude(rvec2 V) {
-  r32 SquaredMag = V.X * V.X + V.Y * V.Y;
+  r32 SquaredMag = CalcRvec2SquaredMagnitude(V);
   return SquareRoot(SquaredMag);
 }
 
