@@ -277,14 +277,15 @@ void* RunPosixNet(void *Data) {
           if(Result == 0) {
             int Result = close(Client->FD);
             Assert(Result != -1);
+            net_client_id ClientID = Client->ID;
             DestroyClient(&Iterator);
 
             memory_arena_checkpoint ArenaCheckpoint = CreateMemoryArenaCheckpoint(&Context->Arena);
             Assert(GetMemoryArenaFree(&Context->Arena) >= NET_EVENT_MAX_LENGTH);
-            buffer Event = SerializeDisconnectNetEvent(Client->ID, &Context->Arena);
+            buffer Event = SerializeDisconnectNetEvent(ClientID, &Context->Arena);
             ChunkRingBufferWrite(&Context->EventRing, Event);
             ReleaseMemoryArenaCheckpoint(ArenaCheckpoint);
-            printf("A client disconnected.\n");
+            printf("A client disconnected. (%zu)\n", ClientID);
           }
           else {
             buffer Input;
