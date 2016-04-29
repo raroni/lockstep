@@ -34,6 +34,11 @@ static void TerminateMemory(posix_net_context *Context) {
   Context->Memory = NULL;
 }
 
+static void AllocateBuffer(buffer *Buffer, memory_arena *Arena, memsize Length) {
+  Buffer->Addr = MemoryArenaAllocate(Arena, Length);
+  Buffer->Length = Length;
+}
+
 void InitPosixNet(posix_net_context *Context) {
   InitMemory(Context);
 
@@ -88,24 +93,9 @@ void InitPosixNet(posix_net_context *Context) {
     InitByteRingBuffer(&Context->IncomingRing, Buffer);
   }
 
-  {
-    buffer *B = &Context->CommandReadBuffer;
-    B->Addr = MemoryArenaAllocate(&Context->Arena, NET_COMMAND_MAX_LENGTH);
-    B->Length = NET_COMMAND_MAX_LENGTH;
-  }
-
-  {
-    buffer *B = &Context->ReceiveBuffer;
-    memsize Length = 1024*10;
-    B->Addr = MemoryArenaAllocate(&Context->Arena, Length);
-    B->Length = Length;
-  }
-
-  {
-    buffer *B = &Context->IncomingReadBuffer;
-    B->Addr = MemoryArenaAllocate(&Context->Arena, NET_MESSAGE_MAX_LENGTH);
-    B->Length = NET_MESSAGE_MAX_LENGTH;
-  }
+  AllocateBuffer(&Context->CommandReadBuffer, &Context->Arena, NET_COMMAND_MAX_LENGTH);
+  AllocateBuffer(&Context->ReceiveBuffer, &Context->Arena, 1024*10);
+  AllocateBuffer(&Context->IncomingReadBuffer, &Context->Arena, NET_MESSAGE_MAX_LENGTH);
 
   Context->State = posix_net_state_inactive;
 }
