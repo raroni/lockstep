@@ -89,7 +89,7 @@ clean:
 	rm -rf $(BUILD_DIR)
 
 run_server: server
-	$(SERVER_BINARY)
+	$(SERVER_BINARY) ${PLAYER_COUNT}
 
 run_client: client
 	$(CLIENT_BINARY)

@@ -1,6 +1,6 @@
 #include "lib/chunk_list.h"
 
-void InitGame(buffer Memory);
+void InitGame(buffer Memory, memsize PlayerCount);
 void UpdateGame(
   uusec64 Time,
   uusec64 *Delay,

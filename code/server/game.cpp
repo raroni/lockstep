@@ -13,9 +13,9 @@ struct player {
   net_client_id ClientID;
 };
 
-#define PLAYERS_MAX 1
+#define PLAYER_MAX 8
 struct player_set {
-  player Players[PLAYERS_MAX];
+  player Players[PLAYER_MAX];
   memsize Count;
 };
 
@@ -33,6 +33,7 @@ struct game_state {
   chunk_list OrderQueue;
   uusec64 NextTickTime;
   simulation Sim;
+  memsize TargetPlayerCount;
 };
 
 static void InitPlayerSet(player_set *Set) {
@@ -83,7 +84,7 @@ static void RemovePlayer(player_set *Set, memsize Index) {
   Set->Count--;
 }
 
-void InitGame(buffer Memory) {
+void InitGame(buffer Memory, memsize TargetPlayerCount) {
   game_state *State = (game_state*)Memory.Addr;
 
   {
@@ -103,6 +104,15 @@ void InitGame(buffer Memory) {
   }
 
   InitPlayerSet(&State->PlayerSet);
+
+  if(TargetPlayerCount > 0 && TargetPlayerCount <= PLAYER_MAX) {
+    State->TargetPlayerCount = TargetPlayerCount;
+  }
+  else {
+    State->TargetPlayerCount = 1;
+  }
+
+  printf("%zu\n", TargetPlayerCount);
 }
 
 void StartGame(game_state *State, chunk_list *NetCmds, uusec64 Time) {
@@ -168,7 +178,7 @@ void ProcessNetEvents(game_state *State, chunk_list *Events) {
     switch(Type) {
       case net_event_type_connect:
         printf("Game got connection event!\n");
-        if(State->PlayerSet.Count != PLAYERS_MAX) {
+        if(State->PlayerSet.Count != State->TargetPlayerCount) {
           connect_net_event ConnectEvent = UnserializeConnectNetEvent(Event);
           AddPlayer(&State->PlayerSet, ConnectEvent.ClientID);
         }
@@ -259,7 +269,7 @@ void UpdateGame(
     *Running = false;
     State->Mode = game_mode_stopped;
   }
-  else if(State->Mode == game_mode_waiting_for_clients && State->PlayerSet.Count == PLAYERS_MAX) {
+  else if(State->Mode == game_mode_waiting_for_clients && State->PlayerSet.Count == State->TargetPlayerCount) {
       StartGame(State, Commands, Time);
   }
   else if(State->Mode == game_mode_active) {

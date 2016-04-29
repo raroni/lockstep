@@ -91,7 +91,13 @@ void ExecuteNetCommands(posix_net_context *Context, chunk_list *Commands) {
   ResetChunkList(Commands);
 }
 
-int main() {
+int main(int ArgCount, char *Args[]) {
+  memsize PlayerCount = 1;
+  if(ArgCount == 2) {
+    printf("yes\n");
+    PlayerCount = Args[1][0] - '0';
+  }
+
   osx_state State;
 
   InitMemory(&State);
@@ -115,7 +121,7 @@ int main() {
     B->Length = 1024*1024;
     B->Addr = MemoryArenaAllocate(&State.Arena, B->Length);
   }
-  InitGame(State.ServerMemory);
+  InitGame(State.ServerMemory, PlayerCount);
 
   InitPosixNet(&State.NetContext);
   {
