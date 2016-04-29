@@ -22,20 +22,6 @@ static void RequestWake(posix_net_context *Context) {
   write(Context->WakeWriteFD, &X, 1);
 }
 
-static buffer CreateBuffer(memsize Length) {
-  buffer B;
-  B.Addr = malloc(Length);
-  Assert(B.Addr != NULL);
-  B.Length = Length;
-  return B;
-}
-
-static void DestroyBuffer(buffer *B) {
-  free(B->Addr);
-  B->Addr = NULL;
-  B->Length = 0;
-}
-
 static void InitMemory(posix_net_context *Context) {
   memsize MemorySize = 1024*1024*5;
   Context->Memory = malloc(MemorySize);
@@ -102,9 +88,24 @@ void InitPosixNet(posix_net_context *Context) {
     InitByteRingBuffer(&Context->IncomingRing, Buffer);
   }
 
-  Context->CommandReadBuffer = CreateBuffer(NET_COMMAND_MAX_LENGTH);
-  Context->ReceiveBuffer = CreateBuffer(1024*10);
-  Context->IncomingReadBuffer = CreateBuffer(NET_MESSAGE_MAX_LENGTH);
+  {
+    buffer *B = &Context->CommandReadBuffer;
+    B->Addr = MemoryArenaAllocate(&Context->Arena, NET_COMMAND_MAX_LENGTH);
+    B->Length = NET_COMMAND_MAX_LENGTH;
+  }
+
+  {
+    buffer *B = &Context->ReceiveBuffer;
+    memsize Length = 1024*10;
+    B->Addr = MemoryArenaAllocate(&Context->Arena, Length);
+    B->Length = Length;
+  }
+
+  {
+    buffer *B = &Context->IncomingReadBuffer;
+    B->Addr = MemoryArenaAllocate(&Context->Arena, NET_MESSAGE_MAX_LENGTH);
+    B->Length = NET_MESSAGE_MAX_LENGTH;
+  }
 
   Context->State = posix_net_state_inactive;
 }
@@ -308,12 +309,8 @@ void TerminatePosixNet(posix_net_context *Context) {
 
   Result = close(Context->WakeReadFD);
   Assert(Result == 0);
-  Result = close(Context->WakeWriteFD);
   Assert(Result == 0);
-
-  DestroyBuffer(&Context->IncomingReadBuffer);
-  DestroyBuffer(&Context->CommandReadBuffer);
-  DestroyBuffer(&Context->ReceiveBuffer);
+  Result = close(Context->WakeWriteFD);
 
   TerminateChunkRingBuffer(&Context->EventRing);
   TerminateChunkRingBuffer(&Context->CommandRing);
