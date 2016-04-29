@@ -13,20 +13,6 @@
 #include "net_commands.h"
 #include "posix_net.h"
 
-static buffer CreateBuffer(memsize Length) {
-  buffer B;
-  B.Addr = malloc(Length);
-  Assert(B.Addr != NULL);
-  B.Length = Length;
-  return B;
-}
-
-static void DestroyBuffer(buffer *B) {
-  free(B->Addr);
-  B->Addr = NULL;
-  B->Length = 0;
-}
-
 static void RequestWake(posix_net_context *Context) {
   ui8 X = 1;
   write(Context->WakeWriteFD, &X, 1);
@@ -56,6 +42,11 @@ static void TerminateMemory(posix_net_context *Context) {
   TerminateMemoryArena(&Context->Arena);
   free(Context->Memory);
   Context->Memory = NULL;
+}
+
+static void AllocateBuffer(buffer *Buffer, memory_arena *Arena, memsize Length) {
+  Buffer->Addr = MemoryArenaAllocate(Arena, Length);
+  Buffer->Length = Length;
 }
 
 void InitPosixNet(posix_net_context *Context) {
@@ -91,9 +82,9 @@ void InitPosixNet(posix_net_context *Context) {
     InitChunkRingBuffer(&Context->EventRing, 50, EventBuffer);
   }
 
-  Context->ReceiveBuffer = CreateBuffer(1024*10);
-  Context->CommandReadBuffer = CreateBuffer(NET_COMMAND_MAX_LENGTH);
-  Context->IncomingReadBuffer = CreateBuffer(NET_MESSAGE_MAX_LENGTH);
+  AllocateBuffer(&Context->ReceiveBuffer, &Context->Arena, 1024*10);
+  AllocateBuffer(&Context->CommandReadBuffer, &Context->Arena, NET_COMMAND_MAX_LENGTH);
+  AllocateBuffer(&Context->IncomingReadBuffer, &Context->Arena, NET_MESSAGE_MAX_LENGTH);
 
   InitPosixNetClientSet(&Context->ClientSet);
 
@@ -124,10 +115,6 @@ void TerminatePosixNet(posix_net_context *Context) {
 
   Result = close(Context->HostFD);
   Assert(Result == 0);
-
-  DestroyBuffer(&Context->IncomingReadBuffer);
-  DestroyBuffer(&Context->CommandReadBuffer);
-  DestroyBuffer(&Context->ReceiveBuffer);
 
   TerminatePosixNetClientSet(&Context->ClientSet);
 
