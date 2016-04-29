@@ -111,8 +111,6 @@ void InitGame(buffer Memory, memsize TargetPlayerCount) {
   else {
     State->TargetPlayerCount = 1;
   }
-
-  printf("%zu\n", TargetPlayerCount);
 }
 
 void StartGame(game_state *State, chunk_list *NetCmds, uusec64 Time) {
