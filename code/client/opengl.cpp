@@ -7,24 +7,35 @@ void InitOpenGL() {
   glDisable(GL_DEPTH_TEST);
 }
 
-void SetClearColor(ui32 Color) {
+struct opengl_color {
+  r32 R;
+  r32 G;
+  r32 B;
+};
+
+static const r32 Inv255 = 1.0f / 255.0f;
+
+static opengl_color UnpackColor(ui32 Color) {
   ui8 R = Color >> 16;
   ui8 G = (Color & 0x0000FF00) >> 8;
   ui8 B = Color & 0x000000FF;
 
-  glClearColor(
-    (r32)R / 255.0f,
-    (r32)G / 255.0f,
-    (r32)B / 255.0f,
-    1.0f
-  );
+  opengl_color C;
+  C.R = (r32)R * Inv255;
+  C.G = (r32)G * Inv255;
+  C.B = (r32)B * Inv255;
+
+  return C;
 }
 
-void DrawSquare(si16 X, si16 Y, ui8 HalfSize, ui32 Color) {
-  ui8 R = Color >> 16;
-  ui8 G = (Color & 0x0000FF00) >> 8;
-  ui8 B = Color & 0x000000FF;
-  glColor3ub(R, G, B);
+static void SetClearColor(ui32 Color) {
+  opengl_color C = UnpackColor(Color);
+  glClearColor(C.R, C.G, C.B, 1.0f);
+}
+
+static void DrawSquare(si16 X, si16 Y, ui8 HalfSize, ui32 Color) {
+  opengl_color C = UnpackColor(Color);
+  glColor3f(C.R, C.G, C.B);
   glRecti(
     X - HalfSize, Y - HalfSize,
     X + HalfSize, Y + HalfSize
