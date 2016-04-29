@@ -94,7 +94,6 @@ void ExecuteNetCommands(posix_net_context *Context, chunk_list *Commands) {
 int main(int ArgCount, char *Args[]) {
   memsize PlayerCount = 1;
   if(ArgCount == 2) {
-    printf("yes\n");
     PlayerCount = Args[1][0] - '0';
   }
 
