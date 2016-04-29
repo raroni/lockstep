@@ -21,7 +21,6 @@ struct rvec2 {
 
 rvec2 MakeRvec2(r32 X, r32 Y);
 rvec2 operator+(rvec2 A, rvec2 B);
-rvec2 operator+(rvec2 V, r32 S);
 rvec2& operator+=(rvec2 &A, rvec2 B);
 rvec2 operator-(rvec2 A, rvec2 B);
 rvec2 operator-(rvec2 V, r32 S);

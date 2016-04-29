@@ -55,13 +55,6 @@ rvec2 operator+(rvec2 A, rvec2 B) {
   return Result;
 }
 
-rvec2 operator+(rvec2 V, r32 S) {
-  rvec2 Result;
-  Result.X = V.X + S;
-  Result.Y = V.Y + S;
-  return Result;
-}
-
 rvec2& operator+=(rvec2 &A, rvec2 B) {
   A = A + B;
   return A;
