@@ -4,8 +4,20 @@
 #include "opengl.h"
 
 void InitOpenGL() {
-  glClearColor(0.0f, 0.7f, 0.0f, 1.0f);
   glDisable(GL_DEPTH_TEST);
+}
+
+void SetClearColor(ui32 Color) {
+  ui8 R = Color >> 16;
+  ui8 G = (Color & 0x0000FF00) >> 8;
+  ui8 B = Color & 0x000000FF;
+
+  glClearColor(
+    (r32)R / 255.0f,
+    (r32)G / 255.0f,
+    (r32)B / 255.0f,
+    1.0f
+  );
 }
 
 void DrawSquare(si16 X, si16 Y, ui8 HalfSize, ui32 Color) {
@@ -51,6 +63,11 @@ void DisplayOpenGL(chunk_list *Commands) {
       case render_command_type_projection: {
         projection_render_command *ProjectionCommand = (projection_render_command*)Body;
         UpdateProjection(ProjectionCommand->AspectRatio, ProjectionCommand->Zoom);
+        break;
+      }
+      case render_command_type_clear_color: {
+        clear_color_render_command *ClearColorCommand = (clear_color_render_command*)Body;
+        SetClearColor(ClearColorCommand->Color);
         break;
       }
       default:

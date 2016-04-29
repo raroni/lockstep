@@ -108,6 +108,11 @@ void* _AddRenderCommand(chunk_list *List, render_command_type Type, memsize Leng
 
 void Render(simulation *Sim, interpolation *Interpolation, unit_selection *UnitSelection, chunk_list *Commands, ivec2 Resolution) {
   {
+    clear_color_render_command *Command = AddRenderCommand(Commands, clear_color);
+    Command->Color = White;
+  }
+
+  {
     projection_render_command *Command = AddRenderCommand(Commands, projection);
     Command->AspectRatio = GetAspectRatio(Resolution);
     Command->Zoom = Zoom;
