@@ -83,8 +83,12 @@ void InitSimulation(simulation *Sim) {
 }
 
 void PerformCollisions(simulation *Sim) {
-  memsize SquaredUnitHalfSize = SIMULATION_UNIT_HALF_SIZE * SIMULATION_UNIT_HALF_SIZE;
-  memsize SquaredTreeHalfSize = SIMULATION_TREE_HALF_SIZE * SIMULATION_TREE_HALF_SIZE;
+  r32 TreeUnitDistanceMin = SIMULATION_TREE_HALF_SIZE + SIMULATION_UNIT_HALF_SIZE;
+  r32 SquaredTreeUnitDistanceMin = TreeUnitDistanceMin * TreeUnitDistanceMin;
+
+  r32 UnitUnitDistanceMin = SIMULATION_UNIT_HALF_SIZE * 2;
+  r32 SquaredUnitUnitDistanceMin = UnitUnitDistanceMin * UnitUnitDistanceMin;
+
 
   for(memsize U1=0; U1<Sim->UnitCount; ++U1) {
     for(memsize U2=0; U2<Sim->UnitCount; ++U2) {
@@ -93,18 +97,24 @@ void PerformCollisions(simulation *Sim) {
       }
       rvec2 PosDif = ConvertIvec2ToRvec2(Sim->Units[U1].Pos - Sim->Units[U2].Pos);
       r32 SquaredDistance = CalcRvec2SquaredMagnitude(PosDif);
-      if(SquaredDistance < SquaredUnitHalfSize*2) {
-        rvec2 HalfPosDif = PosDif * 0.501f;
-        Sim->Units[U1].Pos += ConvertRvec2ToIvec2(HalfPosDif);
-        Sim->Units[U2].Pos -= ConvertRvec2ToIvec2(HalfPosDif);
+      if(SquaredDistance < SquaredUnitUnitDistanceMin) {
+        r32 Distance = SquareRoot(SquaredDistance);
+        rvec2 Direction = PosDif / Distance;
+        r32 Overlap = SIMULATION_UNIT_HALF_SIZE + SIMULATION_TREE_HALF_SIZE - Distance;
+        ivec2 Bounce = ConvertRvec2ToIvec2(Direction * Overlap * 0.501f);
+        Sim->Units[U1].Pos += Bounce;
+        Sim->Units[U2].Pos -= Bounce;
       }
     }
 
     for(memsize T=0; T<SIMULATION_TREE_COUNT; ++T) {
       rvec2 PosDif = ConvertIvec2ToRvec2(Sim->Units[U1].Pos - Sim->Trees[T].Pos);
       r32 SquaredDistance = CalcRvec2SquaredMagnitude(PosDif);
-      if(SquaredDistance < SquaredUnitHalfSize + SquaredTreeHalfSize) {
-        rvec2 Bounce = PosDif * 1.01;
+      if(SquaredDistance < SquaredTreeUnitDistanceMin) {
+        r32 Distance = SquareRoot(SquaredDistance);
+        rvec2 Direction = PosDif / Distance;
+        r32 Overlap = SIMULATION_UNIT_HALF_SIZE + SIMULATION_TREE_HALF_SIZE - Distance;
+        rvec2 Bounce = Direction * Overlap;
         Sim->Units[U1].Pos += ConvertRvec2ToIvec2(Bounce);
       }
     }
