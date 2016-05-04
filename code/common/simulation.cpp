@@ -14,6 +14,14 @@ typedef simulation_body_id body_id;
 typedef simulation_body_list body_list;
 typedef simulation_body_cell body_cell;
 
+struct collision {
+  bool Hit;
+  body_id ColliderID;
+  ivec2 ColliderPos;
+  rvec2 Direction;
+  r32 DistanceViolation;
+};
+
 static const ivec2 UndefinedTarget = { .X = INT16_MIN, .Y = INT16_MIN };
 static const ivec2 StartPositions[] = {
   { -700, 500 },
@@ -203,13 +211,47 @@ void InitSimulation(simulation *Sim, memory_arena *Arena) {
   }
 }
 
-void PerformCollisions(simulation *Sim) {
-  const r32 DistanceMin = 0.001;
-  r32 TreeUnitDistanceMin = SIMULATION_TREE_HALF_SIZE + SIMULATION_UNIT_HALF_SIZE;
-  r32 SquaredTreeUnitDistanceMin = TreeUnitDistanceMin * TreeUnitDistanceMin;
+collision FindCollision(
+  body_list *List, ui16 CellIndex,
+  body_id BaseBodyID, ivec2 BasePos,
+  r32 DistanceMin, r32 DistanceViolationMin
+) {
+  static const r32 DistanceEpsilon = 0.001;
 
+  r32 SquaredDistanceMin = DistanceMin * DistanceMin;
+
+  collision Collision;
+  Collision.Hit = false;
+  body_cell *Cell = List->Cells + CellIndex;
+  for(body_cell_node *Node = Cell->First; Node; Node = Node->Next) {
+    if(Node->ID == BaseBodyID) {
+      continue;
+    }
+    ivec2 ColliderPos = GetBodyPos(List, Node->ID);
+    rvec2 PosDif = ConvertIvec2ToRvec2(BasePos - ColliderPos);
+    r32 SquaredDistance = CalcRvec2SquaredMagnitude(PosDif);
+    if(SquaredDistance < SquaredDistanceMin) {
+      r32 Distance = SquareRoot(SquaredDistance);
+      Collision.Direction = {};
+      if(Distance < DistanceEpsilon) {
+        Collision.Direction.X = 1;
+      }
+      else {
+        Collision.Direction = PosDif / Distance;
+      }
+      Collision.DistanceViolation = MaxR32(DistanceMin - Distance, DistanceViolationMin);
+      Collision.ColliderID = Node->ID;
+      Collision.ColliderPos = ColliderPos;
+      Collision.Hit = true;
+      break;
+    }
+  }
+  return Collision;
+}
+
+void PerformCollisions(simulation *Sim) {
+  r32 TreeUnitDistanceMin = SIMULATION_TREE_HALF_SIZE + SIMULATION_UNIT_HALF_SIZE;
   r32 UnitUnitDistanceMin = SIMULATION_UNIT_HALF_SIZE * 2;
-  r32 SquaredUnitUnitDistanceMin = UnitUnitDistanceMin * UnitUnitDistanceMin;
 
   for(memsize U1=0; U1<Sim->UnitCount; ++U1) {
     unit *CurrentUnit = Sim->Units + U1;
@@ -237,58 +279,26 @@ void PerformCollisions(simulation *Sim) {
         for(memsize CellX=CellPosMin.X; CellX<=CellPosMax.X; ++CellX) {
           ivec2 CellPos = MakeIvec2(CellX, CellY);
           ui16 CellIndex = CalcCellIndexByCellPos(CellPos);
-          body_cell *Cell = Sim->DynamicBodyList.Cells + CellIndex;
-          if(Cell->First) {
-            for(body_cell_node *Node = Cell->First; Node; Node = Node->Next) {
-              if(Node->ID == CurrentUnit->BodyID) {
-                continue;
-              }
-              ivec2 OtherUnitPos = GetBodyPos(&Sim->DynamicBodyList, Node->ID);
-              rvec2 PosDif = ConvertIvec2ToRvec2(CurrentUnitPos - OtherUnitPos);
-              r32 SquaredDistance = CalcRvec2SquaredMagnitude(PosDif);
-              if(SquaredDistance < SquaredUnitUnitDistanceMin) {
-                r32 Distance = SquareRoot(SquaredDistance);
-                rvec2 Direction = {};
-                if(Distance < DistanceMin) {
-                  Direction.X = 1;
-                }
-                else {
-                  Direction = PosDif / Distance;
-                }
-                r32 DistanceViolation = MaxR32(UnitUnitDistanceMin - Distance, 2.0);
-                ivec2 Bounce = ConvertRvec2ToIvec2(Direction * DistanceViolation * 0.501f);
-                SetBodyPosition(&Sim->DynamicBodyList, CurrentUnit->BodyID, CurrentUnitPos + Bounce);
-                SetBodyPosition(&Sim->DynamicBodyList, Node->ID, OtherUnitPos - Bounce);
-                goto Retry;
-              }
-            }
+
+          collision Collision = FindCollision(
+            &Sim->DynamicBodyList, CellIndex, CurrentUnit->ID,
+            CurrentUnitPos, UnitUnitDistanceMin, 2.0f
+          );
+          if(Collision.Hit) {
+            ivec2 Bounce = ConvertRvec2ToIvec2(Collision.Direction * Collision.DistanceViolation * 0.501f);
+            SetBodyPosition(&Sim->DynamicBodyList, CurrentUnit->BodyID, CurrentUnitPos + Bounce);
+            SetBodyPosition(&Sim->DynamicBodyList, Collision.ColliderID, Collision.ColliderPos - Bounce);
+            goto Retry;
           }
 
-          Cell = Sim->StaticBodyList.Cells + CellIndex;
-          if(Cell->First) {
-            for(body_cell_node *Node = Cell->First; Node; Node = Node->Next) {
-              if(Node->ID == CurrentUnit->BodyID) {
-                continue;
-              }
-              ivec2 OtherUnitPos = GetBodyPos(&Sim->StaticBodyList, Node->ID);
-
-              rvec2 PosDif = ConvertIvec2ToRvec2(CurrentUnitPos - OtherUnitPos);
-              r32 SquaredDistance = CalcRvec2SquaredMagnitude(PosDif);
-              if(SquaredDistance < SquaredTreeUnitDistanceMin) {
-                r32 Distance = SquareRoot(SquaredDistance);
-                rvec2 Direction = {};
-                if(Distance < DistanceMin) {
-                  Direction.X = 1;
-                }
-                else {
-                  Direction = PosDif / Distance;
-                }
-                r32 DistanceViolation = MaxR32(UnitUnitDistanceMin - Distance, 1.0);
-                ivec2 Bounce = ConvertRvec2ToIvec2(Direction * DistanceViolation * 1.001);
-                SetBodyPosition(&Sim->DynamicBodyList, CurrentUnit->BodyID, CurrentUnitPos + Bounce);
-                goto Retry;
-              }
-            }
+          Collision = FindCollision(
+            &Sim->StaticBodyList, CellIndex, CurrentUnit->ID,
+            CurrentUnitPos, TreeUnitDistanceMin, 1.0f
+          );
+          if(Collision.Hit) {
+            ivec2 Bounce = ConvertRvec2ToIvec2(Collision.Direction * Collision.DistanceViolation * 1.001);
+            SetBodyPosition(&Sim->DynamicBodyList, CurrentUnit->BodyID, CurrentUnitPos + Bounce);
+            goto Retry;
           }
         }
       }
