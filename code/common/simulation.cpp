@@ -255,7 +255,7 @@ void PerformCollisions(simulation *Sim) {
                 else {
                   Direction = PosDif / Distance;
                 }
-                r32 DistanceViolation = UnitUnitDistanceMin - Distance;
+                r32 DistanceViolation = MaxR32(UnitUnitDistanceMin - Distance, 2.0);
                 ivec2 Bounce = ConvertRvec2ToIvec2(Direction * DistanceViolation * 0.501f);
                 SetBodyPosition(&Sim->DynamicBodyList, CurrentUnit->BodyID, CurrentUnitPos + Bounce);
                 SetBodyPosition(&Sim->DynamicBodyList, Node->ID, OtherUnitPos - Bounce);
@@ -283,7 +283,7 @@ void PerformCollisions(simulation *Sim) {
                 else {
                   Direction = PosDif / Distance;
                 }
-                r32 DistanceViolation = TreeUnitDistanceMin - Distance;
+                r32 DistanceViolation = MaxR32(UnitUnitDistanceMin - Distance, 1.0);
                 ivec2 Bounce = ConvertRvec2ToIvec2(Direction * DistanceViolation * 1.001);
                 SetBodyPosition(&Sim->DynamicBodyList, CurrentUnit->BodyID, CurrentUnitPos + Bounce);
                 goto Retry;
