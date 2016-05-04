@@ -204,6 +204,7 @@ void InitSimulation(simulation *Sim, memory_arena *Arena) {
 }
 
 void PerformCollisions(simulation *Sim) {
+  const r32 DistanceMin = 0.001;
   r32 TreeUnitDistanceMin = SIMULATION_TREE_HALF_SIZE + SIMULATION_UNIT_HALF_SIZE;
   r32 SquaredTreeUnitDistanceMin = TreeUnitDistanceMin * TreeUnitDistanceMin;
 
@@ -247,9 +248,15 @@ void PerformCollisions(simulation *Sim) {
               r32 SquaredDistance = CalcRvec2SquaredMagnitude(PosDif);
               if(SquaredDistance < SquaredUnitUnitDistanceMin) {
                 r32 Distance = SquareRoot(SquaredDistance);
-                rvec2 Direction = PosDif / Distance;
-                r32 Overlap = SIMULATION_UNIT_HALF_SIZE + SIMULATION_TREE_HALF_SIZE - Distance;
-                ivec2 Bounce = ConvertRvec2ToIvec2(Direction * Overlap * 0.501f);
+                rvec2 Direction = {};
+                if(Distance < DistanceMin) {
+                  Direction.X = 1;
+                }
+                else {
+                  Direction = PosDif / Distance;
+                }
+                r32 DistanceViolation = UnitUnitDistanceMin - Distance;
+                ivec2 Bounce = ConvertRvec2ToIvec2(Direction * DistanceViolation * 0.501f);
                 SetBodyPosition(&Sim->DynamicBodyList, CurrentUnit->BodyID, CurrentUnitPos + Bounce);
                 SetBodyPosition(&Sim->DynamicBodyList, Node->ID, OtherUnitPos - Bounce);
                 goto Retry;
@@ -269,9 +276,15 @@ void PerformCollisions(simulation *Sim) {
               r32 SquaredDistance = CalcRvec2SquaredMagnitude(PosDif);
               if(SquaredDistance < SquaredTreeUnitDistanceMin) {
                 r32 Distance = SquareRoot(SquaredDistance);
-                rvec2 Direction = PosDif / Distance;
-                r32 Overlap = SIMULATION_UNIT_HALF_SIZE + SIMULATION_TREE_HALF_SIZE - Distance;
-                ivec2 Bounce = ConvertRvec2ToIvec2(Direction * Overlap * 1.001);
+                rvec2 Direction = {};
+                if(Distance < DistanceMin) {
+                  Direction.X = 1;
+                }
+                else {
+                  Direction = PosDif / Distance;
+                }
+                r32 DistanceViolation = TreeUnitDistanceMin - Distance;
+                ivec2 Bounce = ConvertRvec2ToIvec2(Direction * DistanceViolation * 1.001);
                 SetBodyPosition(&Sim->DynamicBodyList, CurrentUnit->BodyID, CurrentUnitPos + Bounce);
                 goto Retry;
               }
