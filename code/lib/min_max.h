@@ -7,6 +7,16 @@ static inline int MaxInt(int A, int B) {
   return A > B ? A : B;
 }
 
+static inline int MinInt(int A, int B) {
+  return A < B ? A : B;
+}
+
+static inline int ClampInt(int N, int Min, int Max) {
+  N = MaxInt(N, Min);
+  N = MinInt(N, Max);
+  return N;
+}
+
 static inline memsize MaxMemsize(memsize A, memsize B) {
   return A > B ? A : B;
 }

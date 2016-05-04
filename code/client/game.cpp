@@ -140,10 +140,11 @@ void Render(simulation *Sim, interpolation *Interpolation, unit_selection *UnitS
     Command->HalfSize = SIMULATION_UNIT_HALF_SIZE;
   }
 
-  for(memsize I=0; I<SIMULATION_TREE_COUNT; ++I) {
+  simulation_body_list *TreeList = &Sim->StaticBodyList;
+  for(memsize I=0; I<TreeList->Count; ++I) {
     draw_square_render_command *Command = AddRenderCommand(Commands, draw_square);
-    Command->X = Sim->Trees[I].Pos.X;
-    Command->Y = Sim->Trees[I].Pos.Y;
+    Command->X = TreeList->Poss[I].X;
+    Command->Y = TreeList->Poss[I].Y;
     Command->Color = GreenColor;
     Command->HalfSize = SIMULATION_TREE_HALF_SIZE;
   }
@@ -157,7 +158,7 @@ void ProcessMessageEvent(message_net_event Event, game_state *State, chunk_list 
       start_net_message StartMessage = UnserializeStartNetMessage(Event.Message);
       printf("Game got start event. PlayerCount: %zu, PlayerID: %zu\n", StartMessage.PlayerCount, StartMessage.PlayerIndex);
 
-      InitSimulation(&State->Sim);
+      InitSimulation(&State->Sim, &State->Arena);
       for(memsize I=0; I<StartMessage.PlayerCount; ++I) {
         simulation_player_id PlayerID = SimulationCreatePlayer(&State->Sim);
         if(I == StartMessage.PlayerIndex) {
@@ -221,11 +222,12 @@ void ProcessMessageEvent(message_net_event Event, game_state *State, chunk_list 
 simulation_unit* FindUnit(simulation *Sim, ivec2 WorldPos) {
   for(memsize I=0; I<Sim->UnitCount; ++I) {
     simulation_unit *Unit = Sim->Units + I;
+    ivec2 Pos = SimulationGetUnitPos(Sim, Unit);
     if(
-      Unit->Pos.X - SIMULATION_UNIT_HALF_SIZE <= WorldPos.X &&
-      Unit->Pos.X + SIMULATION_UNIT_HALF_SIZE > WorldPos.X &&
-      Unit->Pos.Y - SIMULATION_UNIT_HALF_SIZE <= WorldPos.Y &&
-      Unit->Pos.Y + SIMULATION_UNIT_HALF_SIZE > WorldPos.Y
+      Pos.X - SIMULATION_UNIT_HALF_SIZE <= WorldPos.X &&
+      Pos.X + SIMULATION_UNIT_HALF_SIZE > WorldPos.X &&
+      Pos.Y - SIMULATION_UNIT_HALF_SIZE <= WorldPos.Y &&
+      Pos.Y + SIMULATION_UNIT_HALF_SIZE > WorldPos.Y
     ) {
       return Unit;
     }

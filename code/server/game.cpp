@@ -117,7 +117,7 @@ void InitGame(buffer Memory, memsize TargetPlayerCount) {
 void StartGame(game_state *State, chunk_list *NetCmds, uusec64 Time) {
   player_set *Set = &State->PlayerSet;
 
-  InitSimulation(&State->Sim);
+  InitSimulation(&State->Sim, &State->Arena);
   for(memsize I=0; I<Set->Count; ++I) {
     Set->Players[I].SimID = SimulationCreatePlayer(&State->Sim);
   }
