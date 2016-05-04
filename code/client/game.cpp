@@ -241,7 +241,10 @@ void ToggleUnitSelection(unit_selection *UnitSelection, simulation_unit_id ID) {
       return;
     }
   }
-  UnitSelection->IDs[UnitSelection->Count++] = ID;
+  const int UnitSelectionMax = sizeof(UnitSelection->IDs) / sizeof(UnitSelection->IDs[0]);
+  if(UnitSelection->Count != UnitSelectionMax) {
+    UnitSelection->IDs[UnitSelection->Count++] = ID;
+  }
 }
 
 void ProcessMouse(simulation *Sim, memory_arena *Arena, simulation_player_id PlayerID, unit_selection *UnitSelection, game_mouse *Mouse, ivec2 Resolution, chunk_list *NetCmds) {
