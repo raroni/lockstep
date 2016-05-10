@@ -148,6 +148,20 @@ void Render(simulation *Sim, interpolation *Interpolation, unit_selection *UnitS
     Command->Color = GreenColor;
     Command->HalfSize = SIMULATION_TREE_HALF_SIZE;
   }
+
+  {
+    projection_render_command *Command = AddRenderCommand(Commands, projection);
+    Command->AspectRatio = GetAspectRatio(Resolution);
+    Command->Zoom = 1.0f;
+  }
+
+  {
+    draw_square_render_command *Command = AddRenderCommand(Commands, draw_square);
+    Command->X = 0.0f;
+    Command->Y = 0.0f;
+    Command->Color = OrangeColor;
+    Command->HalfSize = 0.5f;
+  }
 }
 
 void ProcessMessageEvent(message_net_event Event, game_state *State, chunk_list *NetCmds, uusec64 Time) {

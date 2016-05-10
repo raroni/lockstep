@@ -33,10 +33,11 @@ static void SetClearColor(ui32 Color) {
   glClearColor(C.R, C.G, C.B, 1.0f);
 }
 
-static void DrawSquare(si16 X, si16 Y, ui8 HalfSize, ui32 Color) {
+static void DrawSquare(r32 X, r32 Y, r32 HalfSize, ui32 Color) {
+  printf("%f, %f\n", X, Y);
   opengl_color C = UnpackColor(Color);
   glColor3f(C.R, C.G, C.B);
-  glRecti(
+  glRectf(
     X - HalfSize, Y - HalfSize,
     X + HalfSize, Y + HalfSize
   );
@@ -85,4 +86,5 @@ void DisplayOpenGL(chunk_list *Commands) {
         InvalidCodePath;
     }
   }
+  printf("Done\n");
 }
