@@ -1,6 +1,5 @@
 #include "lib/assert.h"
 #include "lib/math.h"
-#include "lib/min_max.h"
 #include "simulation.h"
 
 #define UNITS_PER_PLAYER 64

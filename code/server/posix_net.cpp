@@ -5,7 +5,6 @@
 #include <netinet/in.h>
 #include <stdio.h>
 #include "lib/assert.h"
-#include "lib/min_max.h"
 #include "lib/chunk_ring_buffer.h"
 #include "common/posix_net.h"
 #include "common/net_messages.h"

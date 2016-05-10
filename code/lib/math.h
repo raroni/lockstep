@@ -2,6 +2,14 @@
 
 #include "lib/def.h"
 
+int MaxInt(int A, int B);
+int MinInt(int A, int B);
+int ClampInt(int N, int Min, int Max);
+memsize MaxMemsize(memsize A, memsize B);
+memsize MinMemsize(memsize A, memsize B);
+r32 MinR32(r32 A, r32 B);
+r32 MaxR32(r32 A, r32 B);
+
 struct ivec2 {
   si16 X;
   si16 Y;
@@ -35,4 +43,13 @@ r32 CalcRvec2SquaredMagnitude(rvec2 V);
 rvec2 ConvertIvec2ToRvec2(ivec2 V);
 ivec2 ConvertRvec2ToIvec2(rvec2 V);
 
+struct rrec {
+  rvec2 Min;
+  rvec2 Max;
+};
+
+rrec CreateRrec(rvec2 A, rvec2 B);
+
 r32 SquareRoot(r32 R);
+int AbsInt(int N);
+r32 AbsR32(r32 R);
