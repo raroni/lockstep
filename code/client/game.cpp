@@ -52,6 +52,8 @@ struct game_state {
   uusec64 NextExtraTickTime;
   chunk_ring_buffer OrderListRing;
   unit_selection UnitSelection;
+  ivec2 LastMouseDownPos;
+  bool MouseDragging;
   game_mode Mode;
 };
 
@@ -96,6 +98,7 @@ void InitGame(buffer Memory) {
   State->PlayerID = SIMULATION_UNDEFINED_PLAYER_ID;
   State->UnitSelection.Count = 0;
   State->Mode = game_mode_waiting;
+  State->MouseDragging = false;
 }
 
 #define AddRenderCommand(List, Type) (Type##_render_command*)_AddRenderCommand(List, render_command_type_##Type, sizeof(Type##_render_command))
@@ -263,28 +266,52 @@ void ToggleUnitSelection(unit_selection *UnitSelection, simulation_unit_id ID) {
   }
 }
 
-void ProcessMouse(game_state *State, game_mouse *Mouse, ivec2 Resolution, chunk_list *NetCmds) {
-  if(Mouse->ButtonPressed && Mouse->ButtonChangeCount != 0) {
-    r32 AspectRatio = GetAspectRatio(Resolution);
-    ivec2 WorldPos = ConvertWindowToWorldCoors(Mouse->Pos, Resolution, AspectRatio, Zoom);
-    simulation_unit *Unit = FindUnit(&State->Sim, WorldPos);
-    if(Unit != NULL && Unit->PlayerID == State->PlayerID) {
-      ToggleUnitSelection(&State->UnitSelection, Unit->ID);
-    }
-    else if(State->UnitSelection.Count != 0) {
-      memory_arena_checkpoint ArenaCheckpoint = CreateMemoryArenaCheckpoint(&State->Arena);
-      Assert(GetMemoryArenaFree(&State->Arena) >= NET_MESSAGE_MAX_LENGTH + NET_COMMAND_MAX_LENGTH);
+void ProcessClick(game_state *State, game_mouse *Mouse, ivec2 Resolution, chunk_list *NetCmds)  {
+  r32 AspectRatio = GetAspectRatio(Resolution);
+  ivec2 WorldPos = ConvertWindowToWorldCoors(Mouse->Pos, Resolution, AspectRatio, Zoom);
+  simulation_unit *Unit = FindUnit(&State->Sim, WorldPos);
+  if(Unit != NULL && Unit->PlayerID == State->PlayerID) {
+    ToggleUnitSelection(&State->UnitSelection, Unit->ID);
+  }
+  else if(State->UnitSelection.Count != 0) {
+    memory_arena_checkpoint ArenaCheckpoint = CreateMemoryArenaCheckpoint(&State->Arena);
+    Assert(GetMemoryArenaFree(&State->Arena) >= NET_MESSAGE_MAX_LENGTH + NET_COMMAND_MAX_LENGTH);
 
-      buffer OrderMessage = SerializeOrderNetMessage(
-        State->UnitSelection.IDs,
-        State->UnitSelection.Count,
-        WorldPos,
-        &State->Arena
-      );
-      buffer Command = SerializeSendNetCommand(OrderMessage, &State->Arena);
-      ChunkListWrite(NetCmds, Command);
-      ReleaseMemoryArenaCheckpoint(ArenaCheckpoint);
+    buffer OrderMessage = SerializeOrderNetMessage(
+      State->UnitSelection.IDs,
+      State->UnitSelection.Count,
+      WorldPos,
+      &State->Arena
+    );
+    buffer Command = SerializeSendNetCommand(OrderMessage, &State->Arena);
+    ChunkListWrite(NetCmds, Command);
+    ReleaseMemoryArenaCheckpoint(ArenaCheckpoint);
+  }
+}
+
+void ProcessMouse(game_state *State, game_mouse *Mouse, ivec2 Resolution, chunk_list *NetCmds) {
+  if(Mouse->ButtonChangeCount != 0) {
+    if(Mouse->ButtonPressed) {
+      State->LastMouseDownPos = Mouse->Pos;
     }
+    else {
+      if(!State->MouseDragging) {
+        ProcessClick(State, Mouse, Resolution, NetCmds);
+      }
+      State->MouseDragging = false;
+    }
+  }
+
+  if(Mouse->ButtonPressed && !State->MouseDragging) {
+    rvec2 Difference = ConvertIvec2ToRvec2(Mouse->Pos - State->LastMouseDownPos);
+    r32 Distance = CalcRvec2Magnitude(Difference);
+    if(Distance > 18.0f) {
+      State->MouseDragging = true;
+    }
+  }
+
+  if(State->MouseDragging) {
+    // Handle drag
   }
 }
 
