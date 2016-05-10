@@ -42,6 +42,15 @@ static void DrawSquare(r32 X, r32 Y, r32 HalfSize, ui32 Color) {
   );
 }
 
+static void DrawRect(rrect Rect, ui32 Color) {
+  opengl_color C = UnpackColor(Color);
+  glColor3f(C.R, C.G, C.B);
+  glRectf(
+    Rect.Min.X, Rect.Min.Y,
+    Rect.Max.X, Rect.Max.Y
+  );
+}
+
 static void UpdateProjection(r32 AspectRatio, r32 Zoom) {
   glMatrixMode(GL_PROJECTION);
   r32 a = 1.0f*Zoom;
@@ -69,6 +78,11 @@ void DisplayOpenGL(chunk_list *Commands) {
       case render_command_type_draw_square: {
         draw_square_render_command *DrawCommand = (draw_square_render_command*)Body;
         DrawSquare(DrawCommand->X, DrawCommand->Y, DrawCommand->HalfSize, DrawCommand->Color);
+        break;
+      }
+      case render_command_type_draw_rect: {
+        draw_rect_render_command *DrawCommand = (draw_rect_render_command*)Body;
+        DrawRect(DrawCommand->Rect, DrawCommand->Color);
         break;
       }
       case render_command_type_projection: {

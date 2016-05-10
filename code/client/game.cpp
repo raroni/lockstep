@@ -41,7 +41,7 @@ enum game_mode {
 
 struct drag_selection {
   bool Active;
-  rrec Area;
+  rrect Area;
 };
 
 struct game_state {
@@ -166,11 +166,8 @@ void Render(game_state *State, chunk_list *Commands, ivec2 Resolution) {
     }
 
     {
-      draw_square_render_command *Command = AddRenderCommand(Commands, draw_square);
-      rvec2 Dif = State->DragSelection.Area.Max - State->DragSelection.Area.Min;
-      Command->HalfSize = 0.5f * Dif.X;
-      Command->X = State->DragSelection.Area.Max.X - Command->HalfSize;
-      Command->Y = State->DragSelection.Area.Max.Y - Command->HalfSize;
+      draw_rect_render_command *Command = AddRenderCommand(Commands, draw_rect);
+      Command->Rect = State->DragSelection.Area;
       Command->Color = OrangeColor;
     }
   }
@@ -299,9 +296,10 @@ void ProcessClick(game_state *State, game_mouse *Mouse, ivec2 Resolution, chunk_
 }
 
 static void UpdateDragSelectionArea(game_state *State, game_mouse *Mouse, ivec2 Resolution) {
-  State->DragSelection.Area = CreateRrec(
-    ConvertWindowToNDCCoors(Mouse->Pos, Resolution),
-    ConvertWindowToNDCCoors(State->LastMouseDownPos, Resolution)
+  r32 AspectRatio = GetAspectRatio(Resolution);
+  State->DragSelection.Area = CreateRrect(
+    ConvertWindowToUICoors(Mouse->Pos, Resolution, AspectRatio),
+    ConvertWindowToUICoors(State->LastMouseDownPos, Resolution, AspectRatio)
   );
 }
 
@@ -314,11 +312,11 @@ static void ProcessDragMove(game_state *State, game_mouse *Mouse, ivec2 Resoluti
   UpdateDragSelectionArea(State, Mouse, Resolution);
 }
 
-void ProcessDragStop(game_state *State, game_mouse *Mouse, ivec2 Resolution)  {
+static void ProcessDragStop(game_state *State, game_mouse *Mouse, ivec2 Resolution)  {
   State->DragSelection.Active = false;
 }
 
-void ProcessMouse(game_state *State, game_mouse *Mouse, ivec2 Resolution, chunk_list *NetCmds) {
+static void ProcessMouse(game_state *State, game_mouse *Mouse, ivec2 Resolution, chunk_list *NetCmds) {
   if(Mouse->ButtonChangeCount != 0) {
     if(Mouse->ButtonPressed) {
       State->LastMouseDownPos = Mouse->Pos;

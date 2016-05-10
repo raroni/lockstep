@@ -43,12 +43,12 @@ r32 CalcRvec2SquaredMagnitude(rvec2 V);
 rvec2 ConvertIvec2ToRvec2(ivec2 V);
 ivec2 ConvertRvec2ToIvec2(rvec2 V);
 
-struct rrec {
+struct rrect {
   rvec2 Min;
   rvec2 Max;
 };
 
-rrec CreateRrec(rvec2 A, rvec2 B);
+rrect CreateRrect(rvec2 A, rvec2 B);
 
 r32 SquareRoot(r32 R);
 int AbsInt(int N);

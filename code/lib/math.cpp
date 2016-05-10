@@ -172,8 +172,8 @@ r32 AbsR32(r32 R) {
   return fabs(R);
 }
 
-rrec CreateRrec(rvec2 A, rvec2 B) {
-  rrec Result;
+rrect CreateRrect(rvec2 A, rvec2 B) {
+  rrect Result;
 
   Result.Min.X = MinR32(A.X, B.X);
   Result.Min.Y = MinR32(A.Y, B.Y);
