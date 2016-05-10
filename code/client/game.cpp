@@ -263,25 +263,25 @@ void ToggleUnitSelection(unit_selection *UnitSelection, simulation_unit_id ID) {
   }
 }
 
-void ProcessMouse(simulation *Sim, memory_arena *Arena, simulation_player_id PlayerID, unit_selection *UnitSelection, game_mouse *Mouse, ivec2 Resolution, chunk_list *NetCmds) {
+void ProcessMouse(game_state *State, game_mouse *Mouse, ivec2 Resolution, chunk_list *NetCmds) {
   if(Mouse->ButtonPressed && Mouse->ButtonChangeCount != 0) {
     r32 AspectRatio = GetAspectRatio(Resolution);
     ivec2 WorldPos = ConvertWindowToWorldCoors(Mouse->Pos, Resolution, AspectRatio, Zoom);
-    simulation_unit *Unit = FindUnit(Sim, WorldPos);
-    if(Unit != NULL && Unit->PlayerID == PlayerID) {
-      ToggleUnitSelection(UnitSelection, Unit->ID);
+    simulation_unit *Unit = FindUnit(&State->Sim, WorldPos);
+    if(Unit != NULL && Unit->PlayerID == State->PlayerID) {
+      ToggleUnitSelection(&State->UnitSelection, Unit->ID);
     }
-    else if(UnitSelection->Count != 0) {
-      memory_arena_checkpoint ArenaCheckpoint = CreateMemoryArenaCheckpoint(Arena);
-      Assert(GetMemoryArenaFree(Arena) >= NET_MESSAGE_MAX_LENGTH + NET_COMMAND_MAX_LENGTH);
+    else if(State->UnitSelection.Count != 0) {
+      memory_arena_checkpoint ArenaCheckpoint = CreateMemoryArenaCheckpoint(&State->Arena);
+      Assert(GetMemoryArenaFree(&State->Arena) >= NET_MESSAGE_MAX_LENGTH + NET_COMMAND_MAX_LENGTH);
 
       buffer OrderMessage = SerializeOrderNetMessage(
-        UnitSelection->IDs,
-        UnitSelection->Count,
+        State->UnitSelection.IDs,
+        State->UnitSelection.Count,
         WorldPos,
-        Arena
+        &State->Arena
       );
-      buffer Command = SerializeSendNetCommand(OrderMessage, Arena);
+      buffer Command = SerializeSendNetCommand(OrderMessage, &State->Arena);
       ChunkListWrite(NetCmds, Command);
       ReleaseMemoryArenaCheckpoint(ArenaCheckpoint);
     }
@@ -299,7 +299,7 @@ void UpdateGame(game_platform *Platform, chunk_list *NetEvents, chunk_list *NetC
   game_state *State = (game_state*)Memory.Addr;
 
   if(State->Mode == game_mode_active) {
-    ProcessMouse(&State->Sim, &State->Arena, State->PlayerID, &State->UnitSelection, Platform->Mouse, Platform->Resolution, NetCmds);
+    ProcessMouse(State, Platform->Mouse, Platform->Resolution, NetCmds);
   }
 
   for(;;) {
