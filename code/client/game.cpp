@@ -159,6 +159,8 @@ void Render(game_state *State, chunk_list *Commands, ivec2 Resolution) {
   }
 
   if(State->DragSelection.Active) {
+    const static r32 Width = .01f;
+    const static ui32 Color = OrangeColor;
     {
       projection_render_command *Command = AddRenderCommand(Commands, projection);
       Command->AspectRatio = GetAspectRatio(Resolution);
@@ -167,8 +169,31 @@ void Render(game_state *State, chunk_list *Commands, ivec2 Resolution) {
 
     {
       draw_rect_render_command *Command = AddRenderCommand(Commands, draw_rect);
-      Command->Rect = State->DragSelection.Area;
-      Command->Color = OrangeColor;
+      Command->Rect.Min = State->DragSelection.Area.Min;
+      Command->Rect.Max.X = State->DragSelection.Area.Max.X;
+      Command->Rect.Max.Y = State->DragSelection.Area.Min.Y + Width;
+      Command->Color = Color;
+    }
+    {
+      draw_rect_render_command *Command = AddRenderCommand(Commands, draw_rect);
+      Command->Rect.Min.X = State->DragSelection.Area.Min.X;
+      Command->Rect.Min.Y = State->DragSelection.Area.Max.Y - Width;
+      Command->Rect.Max = State->DragSelection.Area.Max;
+      Command->Color = Color;
+    }
+    {
+      draw_rect_render_command *Command = AddRenderCommand(Commands, draw_rect);
+      Command->Rect.Min = State->DragSelection.Area.Min;
+      Command->Rect.Max.X = State->DragSelection.Area.Min.X + Width;
+      Command->Rect.Max.Y = State->DragSelection.Area.Max.Y;
+      Command->Color = Color;
+    }
+    {
+      draw_rect_render_command *Command = AddRenderCommand(Commands, draw_rect);
+      Command->Rect.Min.X = State->DragSelection.Area.Max.X - Width;
+      Command->Rect.Min.Y = State->DragSelection.Area.Min.Y;
+      Command->Rect.Max = State->DragSelection.Area.Max;
+      Command->Color = Color;
     }
   }
 }
