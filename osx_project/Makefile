@@ -87,6 +87,16 @@ mkdir -p $(dir $@)
 $(CC) $(COMMON_FLAGS) $(COMMON_HEADER_INCLUDES) -c $< -o $@ -MMD -MF $@.deps
 endef
 
+define CREATE_OBJ_CPP_OBJ_COMMAND
+mkdir -p $(dir $@)
+$(CC) $(COMMON_FLAGS) $(COMMON_HEADER_INCLUDES) -fno-objc-arc -c $< -o $@ -MMD -MF $@.deps
+endef
+
+define CREATE_SERVER_BINARY_COMMAND
+mkdir -p $(dir $@)
+$(CC) $(COMMON_FLAGS) $^ -o $@
+endef
+
 $(DEBUG_SERVER_OBJ_DIR)/%.o: $(ROOT)/%.cpp
 	$(CREATE_CPP_OBJ_COMMAND)
 
@@ -103,20 +113,16 @@ $(RELEASE_CLIENT_OBJ_DIR)/%.o: $(ROOT)/%.cpp
 	$(CREATE_CPP_OBJ_COMMAND)
 
 $(DEBUG_CLIENT_OBJ_DIR)/%.o: $(ROOT)/%.mm
-	mkdir -p $(dir $@)
-	$(CC) $(COMMON_FLAGS) $(COMMON_HEADER_INCLUDES) -fno-objc-arc -c $< -o $@ -MMD -MF $@.deps
+	$(CREATE_OBJ_CPP_OBJ_COMMAND)
 
 $(RELEASE_CLIENT_OBJ_DIR)/%.o: $(ROOT)/%.mm
-	mkdir -p $(dir $@)
-	$(CC) $(COMMON_FLAGS) $(COMMON_HEADER_INCLUDES) -fno-objc-arc -c $< -o $@ -MMD -MF $@.deps
+	$(CREATE_OBJ_CPP_OBJ_COMMAND)
 
 $(DEBUG_SERVER_BINARY): $(DEBUG_SERVER_OBJS)
-	mkdir -p $(dir $@)
-	$(CC) $(COMMON_FLAGS) $^ -o $@
+	$(CREATE_SERVER_BINARY_COMMAND)
 
 $(RELEASE_SERVER_BINARY): $(RELEASE_SERVER_OBJS)
-	mkdir -p $(dir $@)
-	$(CC) $(COMMON_FLAGS) $^ -o $@
+	$(CREATE_SERVER_BINARY_COMMAND)
 
 $(DEBUG_CLIENT_BINARY): $(DEBUG_CLIENT_OBJS) $(CLIENT_INFO_PLIST)
 	mkdir -p $(dir $@)
