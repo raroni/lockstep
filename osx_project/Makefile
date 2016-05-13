@@ -17,14 +17,14 @@ COMMON_HEADER_INCLUDES = -iquote $(CODE_ROOT)
 
 SERVER_SOURCES = $(COMMON_SOURCES) code/server/osx_main.cpp code/server/posix_net.cpp code/server/posix_net_client_set.cpp code/server/net_events.cpp code/server/net_commands.cpp code/lib/chunk_ring_buffer.cpp code/lib/byte_ring_buffer.cpp code/server/game.cpp
 
-DEBUG_SERVER_PRODUCT_DIR = $(PRODUCT_DIR)/DebugLockstepServer.app
-DEBUG_SERVER_BINARY = $(DEBUG_SERVER_PRODUCT_DIR)/Contents/MacOS/DebugLockstepServer
+DEBUG_SERVER_PRODUCT_DIR = $(PRODUCT_DIR)/debug_server
+DEBUG_SERVER_BINARY = $(DEBUG_SERVER_PRODUCT_DIR)/server
 DEBUG_SERVER_OBJ_DIR = $(OBJ_DIR)/debug_server
 DEBUG_SERVER_OBJS = $(patsubst %.cpp, $(DEBUG_SERVER_OBJ_DIR)/%.o, $(SERVER_SOURCES))
 DEBUG_SERVER_DEPS = $(sort $(patsubst %, %.deps, $(DEBUG_SERVER_OBJS)))
 
-RELEASE_SERVER_PRODUCT_DIR = $(PRODUCT_DIR)/LockstepServer.app
-RELEASE_SERVER_BINARY = $(RELEASE_SERVER_PRODUCT_DIR)/Contents/MacOS/LockstepServer
+RELEASE_SERVER_PRODUCT_DIR = $(PRODUCT_DIR)/server
+RELEASE_SERVER_BINARY = $(RELEASE_SERVER_PRODUCT_DIR)/server
 RELEASE_SERVER_OBJ_DIR = $(OBJ_DIR)/release_server
 RELEASE_SERVER_OBJS = $(patsubst %.cpp, $(RELEASE_SERVER_OBJ_DIR)/%.o, $(SERVER_SOURCES))
 RELEASE_SERVER_DEPS = $(sort $(patsubst %, %.deps, $(RELEASE_SERVER_OBJS)))
