@@ -1,7 +1,6 @@
 #include <string.h>
 #include <stdatomic.h>
 #include "assert.h"
-#include "memory_barrier.h"
 #include "chunk_ring_buffer.h"
 
 typedef chunk_ring_buffer crb;

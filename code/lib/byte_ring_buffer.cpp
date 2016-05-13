@@ -2,7 +2,6 @@
 #include <stdatomic.h>
 #include "math.h"
 #include "assert.h"
-#include "memory_barrier.h"
 #include "byte_ring_buffer.h"
 
 typedef byte_ring_buffer brb;
@@ -91,7 +90,6 @@ void ByteRingBufferReadAdvance(brb *Ring, memsize Length) {
 
 memsize ByteRingBufferRead(brb *Ring, buffer Output) {
   memsize ReadLength = ByteRingBufferPeek(Ring, Output);
-  MemoryBarrier;
   ByteRingBufferReadAdvance(Ring, ReadLength);
   return ReadLength;
 }
