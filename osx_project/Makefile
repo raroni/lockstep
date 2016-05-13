@@ -6,7 +6,7 @@ CC = clang++
 COMMON_FLAGS = -Wall -g -std=gnu++11 -stdlib=libc++ -ferror-limit=1 -fno-exceptions -fno-rtti
 COMMON_FLAGS += -DDEBUG
 PRODUCT_DIR = $(BUILD_DIR)/products
-OBJECTS_DIR = $(BUILD_DIR)/objects
+OBJ_DIR = $(BUILD_DIR)/objects
 
 ROOT = $(realpath ./..)
 CODE_ROOT = $(ROOT)/code
@@ -17,7 +17,8 @@ COMMON_HEADER_INCLUDES = -iquote $(CODE_ROOT)
 SERVER_PRODUCT_DIR = $(PRODUCT_DIR)/LockstepServer.app
 SERVER_BINARY = $(SERVER_PRODUCT_DIR)/Contents/MacOS/LockstepServer
 SERVER_SOURCES = $(COMMON_SOURCES) code/server/osx_main.cpp code/server/posix_net.cpp code/server/posix_net_client_set.cpp code/server/net_events.cpp code/server/net_commands.cpp code/lib/chunk_ring_buffer.cpp code/lib/byte_ring_buffer.cpp code/server/game.cpp
-SERVER_OBJS = $(patsubst %.cpp, $(OBJECTS_DIR)/%.o, $(SERVER_SOURCES))
+SERVER_OBJ_DIR = $(OBJ_DIR)/server
+SERVER_OBJS = $(patsubst %.cpp, $(SERVER_OBJ_DIR)/%.o, $(SERVER_SOURCES))
 SERVER_DEPS = $(sort $(patsubst %, %.deps, $(SERVER_OBJS)))
 
 CLIENT_OSX_FRAMEWORKS = CoreFoundation AppKit OpenGL
@@ -29,8 +30,9 @@ CLIENT_CONTENTS_DIR = $(CLIENT_PRODUCT_DIR)/Contents
 CLIENT_BINARY = $(CLIENT_CONTENTS_DIR)/MacOS/LockstepClient
 CLIENT_CPP_SOURCES = $(COMMON_SOURCES) code/client/posix_net.cpp code/lib/chunk_ring_buffer.cpp code/lib/byte_ring_buffer.cpp code/client/net_events.cpp code/client/net_commands.cpp code/client/game.cpp code/client/opengl.cpp code/client/interpolation.cpp code/lib/int_seq.cpp
 CLIENT_OBJ_CPP_SOURCES = code/client/osx_main.mm
-CLIENT_CPP_OBJS = $(patsubst %.cpp, $(OBJECTS_DIR)/%.o, $(CLIENT_CPP_SOURCES))
-CLIENT_CPP_CPP_OBJS = $(patsubst %.mm, $(OBJECTS_DIR)/%.o, $(CLIENT_OBJ_CPP_SOURCES))
+CLIENT_OBJ_DIR = $(OBJ_DIR)/client
+CLIENT_CPP_OBJS = $(patsubst %.cpp, $(CLIENT_OBJ_DIR)/%.o, $(CLIENT_CPP_SOURCES))
+CLIENT_CPP_CPP_OBJS = $(patsubst %.mm, $(CLIENT_OBJ_DIR)/%.o, $(CLIENT_OBJ_CPP_SOURCES))
 CLIENT_OBJS = $(CLIENT_CPP_OBJS) $(CLIENT_CPP_CPP_OBJS)
 CLIENT_DEPS = $(sort $(patsubst %, %.deps, $(CLIENT_OBJS)))
 
@@ -53,18 +55,29 @@ TEST_SOURCES =\
 	code/lib/chunk_ring_buffer.cpp\
 	code/lib/buf_view.cpp\
 	code/server/posix_net_client_set.cpp
-TEST_OBJS = $(patsubst %.cpp, $(OBJECTS_DIR)/%.o, $(TEST_SOURCES))
+TEST_OBJ_DIR = $(OBJ_DIR)/test
+TEST_OBJS = $(patsubst %.cpp, $(TEST_OBJ_DIR)/%.o, $(TEST_SOURCES))
 TEST_DEPS = $(sort $(patsubst %, %.deps, $(TEST_OBJS)))
 
 -include $(SERVER_DEPS)
 -include $(CLIENT_DEPS)
 -include $(TEST_DEPS)
 
-$(OBJECTS_DIR)/%.o: $(ROOT)/%.cpp
-	mkdir -p $(dir $@)
-	$(CC) $(COMMON_FLAGS) $(COMMON_HEADER_INCLUDES) -c $< -o $@ -MMD -MF $@.deps
+define CREATE_CPP_OBJ_COMMAND
+mkdir -p $(dir $@)
+$(CC) $(COMMON_FLAGS) $(COMMON_HEADER_INCLUDES) -c $< -o $@ -MMD -MF $@.deps
+endef
 
-$(OBJECTS_DIR)/%.o: $(ROOT)/%.mm
+$(SERVER_OBJ_DIR)/%.o: $(ROOT)/%.cpp
+	$(CREATE_CPP_OBJ_COMMAND)
+
+$(TEST_OBJ_DIR)/%.o: $(ROOT)/%.cpp
+	$(CREATE_CPP_OBJ_COMMAND)
+
+$(CLIENT_OBJ_DIR)/%.o: $(ROOT)/%.cpp
+	$(CREATE_CPP_OBJ_COMMAND)
+
+$(CLIENT_OBJ_DIR)/%.o: $(ROOT)/%.mm
 	mkdir -p $(dir $@)
 	$(CC) $(COMMON_FLAGS) $(COMMON_HEADER_INCLUDES) -fno-objc-arc -c $< -o $@ -MMD -MF $@.deps
 
