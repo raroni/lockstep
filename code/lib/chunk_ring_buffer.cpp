@@ -1,4 +1,5 @@
 #include <string.h>
+#include <stdatomic.h>
 #include "assert.h"
 #include "memory_barrier.h"
 #include "chunk_ring_buffer.h"
@@ -26,30 +27,35 @@ void InitChunkRingBuffer(
   Buffer->Data = Data;
 
   Buffer->ChunkCount = ChunkCount;
-  Buffer->ReadIndex = 0;
-  Buffer->WriteIndex = 0;
+  Buffer->ReadIndex = ATOMIC_VAR_INIT(0);
+  Buffer->WriteIndex = ATOMIC_VAR_INIT(0);
 }
 
 memsize GetChunkRingBufferUnreadCount(chunk_ring_buffer *Buffer) {
-  if(Buffer->WriteIndex >= Buffer->ReadIndex) {
-    return Buffer->WriteIndex - Buffer->ReadIndex;
+  memsize ReadIndex = atomic_load_explicit(&Buffer->ReadIndex, memory_order_acquire);
+  memsize WriteIndex = atomic_load_explicit(&Buffer->WriteIndex, memory_order_acquire);
+  if(WriteIndex >= ReadIndex) {
+    return WriteIndex - ReadIndex;
   }
   else {
-    return Buffer->WriteIndex + Buffer->ChunkCount - Buffer->ReadIndex;
+    return WriteIndex + Buffer->ChunkCount - ReadIndex;
   }
 }
 
 void ChunkRingBufferWrite(chunk_ring_buffer *Buffer, const buffer Input) {
-  memsize NewWriteIndex = (Buffer->WriteIndex + 1) % Buffer->ChunkCount;
-  Assert(NewWriteIndex != Buffer->ReadIndex);
+  memsize WriteIndex = atomic_load_explicit(&Buffer->WriteIndex, memory_order_relaxed);
+  memsize ReadIndex = atomic_load_explicit(&Buffer->ReadIndex, memory_order_acquire);
 
-  memsize ReadOffset = Buffer->Offsets[Buffer->ReadIndex];
-  memsize WriteOffset = Buffer->Offsets[Buffer->WriteIndex];
+  memsize NewWriteIndex = (WriteIndex + 1) % Buffer->ChunkCount;
+  Assert(NewWriteIndex != ReadIndex);
+
+  memsize ReadOffset = Buffer->Offsets[ReadIndex];
+  memsize WriteOffset = Buffer->Offsets[WriteIndex];
   if(ReadOffset <= WriteOffset) {
     memsize Capacity = Buffer->Data.Length - WriteOffset;
     if(Input.Length > Capacity) {
       Assert(Input.Length <= ReadOffset);
-      Buffer->Offsets[Buffer->WriteIndex] = WriteOffset = 0;
+      Buffer->Offsets[WriteIndex] = WriteOffset = 0;
     }
   }
   else {
@@ -57,26 +63,27 @@ void ChunkRingBufferWrite(chunk_ring_buffer *Buffer, const buffer Input) {
     Assert(Input.Length <= Capacity);
   }
 
-  Buffer->Sizes[Buffer->WriteIndex] = Input.Length;
+  Buffer->Sizes[WriteIndex] = Input.Length;
   void *Destination = ((ui8*)Buffer->Data.Addr) + WriteOffset;
   memcpy(Destination, Input.Addr, Input.Length);
   Buffer->Offsets[NewWriteIndex] = WriteOffset + Input.Length;
 
-  MemoryBarrier;
-
-  Buffer->WriteIndex = NewWriteIndex;
+  atomic_store_explicit(&Buffer->WriteIndex, NewWriteIndex, memory_order_release);
 }
 
 buffer ChunkRingBufferPeek(chunk_ring_buffer *Buffer) {
+  memsize WriteIndex = atomic_load_explicit(&Buffer->WriteIndex, memory_order_acquire);
+  memsize ReadIndex = atomic_load_explicit(&Buffer->ReadIndex, memory_order_relaxed);
+
   buffer Result;
-  if(Buffer->ReadIndex == Buffer->WriteIndex) {
+  if(ReadIndex == WriteIndex) {
     Result.Addr = NULL;
     Result.Length = 0;
     return Result;
   }
-  memsize ReadOffset = Buffer->Offsets[Buffer->ReadIndex];
+  memsize ReadOffset = Buffer->Offsets[ReadIndex];
   Result.Addr = ((ui8*)Buffer->Data.Addr) + ReadOffset;
-  Result.Length = Buffer->Sizes[Buffer->ReadIndex];
+  Result.Length = Buffer->Sizes[ReadIndex];
   return Result;
 }
 
@@ -89,7 +96,9 @@ buffer ChunkRingBufferRefRead(chunk_ring_buffer *Buffer) {
 }
 
 void ChunkRingBufferReadAdvance(chunk_ring_buffer *Buffer) {
-  Buffer->ReadIndex = (Buffer->ReadIndex + 1) % Buffer->ChunkCount;
+  memsize OldReadIndex = atomic_load_explicit(&Buffer->ReadIndex, memory_order_relaxed);
+  memsize NewReadIndex = (OldReadIndex + 1) % Buffer->ChunkCount;
+  atomic_store_explicit(&Buffer->ReadIndex, NewReadIndex, memory_order_release);
 }
 
 memsize ChunkRingBufferCopyRead(chunk_ring_buffer *Buffer, buffer Output) {
@@ -101,19 +110,17 @@ memsize ChunkRingBufferCopyRead(chunk_ring_buffer *Buffer, buffer Output) {
   Assert(Output.Length >= Peek.Length);
   memcpy(Output.Addr, Peek.Addr, Peek.Length);
 
-  MemoryBarrier;
-
   ChunkRingBufferReadAdvance(Buffer);
 
   return Peek.Length;
 }
 
 void TerminateChunkRingBuffer(crb *Buffer) {
-  Buffer->WriteIndex = 0;
+  atomic_store_explicit(&Buffer->WriteIndex, 0, memory_order_relaxed);
   Buffer->ChunkCount = 0;
   Buffer->Offsets = NULL;
   Buffer->Sizes = NULL;
   Buffer->Data.Addr = NULL;
   Buffer->Data.Length = 0;
-  Buffer->ReadIndex = 0;
+  atomic_store_explicit(&Buffer->ReadIndex, 0, memory_order_relaxed);
 }
