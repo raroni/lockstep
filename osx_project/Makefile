@@ -153,11 +153,21 @@ run_debug_server: debug_server
 run_debug_client: debug_client
 	$(DEBUG_CLIENT_BINARY)
 
+run_release_server: release_server
+	$(RELEASE_SERVER_BINARY) ${PLAYER_COUNT}
+
+run_release_client: release_client
+	$(RELEASE_CLIENT_BINARY)
+
 run_test: test
 	$(TEST_BINARY)
 
-rs: run_debug_server
-rc: run_debug_client
+rds: run_debug_server
+rrs: run_release_server
+rdc: run_debug_client
+rrc: run_release_client
 rt: run_test
-rp: debug_server debug_client
+rdp: debug_server debug_client
 	$(DEBUG_SERVER_BINARY) & sleep 0.25; $(DEBUG_CLIENT_BINARY)
+rrp: release_server release_client
+	$(RELEASE_SERVER_BINARY) & sleep 0.25; $(RELEASE_CLIENT_BINARY)
