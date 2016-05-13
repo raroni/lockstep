@@ -2,6 +2,36 @@
 #include "assert.h"
 #include "math.h"
 
+int MaxInt(int A, int B) {
+  return A > B ? A : B;
+}
+
+int MinInt(int A, int B) {
+  return A < B ? A : B;
+}
+
+int ClampInt(int N, int Min, int Max) {
+  N = MaxInt(N, Min);
+  N = MinInt(N, Max);
+  return N;
+}
+
+memsize MaxMemsize(memsize A, memsize B) {
+  return A > B ? A : B;
+}
+
+memsize MinMemsize(memsize A, memsize B) {
+  return A < B ? A : B;
+}
+
+r32 MinR32(r32 A, r32 B) {
+  return A < B ? A : B;
+}
+
+r32 MaxR32(r32 A, r32 B) {
+  return A > B ? A : B;
+}
+
 r32 SquareRoot(r32 R) {
   return sqrt(R);
 }
@@ -131,5 +161,48 @@ ivec2 ConvertRvec2ToIvec2(rvec2 V) {
   ivec2 Result;
   Result.X = round(V.X);
   Result.Y = round(V.Y);
+  return Result;
+}
+
+int AbsInt(int X) {
+  return abs(X);
+}
+
+r32 AbsR32(r32 R) {
+  return fabs(R);
+}
+
+rrect CreateRrect(rvec2 A, rvec2 B) {
+  rrect Result;
+
+  Result.Min.X = MinR32(A.X, B.X);
+  Result.Min.Y = MinR32(A.Y, B.Y);
+
+  Result.Max.X = MaxR32(A.X, B.X);
+  Result.Max.Y = MaxR32(A.Y, B.Y);
+
+  return Result;
+}
+
+irect CreateIrect(ivec2 A, ivec2 B) {
+  irect Result;
+
+  Result.Min.X = MinInt(A.X, B.X);
+  Result.Min.Y = MinInt(A.Y, B.Y);
+
+  Result.Max.X = MaxInt(A.X, B.X);
+  Result.Max.Y = MaxInt(A.Y, B.Y);
+
+  return Result;
+}
+
+bool InsideIrect(irect Rect, ivec2 Pos) {
+  bool Result = (
+    Rect.Min.X <= Pos.X &&
+    Rect.Min.Y <= Pos.Y &&
+    Rect.Max.X > Pos.X &&
+    Rect.Max.Y > Pos.Y
+  );
+
   return Result;
 }

@@ -193,6 +193,8 @@ static void ProcessOSXMessages(NSWindow *Window, game_mouse *Mouse) {
     }
     switch(Event.type) {
       case NSLeftMouseDown:
+      case NSLeftMouseUp:
+      case NSLeftMouseDragged:
       case NSMouseMoved: {
         NSPoint WindowLoc;
         if(Event.window == Window) {
@@ -213,13 +215,13 @@ static void ProcessOSXMessages(NSWindow *Window, game_mouse *Mouse) {
             Mouse->ButtonPressed = true;
             Mouse->ButtonChangeCount++;
           }
+          else if(Event.type == NSLeftMouseUp) {
+            Mouse->ButtonPressed = false;
+            Mouse->ButtonChangeCount++;
+          }
         }
         break;
       }
-      case NSLeftMouseUp:
-        Mouse->ButtonPressed = false;
-        Mouse->ButtonChangeCount++;
-        break;
       default:
         break;
     }
@@ -233,6 +235,7 @@ int main() {
   State.Resolution.Y = 1200;
 
   State.Mouse.Pos = MakeIvec2(0, 0);
+  State.Mouse.ButtonPressed = false;
   InitMemory(&State);
 
   {

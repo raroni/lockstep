@@ -5,7 +5,6 @@
 #include "lib/int_seq.h"
 #include "lib/chunk_ring_buffer.h"
 #include "lib/memory_arena.h"
-#include "lib/min_max.h"
 #include "common/net_messages.h"
 #include "common/simulation.h"
 #include "common/order_serialization.h"
@@ -29,9 +28,9 @@ static const ui32 PlayerColors[] = {
   RedColor, OrangeColor, BlueColor, PurpleColor
 };
 
-#define UNIT_SELECTION_MAX 8;
+#define UNIT_SELECTION_MAX 128
 struct unit_selection {
-  simulation_unit_id IDs[8];
+  simulation_unit_id IDs[UNIT_SELECTION_MAX];
   ui8 Count;
 };
 
@@ -40,9 +39,15 @@ enum game_mode {
   game_mode_active
 };
 
+struct drag_selection {
+  bool Active;
+  rrect Area;
+};
+
 struct game_state {
   memory_arena Arena;
   buffer CommandSerializationBuffer;
+  drag_selection DragSelection;
   simulation_player_id PlayerID;
   simulation Sim;
   interpolation Interpolation;
@@ -52,10 +57,12 @@ struct game_state {
   uusec64 NextExtraTickTime;
   chunk_ring_buffer OrderListRing;
   unit_selection UnitSelection;
+  ivec2 LastMouseDownPos;
+  bool MouseDragging;
   game_mode Mode;
 };
 
-static r32 GetAspectRatio(ivec2 Resolution) {
+static r32 CalcAspectRatio(ivec2 Resolution) {
   rvec2 Real = ConvertIvec2ToRvec2(Resolution);
   return Real.X / Real.Y;
 }
@@ -96,6 +103,8 @@ void InitGame(buffer Memory) {
   State->PlayerID = SIMULATION_UNDEFINED_PLAYER_ID;
   State->UnitSelection.Count = 0;
   State->Mode = game_mode_waiting;
+  State->MouseDragging = false;
+  State->DragSelection.Active = false;
 }
 
 #define AddRenderCommand(List, Type) (Type##_render_command*)_AddRenderCommand(List, render_command_type_##Type, sizeof(Type##_render_command))
@@ -109,7 +118,7 @@ void* _AddRenderCommand(chunk_list *List, render_command_type Type, memsize Leng
   return (void*)Command;
 }
 
-void Render(simulation *Sim, interpolation *Interpolation, unit_selection *UnitSelection, chunk_list *Commands, ivec2 Resolution) {
+void Render(game_state *State, chunk_list *Commands, ivec2 Resolution) {
   {
     clear_color_render_command *Command = AddRenderCommand(Commands, clear_color);
     Command->Color = DarkBlueColor;
@@ -117,36 +126,75 @@ void Render(simulation *Sim, interpolation *Interpolation, unit_selection *UnitS
 
   {
     projection_render_command *Command = AddRenderCommand(Commands, projection);
-    Command->AspectRatio = GetAspectRatio(Resolution);
+    Command->AspectRatio = CalcAspectRatio(Resolution);
     Command->Zoom = Zoom;
   }
 
-  for(memsize I=0; I<UnitSelection->Count; ++I) {
-    simulation_unit_id UnitID = UnitSelection->IDs[I];
+  for(memsize I=0; I<State->UnitSelection.Count; ++I) {
+    simulation_unit_id UnitID = State->UnitSelection.IDs[I];
     // TODO: Proper unit find based on ID (instead of index)
     // simulation_unit *Unit = GetSimulationUnit(UnitID);
     draw_square_render_command *Command = AddRenderCommand(Commands, draw_square);
-    Command->X = Interpolation->Pos[UnitID].X;
-    Command->Y = Interpolation->Pos[UnitID].Y;
+    Command->X = State->Interpolation.Pos[UnitID].X;
+    Command->Y = State->Interpolation.Pos[UnitID].Y;
     Command->Color = WhiteColor;
     Command->HalfSize = SIMULATION_UNIT_HALF_SIZE + 10;
   }
 
-  for(memsize I=0; I<Sim->UnitCount; ++I) {
+  for(memsize I=0; I<State->Sim.UnitCount; ++I) {
     draw_square_render_command *Command = AddRenderCommand(Commands, draw_square);
-    Command->X = Interpolation->Pos[I].X;
-    Command->Y = Interpolation->Pos[I].Y;
-    Command->Color = PlayerColors[Sim->Units[I].PlayerID];
+    Command->X = State->Interpolation.Pos[I].X;
+    Command->Y = State->Interpolation.Pos[I].Y;
+    Command->Color = PlayerColors[State->Sim.Units[I].PlayerID];
     Command->HalfSize = SIMULATION_UNIT_HALF_SIZE;
   }
 
-  simulation_body_list *TreeList = &Sim->StaticBodyList;
+  simulation_body_list *TreeList = &State->Sim.StaticBodyList;
   for(memsize I=0; I<TreeList->Count; ++I) {
     draw_square_render_command *Command = AddRenderCommand(Commands, draw_square);
     Command->X = TreeList->Poss[I].X;
     Command->Y = TreeList->Poss[I].Y;
     Command->Color = GreenColor;
     Command->HalfSize = SIMULATION_TREE_HALF_SIZE;
+  }
+
+  if(State->DragSelection.Active) {
+    const static r32 Width = .01f;
+    const static ui32 Color = OrangeColor;
+    {
+      projection_render_command *Command = AddRenderCommand(Commands, projection);
+      Command->AspectRatio = CalcAspectRatio(Resolution);
+      Command->Zoom = 1.0f;
+    }
+
+    {
+      draw_rect_render_command *Command = AddRenderCommand(Commands, draw_rect);
+      Command->Rect.Min = State->DragSelection.Area.Min;
+      Command->Rect.Max.X = State->DragSelection.Area.Max.X;
+      Command->Rect.Max.Y = State->DragSelection.Area.Min.Y + Width;
+      Command->Color = Color;
+    }
+    {
+      draw_rect_render_command *Command = AddRenderCommand(Commands, draw_rect);
+      Command->Rect.Min.X = State->DragSelection.Area.Min.X;
+      Command->Rect.Min.Y = State->DragSelection.Area.Max.Y - Width;
+      Command->Rect.Max = State->DragSelection.Area.Max;
+      Command->Color = Color;
+    }
+    {
+      draw_rect_render_command *Command = AddRenderCommand(Commands, draw_rect);
+      Command->Rect.Min = State->DragSelection.Area.Min;
+      Command->Rect.Max.X = State->DragSelection.Area.Min.X + Width;
+      Command->Rect.Max.Y = State->DragSelection.Area.Max.Y;
+      Command->Color = Color;
+    }
+    {
+      draw_rect_render_command *Command = AddRenderCommand(Commands, draw_rect);
+      Command->Rect.Min.X = State->DragSelection.Area.Max.X - Width;
+      Command->Rect.Min.Y = State->DragSelection.Area.Min.Y;
+      Command->Rect.Max = State->DragSelection.Area.Max;
+      Command->Color = Color;
+    }
   }
 }
 
@@ -235,41 +283,111 @@ simulation_unit* FindUnit(simulation *Sim, ivec2 WorldPos) {
   return NULL;
 }
 
-void ToggleUnitSelection(unit_selection *UnitSelection, simulation_unit_id ID) {
-  for(memsize I=0; I<UnitSelection->Count; ++I) {
-    if(UnitSelection->IDs[I] == ID) {
-      UnitSelection->IDs[I] = UnitSelection->IDs[UnitSelection->Count-1];
-      UnitSelection->Count--;
-      return;
+static void UnitSelectionEmpty(unit_selection *S) {
+  S->Count = 0;
+}
+
+static void UnitSelectionAdd(unit_selection *S, simulation_unit_id ID) {
+  Assert(S->Count != UNIT_SELECTION_MAX);
+  S->IDs[S->Count++] = ID;
+}
+
+static void ProcessClick(game_state *State, game_mouse *Mouse, ivec2 Resolution, chunk_list *NetCmds)  {
+  r32 AspectRatio = CalcAspectRatio(Resolution);
+  ivec2 WorldPos = ConvertWindowToWorldCoors(Mouse->Pos, Resolution, AspectRatio, Zoom);
+  simulation_unit *Unit = FindUnit(&State->Sim, WorldPos);
+
+  if(Unit != NULL) {
+    bool PerformSelect = State->UnitSelection.Count != 1 || State->UnitSelection.IDs[0] != Unit->ID;
+    UnitSelectionEmpty(&State->UnitSelection);
+    if(PerformSelect) {
+      UnitSelectionAdd(&State->UnitSelection, Unit->ID);
     }
   }
-  const int UnitSelectionMax = sizeof(UnitSelection->IDs) / sizeof(UnitSelection->IDs[0]);
-  if(UnitSelection->Count != UnitSelectionMax) {
-    UnitSelection->IDs[UnitSelection->Count++] = ID;
+  else if(State->UnitSelection.Count != 0) {
+    memory_arena_checkpoint ArenaCheckpoint = CreateMemoryArenaCheckpoint(&State->Arena);
+    Assert(GetMemoryArenaFree(&State->Arena) >= NET_MESSAGE_MAX_LENGTH + NET_COMMAND_MAX_LENGTH);
+
+    buffer OrderMessage = SerializeOrderNetMessage(
+      State->UnitSelection.IDs,
+      State->UnitSelection.Count,
+      WorldPos,
+      &State->Arena
+    );
+    buffer Command = SerializeSendNetCommand(OrderMessage, &State->Arena);
+    ChunkListWrite(NetCmds, Command);
+    ReleaseMemoryArenaCheckpoint(ArenaCheckpoint);
   }
 }
 
-void ProcessMouse(simulation *Sim, memory_arena *Arena, simulation_player_id PlayerID, unit_selection *UnitSelection, game_mouse *Mouse, ivec2 Resolution, chunk_list *NetCmds) {
-  if(Mouse->ButtonPressed && Mouse->ButtonChangeCount != 0) {
-    r32 AspectRatio = GetAspectRatio(Resolution);
-    ivec2 WorldPos = ConvertWindowToWorldCoors(Mouse->Pos, Resolution, AspectRatio, Zoom);
-    simulation_unit *Unit = FindUnit(Sim, WorldPos);
-    if(Unit != NULL && Unit->PlayerID == PlayerID) {
-      ToggleUnitSelection(UnitSelection, Unit->ID);
-    }
-    else if(UnitSelection->Count != 0) {
-      memory_arena_checkpoint ArenaCheckpoint = CreateMemoryArenaCheckpoint(Arena);
-      Assert(GetMemoryArenaFree(Arena) >= NET_MESSAGE_MAX_LENGTH + NET_COMMAND_MAX_LENGTH);
+static void UpdateDragSelectionArea(game_state *State, game_mouse *Mouse, ivec2 Resolution) {
+  r32 AspectRatio = CalcAspectRatio(Resolution);
+  State->DragSelection.Area = CreateRrect(
+    ConvertWindowToUICoors(Mouse->Pos, Resolution, AspectRatio),
+    ConvertWindowToUICoors(State->LastMouseDownPos, Resolution, AspectRatio)
+  );
+}
 
-      buffer OrderMessage = SerializeOrderNetMessage(
-        UnitSelection->IDs,
-        UnitSelection->Count,
-        WorldPos,
-        Arena
-      );
-      buffer Command = SerializeSendNetCommand(OrderMessage, Arena);
-      ChunkListWrite(NetCmds, Command);
-      ReleaseMemoryArenaCheckpoint(ArenaCheckpoint);
+static void ProcessDragStart(game_state *State, game_mouse *Mouse, ivec2 Resolution)  {
+  State->DragSelection.Active = true;
+  UpdateDragSelectionArea(State, Mouse, Resolution);
+}
+
+static void ProcessDragMove(game_state *State, game_mouse *Mouse, ivec2 Resolution)  {
+  UpdateDragSelectionArea(State, Mouse, Resolution);
+}
+
+static void ProcessDragStop(game_state *State, game_mouse *Mouse, ivec2 Resolution)  {
+  State->DragSelection.Active = false;
+
+  r32 AspectRatio = CalcAspectRatio(Resolution);
+  irect WorldRect;
+  WorldRect.Min = ConvertUIToWorldCoors(State->DragSelection.Area.Min, AspectRatio, Zoom);
+  WorldRect.Max = ConvertUIToWorldCoors(State->DragSelection.Area.Max, AspectRatio, Zoom);
+  UnitSelectionEmpty(&State->UnitSelection);
+
+  memory_arena_checkpoint ArenaCheckpoint = CreateMemoryArenaCheckpoint(&State->Arena);
+  simulation_unit_id *UnitIDs;
+  {
+    memsize IDSize = sizeof(simulation_unit_id) * UNIT_SELECTION_MAX;
+    UnitIDs = (simulation_unit_id*)MemoryArenaAllocate(&State->Arena, IDSize);
+  }
+  memsize Count = SimulationFindUnits(&State->Sim, WorldRect, UnitIDs, UNIT_SELECTION_MAX);
+  for(memsize I=0; I<Count; ++I) {
+    UnitSelectionAdd(&State->UnitSelection, UnitIDs[I]);
+  }
+
+  ReleaseMemoryArenaCheckpoint(ArenaCheckpoint);
+}
+
+static void ProcessMouse(game_state *State, game_mouse *Mouse, ivec2 Resolution, chunk_list *NetCmds) {
+  if(Mouse->ButtonChangeCount != 0) {
+    if(Mouse->ButtonPressed) {
+      State->LastMouseDownPos = Mouse->Pos;
+    }
+    else {
+      if(State->MouseDragging) {
+        ProcessDragStop(State, Mouse, Resolution);
+      }
+      else {
+        ProcessClick(State, Mouse, Resolution, NetCmds);
+      }
+
+      State->MouseDragging = false;
+    }
+  }
+
+  if(Mouse->ButtonPressed) {
+    if(!State->MouseDragging) {
+      rvec2 Difference = ConvertIvec2ToRvec2(Mouse->Pos - State->LastMouseDownPos);
+      r32 Distance = CalcRvec2Magnitude(Difference);
+      if(Distance > 18.0f) {
+        ProcessDragStart(State, Mouse, Resolution);
+        State->MouseDragging = true;
+      }
+    }
+    else {
+      ProcessDragMove(State, Mouse, Resolution);
     }
   }
 }
@@ -285,7 +403,7 @@ void UpdateGame(game_platform *Platform, chunk_list *NetEvents, chunk_list *NetC
   game_state *State = (game_state*)Memory.Addr;
 
   if(State->Mode == game_mode_active) {
-    ProcessMouse(&State->Sim, &State->Arena, State->PlayerID, &State->UnitSelection, Platform->Mouse, Platform->Resolution, NetCmds);
+    ProcessMouse(State, Platform->Mouse, Platform->Resolution, NetCmds);
   }
 
   for(;;) {
@@ -349,7 +467,7 @@ void UpdateGame(game_platform *Platform, chunk_list *NetEvents, chunk_list *NetC
       TickProgress = MinR32(TickProgress, 1.0f);
     }
     UpdateInterpolation(&State->Interpolation, &State->Sim, TickProgress);
-    Render(&State->Sim, &State->Interpolation, &State->UnitSelection, RenderCmds, Platform->Resolution);
+    Render(State, RenderCmds, Platform->Resolution);
   }
 
   if(Platform->TerminationRequested) {

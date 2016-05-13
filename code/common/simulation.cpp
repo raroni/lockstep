@@ -1,6 +1,5 @@
 #include "lib/assert.h"
 #include "lib/math.h"
-#include "lib/min_max.h"
 #include "simulation.h"
 
 #define UNITS_PER_PLAYER 64
@@ -109,24 +108,6 @@ static void CreateUnit(simulation *Sim, memsize PlayerID, ivec2 Pos) {
   Sim->UnitCount++;
 }
 
-simulation_player_id SimulationCreatePlayer(simulation *Sim) {
-  Assert(Sim->PlayerCount != SIMULATION_PLAYER_MAX);
-  ui16 Displacement = 5;
-  player *Player = Sim->Players + Sim->PlayerCount;
-  Player->ID = Sim->PlayerCount;
-  memsize StartPositionCount = sizeof(StartPositions) / sizeof(StartPositions[0]);
-  ivec2 Base = StartPositions[Player->ID % StartPositionCount];
-  for(memsize U=0; U<UNITS_PER_PLAYER; ++U) {
-    ivec2 Pos;
-    memsize Layer = U % (UNITS_PER_PLAYER / 2);
-    Pos.X = (r32)Base.X + (r32(Layer) - 0.5f) * Displacement;
-    Pos.Y = Base.Y + ((r32)(U/2)-0.5f) * Displacement;
-    CreateUnit(Sim, Player->ID, Pos);
-  }
-  Sim->PlayerCount++;
-  return Player->ID;
-}
-
 static ivec2 GetBodyPos(body_list *List, body_id ID) {
   return List->Poss[ID];
 }
@@ -173,7 +154,7 @@ static void UpdateUnits(simulation *Sim) {
   }
 }
 
-void InitBodyList(simulation_body_list *List, ui16 Max, memory_arena *Arena) {
+static void InitBodyList(simulation_body_list *List, ui16 Max, memory_arena *Arena) {
   List->Poss = (ivec2*)MemoryArenaAllocate(Arena, sizeof(ivec2)*Max);
   List->CellNodes = (simulation_body_cell_node*)MemoryArenaAllocate(Arena, sizeof(simulation_body_cell_node)*Max);
   List->Count = 0;
@@ -191,23 +172,6 @@ void InitBodyList(simulation_body_list *List, ui16 Max, memory_arena *Arena) {
     }
     List->CellNodes[Max-1].Next = NULL;
     List->CellNodes[Max-1].ID = SIMULATION_UNDEFINED_BODY_ID;
-  }
-
-}
-
-void InitSimulation(simulation *Sim, memory_arena *Arena) {
-  Sim->UnitCount = 0;
-  Sim->PlayerCount = 0;
-
-  InitBodyList(&Sim->DynamicBodyList, SIMULATION_UNIT_MAX, Arena);
-  InitBodyList(&Sim->StaticBodyList, SIMULATION_TREE_COUNT, Arena);
-
-  for(memsize I=0; I<SIMULATION_TREE_COUNT; ++I) {
-    ivec2 Pos;
-    memsize LineIndex = I % 6;
-    Pos.X = -750 + LineIndex * 150 + I * 50;
-    Pos.Y = -350 + LineIndex * 150;
-    CreateBody(&Sim->StaticBodyList, Pos);
   }
 }
 
@@ -249,7 +213,7 @@ collision FindCollision(
   return Collision;
 }
 
-void PerformCollisions(simulation *Sim) {
+static void PerformCollisions(simulation *Sim) {
   r32 TreeUnitDistanceMin = SIMULATION_TREE_HALF_SIZE + SIMULATION_UNIT_HALF_SIZE;
   r32 UnitUnitDistanceMin = SIMULATION_UNIT_HALF_SIZE * 2;
 
@@ -260,23 +224,23 @@ void PerformCollisions(simulation *Sim) {
     if(RetryCount++ < 4) {
       ivec2 CurrentUnitPos = GetBodyPos(&Sim->DynamicBodyList, CurrentUnit->BodyID);
 
-      ivec2 CellPosMin, CellPosMax;
+      irect CellRect;
       {
         ivec2 SimPosMin;
         SimPosMin.X = CurrentUnitPos.X - SIMULATION_ENTITY_MAX_SIZE;
         SimPosMin.Y = CurrentUnitPos.Y - SIMULATION_ENTITY_MAX_SIZE;
         SimPosMin = ClampSimPos(SimPosMin);
-        CellPosMin = CalcCellPos(SimPosMin);
+        CellRect.Min = CalcCellPos(SimPosMin);
 
         ivec2 SimPosMax;
         SimPosMax.X = CurrentUnitPos.X + SIMULATION_ENTITY_MAX_SIZE;
         SimPosMax.Y = CurrentUnitPos.Y + SIMULATION_ENTITY_MAX_SIZE;
         SimPosMax = ClampSimPos(SimPosMax);
-        CellPosMax = CalcCellPos(SimPosMax);
+        CellRect.Max = CalcCellPos(SimPosMax);
       }
 
-      for(memsize CellY=CellPosMin.Y; CellY<=CellPosMax.Y; ++CellY) {
-        for(memsize CellX=CellPosMin.X; CellX<=CellPosMax.X; ++CellX) {
+      for(memsize CellY=CellRect.Min.Y; CellY<=CellRect.Max.Y; ++CellY) {
+        for(memsize CellX=CellRect.Min.X; CellX<=CellRect.Max.X; ++CellX) {
           ivec2 CellPos = MakeIvec2(CellX, CellY);
           ui16 CellIndex = CalcCellIndexByCellPos(CellPos);
 
@@ -304,6 +268,69 @@ void PerformCollisions(simulation *Sim) {
       }
     }
   }
+}
+
+void InitSimulation(simulation *Sim, memory_arena *Arena) {
+  Sim->UnitCount = 0;
+  Sim->PlayerCount = 0;
+
+  InitBodyList(&Sim->DynamicBodyList, SIMULATION_UNIT_MAX, Arena);
+  InitBodyList(&Sim->StaticBodyList, SIMULATION_TREE_COUNT, Arena);
+
+  for(memsize I=0; I<SIMULATION_TREE_COUNT; ++I) {
+    ivec2 Pos;
+    memsize LineIndex = I % 6;
+    Pos.X = -750 + LineIndex * 150 + I * 50;
+    Pos.Y = -350 + LineIndex * 150;
+    CreateBody(&Sim->StaticBodyList, Pos);
+  }
+}
+
+memsize SimulationFindUnits(simulation *Sim, irect SimRect, simulation_unit_id *IDs, memsize Max) {
+  irect CellRect;
+  SimRect.Min = ClampSimPos(SimRect.Min);
+  CellRect.Min = CalcCellPos(SimRect.Min);
+  SimRect.Max = ClampSimPos(SimRect.Max);
+  CellRect.Max = CalcCellPos(SimRect.Max);
+
+  memsize Count = 0;
+  for(memsize CellY=CellRect.Min.Y; CellY<=CellRect.Max.Y; ++CellY) {
+    for(memsize CellX=CellRect.Min.X; CellX<=CellRect.Max.X; ++CellX) {
+      ivec2 CellPos = MakeIvec2(CellX, CellY);
+      ui16 CellIndex = CalcCellIndexByCellPos(CellPos);
+
+      body_cell *Cell = Sim->DynamicBodyList.Cells + CellIndex;
+      for(body_cell_node *Node = Cell->First; Node; Node = Node->Next) {
+        ivec2 UnitPos = GetBodyPos(&Sim->DynamicBodyList, Node->ID);
+        if(InsideIrect(SimRect, UnitPos)) {
+          IDs[Count++] = Node->ID;
+          if(Count == Max) {
+            return Count;
+          }
+        }
+      }
+    }
+  }
+
+  return Count;
+}
+
+simulation_player_id SimulationCreatePlayer(simulation *Sim) {
+  Assert(Sim->PlayerCount != SIMULATION_PLAYER_MAX);
+  ui16 Displacement = 5;
+  player *Player = Sim->Players + Sim->PlayerCount;
+  Player->ID = Sim->PlayerCount;
+  memsize StartPositionCount = sizeof(StartPositions) / sizeof(StartPositions[0]);
+  ivec2 Base = StartPositions[Player->ID % StartPositionCount];
+  for(memsize U=0; U<UNITS_PER_PLAYER; ++U) {
+    ivec2 Pos;
+    memsize Layer = U % (UNITS_PER_PLAYER / 2);
+    Pos.X = (r32)Base.X + (r32(Layer) - 0.5f) * Displacement;
+    Pos.Y = Base.Y + ((r32)(U/2)-0.5f) * Displacement;
+    CreateUnit(Sim, Player->ID, Pos);
+  }
+  Sim->PlayerCount++;
+  return Player->ID;
 }
 
 void TickSimulation(simulation *Sim, order_list *OrderList) {
