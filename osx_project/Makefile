@@ -100,3 +100,5 @@ run_test: test
 rs: run_server
 rc: run_client
 rt: run_test
+rp: server client
+	$(SERVER_BINARY) & sleep 0.25; $(CLIENT_BINARY)
