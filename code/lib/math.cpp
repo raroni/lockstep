@@ -183,3 +183,26 @@ rrect CreateRrect(rvec2 A, rvec2 B) {
 
   return Result;
 }
+
+irect CreateIrect(ivec2 A, ivec2 B) {
+  irect Result;
+
+  Result.Min.X = MinInt(A.X, B.X);
+  Result.Min.Y = MinInt(A.Y, B.Y);
+
+  Result.Max.X = MaxInt(A.X, B.X);
+  Result.Max.Y = MaxInt(A.Y, B.Y);
+
+  return Result;
+}
+
+bool InsideIrect(irect Rect, ivec2 Pos) {
+  bool Result = (
+    Rect.Min.X <= Pos.X &&
+    Rect.Min.Y <= Pos.Y &&
+    Rect.Max.X > Pos.X &&
+    Rect.Max.Y > Pos.Y
+  );
+
+  return Result;
+}

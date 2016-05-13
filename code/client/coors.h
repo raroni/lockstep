@@ -24,14 +24,28 @@ ivec2 ConvertWindowToWorldCoors(ivec2 WindowCoors, ivec2 Resolution, r32 AspectR
   return Result;
 }
 
-rvec2 ConvertNDCToUICoors(rvec2 WindowCoors,r32 AspectRatio) {
-  rvec2 Result = WindowCoors;
-  Result.Y /= AspectRatio;
+rvec2 ConvertNDCToUICoors(rvec2 WindowCoors, r32 AspectRatio) {
+  rvec2 Result;
+  Result.X = WindowCoors.X;
+  Result.Y = WindowCoors.Y / AspectRatio;
   return Result;
 }
 
 rvec2 ConvertWindowToUICoors(ivec2 WindowCoors, ivec2 Resolution, r32 AspectRatio) {
   rvec2 NDCCoors = ConvertWindowToNDCCoors(WindowCoors, Resolution);
   rvec2 Result = ConvertNDCToUICoors(NDCCoors, AspectRatio);
+  return Result;
+}
+
+rvec2 ConvertUIToNDCCoors(rvec2 UIPos, r32 AspectRatio) {
+  rvec2 Result;
+  Result.X = UIPos.X;
+  Result.Y = UIPos.Y * AspectRatio;
+  return Result;
+}
+
+ivec2 ConvertUIToWorldCoors(rvec2 UIPos, r32 AspectRatio, r32 Zoom) {
+  rvec2 NDCPos = ConvertUIToNDCCoors(UIPos, AspectRatio);
+  ivec2 Result = ConvertNDCToWorldCoors(NDCPos, AspectRatio, Zoom);
   return Result;
 }
