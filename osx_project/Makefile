@@ -1,10 +1,10 @@
 include MakefileSettings
 
-all: server client test
+all: debug_server release_server client test
 
 CC = clang++
 COMMON_FLAGS = -Wall -g -std=gnu++11 -stdlib=libc++ -ferror-limit=1 -fno-exceptions -fno-rtti
-COMMON_FLAGS += -DDEBUG
+debug_server: COMMON_FLAGS += -DDEBUG
 PRODUCT_DIR = $(BUILD_DIR)/products
 OBJ_DIR = $(BUILD_DIR)/objects
 
@@ -14,12 +14,19 @@ CODE_ROOT = $(ROOT)/code
 COMMON_SOURCES = code/lib/memory_arena.cpp code/common/posix_net.cpp code/lib/buf_view.cpp code/lib/assert.cpp code/common/net_messages.cpp code/common/conversion.cpp code/lib/chunk_list.cpp code/common/simulation.cpp code/common/order_serialization.cpp code/lib/math.cpp code/lib/seq_write.cpp
 COMMON_HEADER_INCLUDES = -iquote $(CODE_ROOT)
 
-SERVER_PRODUCT_DIR = $(PRODUCT_DIR)/LockstepServer.app
-SERVER_BINARY = $(SERVER_PRODUCT_DIR)/Contents/MacOS/LockstepServer
 SERVER_SOURCES = $(COMMON_SOURCES) code/server/osx_main.cpp code/server/posix_net.cpp code/server/posix_net_client_set.cpp code/server/net_events.cpp code/server/net_commands.cpp code/lib/chunk_ring_buffer.cpp code/lib/byte_ring_buffer.cpp code/server/game.cpp
-SERVER_OBJ_DIR = $(OBJ_DIR)/server
-SERVER_OBJS = $(patsubst %.cpp, $(SERVER_OBJ_DIR)/%.o, $(SERVER_SOURCES))
-SERVER_DEPS = $(sort $(patsubst %, %.deps, $(SERVER_OBJS)))
+
+DEBUG_SERVER_PRODUCT_DIR = $(PRODUCT_DIR)/DebugLockstepServer.app
+DEBUG_SERVER_BINARY = $(DEBUG_SERVER_PRODUCT_DIR)/Contents/MacOS/DebugLockstepServer
+DEBUG_SERVER_OBJ_DIR = $(OBJ_DIR)/debug_server
+DEBUG_SERVER_OBJS = $(patsubst %.cpp, $(DEBUG_SERVER_OBJ_DIR)/%.o, $(SERVER_SOURCES))
+DEBUG_SERVER_DEPS = $(sort $(patsubst %, %.deps, $(DEBUG_SERVER_OBJS)))
+
+RELEASE_SERVER_PRODUCT_DIR = $(PRODUCT_DIR)/LockstepServer.app
+RELEASE_SERVER_BINARY = $(RELEASE_SERVER_PRODUCT_DIR)/Contents/MacOS/LockstepServer
+RELEASE_SERVER_OBJ_DIR = $(OBJ_DIR)/release_server
+RELEASE_SERVER_OBJS = $(patsubst %.cpp, $(RELEASE_SERVER_OBJ_DIR)/%.o, $(SERVER_SOURCES))
+RELEASE_SERVER_DEPS = $(sort $(patsubst %, %.deps, $(RELEASE_SERVER_OBJS)))
 
 CLIENT_OSX_FRAMEWORKS = CoreFoundation AppKit OpenGL
 CLIENT_OSX_FRAMEWORKS_FLAGS = $(addprefix -framework , $(CLIENT_OSX_FRAMEWORKS))
@@ -59,7 +66,7 @@ TEST_OBJ_DIR = $(OBJ_DIR)/test
 TEST_OBJS = $(patsubst %.cpp, $(TEST_OBJ_DIR)/%.o, $(TEST_SOURCES))
 TEST_DEPS = $(sort $(patsubst %, %.deps, $(TEST_OBJS)))
 
--include $(SERVER_DEPS)
+-include $(DEBUG_SERVER_DEPS)
 -include $(CLIENT_DEPS)
 -include $(TEST_DEPS)
 
@@ -68,7 +75,10 @@ mkdir -p $(dir $@)
 $(CC) $(COMMON_FLAGS) $(COMMON_HEADER_INCLUDES) -c $< -o $@ -MMD -MF $@.deps
 endef
 
-$(SERVER_OBJ_DIR)/%.o: $(ROOT)/%.cpp
+$(DEBUG_SERVER_OBJ_DIR)/%.o: $(ROOT)/%.cpp
+	$(CREATE_CPP_OBJ_COMMAND)
+
+$(RELEASE_SERVER_OBJ_DIR)/%.o: $(ROOT)/%.cpp
 	$(CREATE_CPP_OBJ_COMMAND)
 
 $(TEST_OBJ_DIR)/%.o: $(ROOT)/%.cpp
@@ -81,7 +91,11 @@ $(CLIENT_OBJ_DIR)/%.o: $(ROOT)/%.mm
 	mkdir -p $(dir $@)
 	$(CC) $(COMMON_FLAGS) $(COMMON_HEADER_INCLUDES) -fno-objc-arc -c $< -o $@ -MMD -MF $@.deps
 
-$(SERVER_BINARY): $(SERVER_OBJS)
+$(DEBUG_SERVER_BINARY): $(DEBUG_SERVER_OBJS)
+	mkdir -p $(dir $@)
+	$(CC) $(COMMON_FLAGS) $^ -o $@
+
+$(RELEASE_SERVER_BINARY): $(RELEASE_SERVER_OBJS)
 	mkdir -p $(dir $@)
 	$(CC) $(COMMON_FLAGS) $^ -o $@
 
@@ -94,15 +108,16 @@ $(TEST_BINARY): $(TEST_OBJS)
 	mkdir -p $(dir $@)
 	$(CC) $(COMMON_FLAGS) $^ -o $@
 
-server: $(SERVER_BINARY)
+debug_server: $(DEBUG_SERVER_BINARY)
+release_server: $(RELEASE_SERVER_BINARY)
 client: $(CLIENT_BINARY)
 test: $(TEST_BINARY)
 
 clean:
 	rm -rf $(BUILD_DIR)
 
-run_server: server
-	$(SERVER_BINARY) ${PLAYER_COUNT}
+run_debug_server: debug_server
+	$(DEBUG_SERVER_BINARY) ${PLAYER_COUNT}
 
 run_client: client
 	$(CLIENT_BINARY)
@@ -110,7 +125,7 @@ run_client: client
 run_test: test
 	$(TEST_BINARY)
 
-rs: run_server
+rs: run_debug_server
 rc: run_client
 rt: run_test
 rp: server client
