@@ -160,7 +160,7 @@ void Render(game_state *State, chunk_list *Commands, ivec2 Resolution) {
 
   if(State->DragSelection.Active) {
     const static r32 Width = .01f;
-    const static ui32 Color = OrangeColor;
+    const static ui32 Color = WhiteColor;
     {
       projection_render_command *Command = AddRenderCommand(Commands, projection);
       Command->AspectRatio = CalcAspectRatio(Resolution);
