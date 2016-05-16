@@ -168,6 +168,10 @@ int AbsInt(int X) {
   return abs(X);
 }
 
+r32 Ceil(r32 R) {
+  return ceil(R);
+}
+
 r32 AbsR32(r32 R) {
   return fabs(R);
 }

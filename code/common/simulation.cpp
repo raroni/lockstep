@@ -2,7 +2,7 @@
 #include "lib/math.h"
 #include "simulation.h"
 
-#define UNITS_PER_PLAYER 64
+#define UNITS_PER_PLAYER 256
 
 typedef simulation_unit unit;
 typedef simulation_player_id player_id;
@@ -317,17 +317,24 @@ memsize SimulationFindUnits(simulation *Sim, irect SimRect, simulation_unit_id *
 
 simulation_player_id SimulationCreatePlayer(simulation *Sim) {
   Assert(Sim->PlayerCount != SIMULATION_PLAYER_MAX);
-  ui16 Displacement = 5;
   player *Player = Sim->Players + Sim->PlayerCount;
   Player->ID = Sim->PlayerCount;
   memsize StartPositionCount = sizeof(StartPositions) / sizeof(StartPositions[0]);
   ivec2 Base = StartPositions[Player->ID % StartPositionCount];
-  for(memsize U=0; U<UNITS_PER_PLAYER; ++U) {
-    ivec2 Pos;
-    memsize Layer = U % (UNITS_PER_PLAYER / 2);
-    Pos.X = (r32)Base.X + (r32(Layer) - 0.5f) * Displacement;
-    Pos.Y = Base.Y + ((r32)(U/2)-0.5f) * Displacement;
-    CreateUnit(Sim, Player->ID, Pos);
+
+  memsize UnitCount = 0;
+  memsize RowColCount = Ceil(SquareRoot((r32)UNITS_PER_PLAYER));
+  memsize Spacing = 30;
+  memsize GridSize = Spacing * (RowColCount - 1);
+  for(memsize X=0; X<RowColCount; ++X) {
+    for(memsize Y=0; Y<RowColCount && UNITS_PER_PLAYER > UnitCount; ++Y) {
+      ivec2 Translation;
+      Translation.X = ((r32)X / RowColCount - 0.5) * GridSize;
+      Translation.Y = ((r32)Y / RowColCount - 0.5) * GridSize;
+      ivec2 Pos = Base + Translation;
+      CreateUnit(Sim, Player->ID, Pos);
+      UnitCount++;
+    }
   }
   Sim->PlayerCount++;
   return Player->ID;

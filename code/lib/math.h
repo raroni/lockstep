@@ -59,5 +59,6 @@ irect CreateIrect(ivec2 A, ivec2 B);
 bool InsideIrect(irect Rect, ivec2 Pos);
 
 r32 SquareRoot(r32 R);
+r32 Ceil(r32 R);
 int AbsInt(int N);
 r32 AbsR32(r32 R);
