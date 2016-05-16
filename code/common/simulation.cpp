@@ -145,7 +145,7 @@ static void UpdateUnits(simulation *Sim) {
     if(SquaredDistance > 0.01) {
       r32 Distance = SquareRoot(SquaredDistance);
       rvec2 Direction = Difference / Distance;
-      static const r32 Speed = .1;
+      static const r32 Speed = .02;
       rvec2 PositionChange = Direction * Speed * SimulationTickDuration;
       PositionChange = ClampRvec2(PositionChange, Distance);
       rvec2 NewPos = Pos + PositionChange;
