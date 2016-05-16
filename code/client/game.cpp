@@ -298,7 +298,10 @@ static void ProcessClick(game_state *State, game_mouse *Mouse, ivec2 Resolution,
   simulation_unit *Unit = FindUnit(&State->Sim, WorldPos);
 
   if(Unit != NULL) {
-    bool PerformSelect = State->UnitSelection.Count != 1 || State->UnitSelection.IDs[0] != Unit->ID;
+    bool PerformSelect = (
+      Unit->PlayerID == State->PlayerID &&
+      (State->UnitSelection.Count != 1 || State->UnitSelection.IDs[0] != Unit->ID)
+    );
     UnitSelectionEmpty(&State->UnitSelection);
     if(PerformSelect) {
       UnitSelectionAdd(&State->UnitSelection, Unit->ID);
@@ -352,7 +355,7 @@ static void ProcessDragStop(game_state *State, game_mouse *Mouse, ivec2 Resoluti
     memsize IDSize = sizeof(simulation_unit_id) * UNIT_SELECTION_MAX;
     UnitIDs = (simulation_unit_id*)MemoryArenaAllocate(&State->Arena, IDSize);
   }
-  memsize Count = SimulationFindUnits(&State->Sim, WorldRect, UnitIDs, UNIT_SELECTION_MAX);
+  memsize Count = SimulationFindUnits(&State->Sim, WorldRect, State->PlayerID, UnitIDs, UNIT_SELECTION_MAX);
   for(memsize I=0; I<Count; ++I) {
     UnitSelectionAdd(&State->UnitSelection, UnitIDs[I]);
   }

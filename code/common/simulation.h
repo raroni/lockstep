@@ -79,7 +79,7 @@ struct simulation {
 };
 
 void InitSimulation(simulation *Sim, memory_arena *Arena);
-memsize SimulationFindUnits(simulation *Sim, irect Rect, simulation_unit_id *IDs, memsize Max);
+memsize SimulationFindUnits(simulation *Sim, irect Rect, simulation_player_id PlayerID, simulation_unit_id *IDs, memsize Max);
 simulation_player_id SimulationCreatePlayer(simulation *Sim);
 void TickSimulation(simulation *Sim, simulation_order_list *OrderList);
 ivec2 SimulationGetUnitPos(simulation *Sim, simulation_unit *Unit);

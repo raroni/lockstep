@@ -286,7 +286,7 @@ void InitSimulation(simulation *Sim, memory_arena *Arena) {
   }
 }
 
-memsize SimulationFindUnits(simulation *Sim, irect SimRect, simulation_unit_id *IDs, memsize Max) {
+memsize SimulationFindUnits(simulation *Sim, irect SimRect, simulation_player_id PlayerID, simulation_unit_id *IDs, memsize Max) {
   irect CellRect;
   SimRect.Min = ClampSimPos(SimRect.Min);
   CellRect.Min = CalcCellPos(SimRect.Min);
@@ -301,6 +301,10 @@ memsize SimulationFindUnits(simulation *Sim, irect SimRect, simulation_unit_id *
 
       body_cell *Cell = Sim->DynamicBodyList.Cells + CellIndex;
       for(body_cell_node *Node = Cell->First; Node; Node = Node->Next) {
+        simulation_unit *Unit = Sim->Units + Node->ID;
+        if(Unit->PlayerID != PlayerID) {
+          continue;
+        }
         ivec2 UnitPos = GetBodyPos(&Sim->DynamicBodyList, Node->ID);
         if(InsideIrect(SimRect, UnitPos)) {
           IDs[Count++] = Node->ID;
