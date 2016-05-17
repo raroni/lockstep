@@ -229,7 +229,12 @@ static void ProcessOSXMessages(NSWindow *Window, game_mouse *Mouse) {
   }
 }
 
-int main() {
+int main(int ArgCount, char *Args[]) {
+  const char *HostAddress = "0.0.0.0";
+  if(ArgCount == 2) {
+    HostAddress = Args[1];
+  }
+
   osx_state State;
   State.Resolution.X = 1600;
   State.Resolution.Y = 1200;
@@ -259,7 +264,7 @@ int main() {
     InitChunkList(&State.RenderCommandList, Buffer);
   }
 
-  InitPosixNet(&State.NetContext);
+  InitPosixNet(&State.NetContext, HostAddress);
   {
     int Result = pthread_create(&State.NetThread, 0, RunPosixNet, &State.NetContext);
     Assert(Result == 0);

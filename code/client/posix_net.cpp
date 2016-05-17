@@ -2,6 +2,7 @@
 #include <string.h>
 #include <errno.h>
 #include <unistd.h>
+#include <arpa/inet.h>
 #include <fcntl.h>
 #include "lib/def.h"
 #include "lib/assert.h"
@@ -38,8 +39,9 @@ static void AllocateBuffer(buffer *Buffer, memory_arena *Arena, memsize Length) 
   Buffer->Length = Length;
 }
 
-void InitPosixNet(posix_net_context *Context) {
+void InitPosixNet(posix_net_context *Context, const char *Address) {
   InitMemory(Context);
+  Context->Address = Address;
 
   {
     int SocketFD = socket(PF_INET, SOCK_STREAM, 0);
@@ -99,13 +101,17 @@ void InitPosixNet(posix_net_context *Context) {
   Context->State = posix_net_state_inactive;
 }
 
-void Connect(posix_net_context *Context) {
+static void Connect(posix_net_context *Context) {
   struct sockaddr_in Address;
   memset(&Address, 0, sizeof(Address));
   Address.sin_len = sizeof(Address);
   Address.sin_family = AF_INET;
   Address.sin_port = htons(4321);
-  Address.sin_addr.s_addr = 0;
+  {
+    int Result = inet_aton(Context->Address, &Address.sin_addr);
+    Assert(Result);
+  }
+
 
   int ConnectResult = connect(Context->SocketFD, (struct sockaddr *)&Address, sizeof(Address));
   Assert(ConnectResult != -1 || errno == errno_code_in_progress);

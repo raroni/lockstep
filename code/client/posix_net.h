@@ -13,6 +13,7 @@ enum posix_net_state {
 
 struct posix_net_context {
   void *Memory;
+  const char *Address;
   memory_arena Arena;
   chunk_ring_buffer EventRing;
   chunk_ring_buffer CommandRing;
@@ -27,7 +28,7 @@ struct posix_net_context {
   int SocketFD;
 };
 
-void InitPosixNet(posix_net_context *Context);
+void InitPosixNet(posix_net_context *Context, const char *Address);
 void* RunPosixNet(void *Context);
 void TerminatePosixNet(posix_net_context *Context);
 

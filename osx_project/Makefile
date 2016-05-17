@@ -151,13 +151,13 @@ run_debug_server: debug_server
 	$(DEBUG_SERVER_BINARY) ${PLAYER_COUNT}
 
 run_debug_client: debug_client
-	$(DEBUG_CLIENT_BINARY)
+	$(DEBUG_CLIENT_BINARY) ${HOST}
 
 run_release_server: release_server
 	$(RELEASE_SERVER_BINARY) ${PLAYER_COUNT}
 
 run_release_client: release_client
-	$(RELEASE_CLIENT_BINARY)
+	$(RELEASE_CLIENT_BINARY) ${HOST}
 
 run_test: test
 	$(TEST_BINARY)
